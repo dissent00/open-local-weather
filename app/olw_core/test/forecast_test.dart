@@ -75,6 +75,21 @@ final _llmPayload = {
 
 /// A stub provider. The real ones are covered against their own wire formats
 /// in llm_providers_test.dart; what matters here is the orchestration.
+/// No record on this install: the code blend declines at every lead and the
+/// consensus serves — upstream item 189.
+Map<int, List<ModelPrediction>> _noBlend(
+  List<ModelPrediction> day0,
+  List<ModelPrediction> day3,
+  List<ModelPrediction> day7,
+  double? day0WindKmh,
+) =>
+    const {};
+
+/// The degradation codes that are GAPS. The pending write-up marker is on
+/// every run since upstream item 189 and is not one.
+Iterable<String> _gaps(ForecastRun run) =>
+    run.degradations.map((d) => d.code).where((c) => c != degradationNarrative);
+
 class _StubProvider implements LlmProvider {
   _StubProvider([this._payload]);
 
@@ -248,6 +263,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -257,9 +273,15 @@ void main() {
       reviewContext: null,
     );
 
-    // The synthesised forecast came back intact.
-    expect(run.response.todayProperties.rainExpected, contains('showers'));
-    expect(run.response.todayNarrative, contains('Overview'));
+    // The served call is CODE's — upstream item 189 — and on a fresh install
+    // it is the models' consensus; the prose is writeUpForecast's, so the
+    // run carries the placeholder.
+    expect(run.servedCall.source, callSourceConsensus);
+    expect(run.response.todayProperties.rainExpected, contains('Showers'));
+    expect(run.response.todayProperties.tempHighC,
+        run.servedCall.judgment.todayProperties.tempHighC);
+    expect(run.response.todayNarrative, contains('Write-up unavailable'));
+    expect(run.llmCallOutcome, llmCallServed);
 
     // Predictions were extracted at every tracked lead time, one per model.
     expect(run.day0Predictions, hasLength(defaultModels.length + 1),
@@ -275,8 +297,10 @@ void main() {
     // the guidance that fed it. Built from today_properties' structured
     // fields, so what is verified is what the forecaster committed to.
     final blend = run.day0Predictions.singleWhere((p) => p.model == blendModelId);
-    expect(blend.highC, run.response.todayProperties.tempHighC);
-    expect(blend.rain, run.response.todayProperties.rain);
+    // The model's OWN commitment, a hidden row since item 189 — the stub's
+    // 27.5, whatever code served.
+    expect(blend.highC, 27.5);
+    expect(blend.rain, isTrue);
     // ITEM 144: the PRIMARY point's gust is scored, the secondary's is not.
     // The fixture carries both and they differ, which is the point — this
     // assertion used to expect null and would have passed unchanged if the
@@ -319,6 +343,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -357,6 +382,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -402,6 +428,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -439,6 +466,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -469,6 +497,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -492,12 +521,13 @@ void main() {
     // a real place, so silence would leave it free to attribute a forecast to
     // one it never consulted.
     final llm = _StubProvider();
-    await generateForecast(
+    final run = await generateForecast(
       client: mockClient(),
       llm: llm,
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -507,20 +537,24 @@ void main() {
       reviewContext: null,
     );
 
+    // The narrative's rules are read off the run: since upstream item 189 the
+    // run sends only the judgment, and writeUpForecast sends the narrative.
+    final rules = llm.seenSystemPrompt! + run.narrativePrompt;
     expect(llm.seenUserPrompt, isNot(contains('LOCAL BULLETIN')));
-    expect(llm.seenSystemPrompt, isNot(contains('NAME THE LOCAL MET SERVICE')));
-    expect(llm.seenSystemPrompt, isNot(contains('LOCAL MET SERVICE AS A MODEL')));
-    expect(llm.seenSystemPrompt, contains('No national met service is configured'));
+    expect(rules, isNot(contains('NAME THE LOCAL MET SERVICE')));
+    expect(rules, isNot(contains('LOCAL MET SERVICE AS A MODEL')));
+    expect(run.narrativePrompt, contains('No national met service is configured'));
   });
 
   test('a named met service is carried and must be named', () async {
     final llm = _StubProvider();
-    await generateForecast(
+    final run = await generateForecast(
       client: mockClient(),
       llm: llm,
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -537,7 +571,7 @@ void main() {
       contains('LOCAL BULLETIN (Kenya Meteorological Department (KMD)):'),
     );
     expect(llm.seenUserPrompt, contains('Sunny intervals'));
-    expect(llm.seenSystemPrompt, contains('NAME THE LOCAL MET SERVICE EVERY TIME'));
+    expect(run.narrativePrompt, contains('NAME THE LOCAL MET SERVICE EVERY TIME'));
   });
 
   test('configuring stations brings the blocks and the guidance back', () async {
@@ -548,6 +582,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -578,6 +613,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -602,6 +638,7 @@ void main() {
         location: _location,
         today: DateTime.utc(2026, 8, 19),
         publicWebpageUrl: 'https://example.com/',
+        codeBlendFor: _noBlend,
         // Not what these tests exercise; passed explicitly because the
         // parameter is required, which is upstream item 104's rule — an
         // unwired block must fail to compile rather than read as absence.
@@ -626,6 +663,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -650,6 +688,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -677,6 +716,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -702,6 +742,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -733,6 +774,7 @@ void main() {
       today: DateTime.utc(2026, 8, 19),
       nowLocal: DateTime.utc(2026, 8, 19, 12),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -758,6 +800,7 @@ void main() {
       today: DateTime.utc(2026, 8, 19),
       nowLocal: DateTime.utc(2026, 8, 19, 12),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -780,6 +823,7 @@ void main() {
       today: DateTime.utc(2026, 8, 19),
       nowLocal: DateTime.utc(2026, 8, 19, 12),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -805,6 +849,7 @@ void main() {
       today: DateTime.utc(2026, 8, 19),
       nowLocal: DateTime.utc(2026, 8, 19, 12),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -814,11 +859,11 @@ void main() {
       reviewContext: null,
     );
 
-    expect(run.degradations.map((d) => d.code), ['hours_ahead_narrowed']);
+    expect(_gaps(run), ['hours_ahead_narrowed']);
 
     // Plain up top, jargon at the end. The summary must be usable by someone
     // deciding whether to go outside; "forward hourly window" is not.
-    final d = run.degradations.single;
+    final d = run.degradations.singleWhere((d) => d.code == 'hours_ahead_narrowed');
     expect(d.summary, contains("Part of tonight's data did not arrive"));
     expect(d.summary, isNot(contains('forward hourly')));
     expect(d.detail, contains('forward hourly window'));
@@ -839,6 +884,7 @@ void main() {
       today: DateTime.utc(2026, 8, 19),
       nowLocal: DateTime.utc(2026, 8, 19, 12),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -850,8 +896,10 @@ void main() {
 
     // Empty, not null. The distinction the Python side had to learn the hard
     // way: a run that looked and found nothing is not the same answer as a
-    // run that was never asked, and this one looked.
-    expect(run.degradations, isEmpty);
+    // run that was never asked, and this one looked. The pending write-up
+    // marker is on every run since item 189 and is not a gap.
+    expect(_gaps(run), isEmpty);
+    expect(run.degradations.map((d) => d.code), [degradationNarrative]);
   });
 
   test('the last known ground reading reaches the prompt with its age', () async {
@@ -876,6 +924,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -896,12 +945,13 @@ void main() {
 
   test('a run whose verification is already written is told so, and shown no earlier narrative', () async {
     final llm = _StubProvider();
-    await generateForecast(
+    final run = await generateForecast(
       client: mockClient(),
       llm: llm,
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -911,12 +961,13 @@ void main() {
       reviewContext: null,
       verificationAlreadyWritten: true,
     );
-    // The SYSTEM prompt still says verification is written — that is a fact
-    // about the day. The USER prompt no longer carries what was published:
-    // EARLIER TODAY was deleted with the reissue concept, upstream items
-    // 137/138. Inverted rather than removed, because this is where a
-    // reintroduced payload would show up first.
-    expect(llm.seenSystemPrompt, contains('VERIFICATION IS ALREADY WRITTEN'));
+    // The NARRATIVE prompt still says verification is written — that is a
+    // fact about the day; it is read off the run since item 189. The USER
+    // prompt no longer carries what was published: EARLIER TODAY was deleted
+    // with the reissue concept, upstream items 137/138. Inverted rather than
+    // removed, because this is where a reintroduced payload would show up
+    // first.
+    expect(run.narrativePrompt, contains('VERIFICATION IS ALREADY WRITTEN'));
     expect(llm.seenUserPrompt, isNot(contains('EARLIER TODAY')));
     expect(llm.seenUserPrompt, isNot(contains('Issued 06:07')));
   });
@@ -933,6 +984,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -971,6 +1023,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -1026,6 +1079,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -1043,20 +1097,19 @@ void main() {
     expect(llm.seenUserPrompt, contains('"newer_than_previous_issuance": null'));
   });
 
-  test('a forecast is a judgment call and then a rendering call', () async {
-    // Upstream ROADMAP item 59 step 3. The order is not a detail: the
-    // renderer is HANDED the judgment's answer, so a run that called them the
-    // other way round would be rendering a call that had not been made.
+  test('the run makes the judgment call alone; the write-up is asked after', () async {
+    // Upstream ROADMAP item 189. The served call is code's and the run asks
+    // the model for its OWN judgment only; writeUpForecast is the caller's
+    // second step, after the forecast is stored, and it renders the SERVED
+    // call rather than the model's.
     final llm = _StubProvider();
-    await generateForecast(
+    final run = await generateForecast(
       client: mockClient(),
       llm: llm,
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
-      // Not what these tests exercise; passed explicitly because the
-      // parameter is required, which is upstream item 104's rule — an
-      // unwired block must fail to compile rather than read as absence.
+      codeBlendFor: _noBlend,
       gustBias: null,
       verificationContext: null,
       trackRecordContext: null,
@@ -1064,32 +1117,33 @@ void main() {
       nowLocal: DateTime(2026, 8, 19, 18, 15),
     );
 
-    expect(llm.calls, hasLength(2), reason: 'two calls, not one');
-
+    expect(llm.calls, hasLength(1), reason: 'one call: the judgment');
     final (judgmentSystem, judgmentUser) = llm.calls[0];
-    final (narrativeSystem, narrativeUser) = llm.calls[1];
-
-    // Each call gets its OWN instructions, and neither gets the other's.
     expect(judgmentSystem, contains('today_properties FIELDS, ALL OF THEM'));
     expect(judgmentSystem, isNot(contains('STEP 2:')));
+    expect(judgmentUser, isNot(contains("THE FORECASTER'S CALL")),
+        reason: 'the judgment call cannot be shown its own answer');
+    expect(run.narrativePrompt, contains('STEP 2:'));
+
+    await writeUpForecast(provider: llm, run: run);
+    expect(llm.calls, hasLength(2));
+    final (narrativeSystem, narrativeUser) = llm.calls[1];
     expect(narrativeSystem, contains('STEP 2:'));
     expect(narrativeSystem, isNot(contains('today_properties FIELDS, ALL OF THEM')));
-
-    // The renderer is handed the call, on top of everything the judgment saw.
+    // The renderer is handed the SERVED call, on top of everything the
+    // judgment saw.
     expect(narrativeUser, contains(judgmentUser),
         reason: 'the renderer still needs the raw data for the Discussion');
     expect(narrativeUser, contains("THE FORECASTER'S CALL"));
-    expect(narrativeUser, contains('"temp_high_c": 27.5'),
-        reason: "the judgment call's own number, handed to the renderer");
-    expect(judgmentUser, isNot(contains("THE FORECASTER'S CALL")),
-        reason: 'the judgment call cannot be shown its own answer');
+    expect(narrativeUser,
+        contains('"rain_expected": "${run.servedCall.judgment.todayProperties.rainExpected}"'),
+        reason: "the served call's label, not the model's");
   });
 
-  test('a failed write-up still keeps the scored call', () async {
-    // Upstream ROADMAP item 59 step 3, and the cost the split introduced. The
-    // judgment call decides the numbers the record SCORES; the rendering call
-    // only writes them up. Losing the second used to lose the first too.
-    final llm = _StubProvider()..failNarrative = true;
+  test('a refused judgment still produces the run from code', () async {
+    // The hole upstream item 189 closes: a refused judgment used to throw
+    // out of here and the app stored nothing, though extraction had run.
+    final llm = _StubProvider()..failJudgment = true;
 
     final run = await generateForecast(
       client: mockClient(),
@@ -1097,9 +1151,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
-      // Not what these tests exercise; passed explicitly because the
-      // parameter is required, which is upstream item 104's rule — an
-      // unwired block must fail to compile rather than read as absence.
+      codeBlendFor: _noBlend,
       gustBias: null,
       verificationContext: null,
       trackRecordContext: null,
@@ -1107,41 +1159,57 @@ void main() {
       nowLocal: DateTime(2026, 8, 19, 18, 15),
     );
 
-    // The scored call survived, and so did the row the record verifies.
-    expect(run.response.todayProperties.tempHighC, 27.5);
-    expect(run.day0Predictions.where((p) => p.model == 'olw_blend'), hasLength(1));
-
-    // And the run says it is degraded rather than normal.
-    expect(run.degradations.map((d) => d.code), contains(degradationNarrative));
-
-    // The prose says what happened rather than pretending to be a forecast.
-    expect(run.response.todayNarrative.toLowerCase(),
-        contains('could not be written'));
+    expect(run.llmCallOutcome, startsWith('refused: '));
+    expect(run.judgment, isNull);
+    expect(run.day0Predictions.where((p) => p.model == blendModelId), isEmpty,
+        reason: 'no row for a call that was not served');
+    expect(run.day0Predictions, hasLength(defaultModels.length));
+    expect(run.servedCall.source, callSourceConsensus);
+    expect(run.response.todayProperties.tempHighC,
+        run.servedCall.judgment.todayProperties.tempHighC);
+    expect(run.degradations.map((d) => d.code), contains(degradationNarrative),
+        reason: 'the write-up is pending');
   });
 
-  test('a failed judgment call still aborts the whole run', () async {
-    // One-sided on purpose: prose around numbers that were never decided is
-    // not a degraded forecast, it is an invented one.
-    final llm = _StubProvider()..failJudgment = true;
-
-    expect(
-      () => generateForecast(
-        client: mockClient(),
-        llm: llm,
-        location: _location,
-        today: DateTime.utc(2026, 8, 19),
-        publicWebpageUrl: 'https://example.com/',
-        // Not what these tests exercise; passed explicitly because the
-        // parameter is required, which is upstream item 104's rule — an
-        // unwired block must fail to compile rather than read as absence.
-        gustBias: null,
-        verificationContext: null,
-        trackRecordContext: null,
-        reviewContext: null,
-        nowLocal: DateTime(2026, 8, 19, 18, 15),
-      ),
-      throwsA(isA<LlmResponseError>()),
+  test('no provider at all still produces the run from code', () async {
+    final run = await generateForecast(
+      client: mockClient(),
+      llm: null,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
+      gustBias: null,
+      verificationContext: null,
+      trackRecordContext: null,
+      reviewContext: null,
+      nowLocal: DateTime(2026, 8, 19, 18, 15),
     );
+
+    expect(run.llmCallOutcome, llmCallNotConfigured);
+    expect(run.judgment, isNull);
+    expect(run.response.todayProperties.rainExpected, isNotEmpty);
+    expect(run.response.todayNarrative, contains('Write-up unavailable'));
+  });
+
+  test('a refused write-up is the caller\'s to record; the run already stands', () async {
+    final llm = _StubProvider()..failNarrative = true;
+    final run = await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
+      gustBias: null,
+      verificationContext: null,
+      trackRecordContext: null,
+      reviewContext: null,
+      nowLocal: DateTime(2026, 8, 19, 18, 15),
+    );
+    expect(llm.calls, hasLength(1), reason: 'the run never asks for the write-up');
+
+    expect(() => writeUpForecast(provider: llm, run: run), throwsA(isA<LlmResponseError>()));
   });
 
   test('guidance recency hours_old rounds half-to-even, matching Python', () async {
@@ -1157,6 +1225,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 11),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -1184,6 +1253,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -1223,6 +1293,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       // Not what these tests exercise; passed explicitly because the
       // parameter is required, which is upstream item 104's rule — an
       // unwired block must fail to compile rather than read as absence.
@@ -1274,6 +1345,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       gustBias: const {
         'ecmwf_ifs025': 12.96,
         'gfs_seamless': 16.47,
@@ -1299,6 +1371,7 @@ void main() {
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
       gustBias: null,
       verificationContext: null,
       trackRecordContext: null,

@@ -114,10 +114,13 @@ Commit that file.
 
 ---
 
-## Step 3 — Pick an LLM and get a key
+## Step 3 — Pick an LLM and get a key (optional)
 
-The forecast text is written by an LLM. **Gemini is the default and has a
-free tier**, so start there unless you have a reason not to.
+**The forecast itself needs no key.** Since ROADMAP item 189 the figures, the
+tiles and the scored call are code's, and a fork with no key publishes a
+complete forecast every day. What a key buys is the written discussion, and a
+hidden scored row of the model's own call beside the code's. **Gemini is the
+default and has a free tier**, so start there if you want the write-up.
 
 | Option | Cost | Where to get a key |
 |---|---|---|
@@ -128,8 +131,10 @@ free tier**, so start there unless you have a reason not to.
 | **Groq** | Free tier | [console.groq.com](https://console.groq.com) |
 | **Ollama** (local) | Free | Runs on your own machine — [see caveat](#ollama-and-other-local-models) |
 
-One run uses roughly 45,000 tokens, in two calls. Two forecasts a day —
-this deployment's schedule, not a property of the system — is comfortably inside
+A day spends at most 7 Gemini calls (one attempt for the model's own call,
+then up to three for the write-up and three for its second chance), and 2 on
+a clean morning; the write-up call is about 56,000 tokens. One forecast a
+day — this deployment's schedule, not a property of the system — is inside
 Gemini's free tier.
 
 ### Ollama and other local models
@@ -173,7 +178,9 @@ Under the **Secrets** tab → *New repository secret*:
 |---|---|
 | `GEMINI_API_KEY` | your key from Step 3 |
 
-That's all — Gemini is the default in `location.yaml`.
+That's all — Gemini is the default in `location.yaml`. Set no secret at all
+and the forecast still runs: the run says so on stderr and stores no model
+row (item 189).
 
 Gemini has two APIs and this project supports both. `gemini` uses
 `generateContent`; `gemini-interactions` uses the newer Interactions API,

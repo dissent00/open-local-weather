@@ -1,0 +1,115 @@
+{
+  "vector_format_version": 1,
+  "function": "verification_summary",
+  "description": "yesterday_verification written by code from the scored table: who called the rain right at each lead that verified, over the visible models, in their order.",
+  "cases": [
+    {
+      "name": "one lead verified",
+      "input": {
+        "lead_time_results": [
+          {
+            "lead_time_days": 0,
+            "target_date_verified": "2026-08-10",
+            "per_model_scores": {
+              "ecmwf_ifs025": {
+                "rain_correct": true
+              },
+              "gfs_seamless": {
+                "rain_correct": false
+              },
+              "olw_blend": {
+                "rain_correct": true
+              }
+            }
+          },
+          {
+            "lead_time_days": 3,
+            "target_date_verified": null,
+            "per_model_scores": {}
+          }
+        ],
+        "visible_models": [
+          "gfs_seamless",
+          "ecmwf_ifs025"
+        ]
+      },
+      "expected": "Day+0 for 2026-08-10: ecmwf_ifs025 called the rain right; gfs_seamless did not."
+    },
+    {
+      "name": "two leads, everyone right at one",
+      "input": {
+        "lead_time_results": [
+          {
+            "lead_time_days": 0,
+            "target_date_verified": "2026-08-10",
+            "per_model_scores": {
+              "gfs_seamless": {
+                "rain_correct": true
+              },
+              "ecmwf_ifs025": {
+                "rain_correct": true
+              }
+            }
+          },
+          {
+            "lead_time_days": 3,
+            "target_date_verified": "2026-08-07",
+            "per_model_scores": {
+              "gfs_seamless": {
+                "rain_correct": false
+              },
+              "ecmwf_ifs025": {
+                "rain_correct": true
+              },
+              "icon_seamless": {
+                "rain_correct": false
+              }
+            }
+          }
+        ],
+        "visible_models": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless"
+        ]
+      },
+      "expected": "Day+0 for 2026-08-10: gfs_seamless and ecmwf_ifs025 called the rain right. Day+3 for 2026-08-07: ecmwf_ifs025 called the rain right; gfs_seamless and icon_seamless did not."
+    },
+    {
+      "name": "everyone wrong",
+      "input": {
+        "lead_time_results": [
+          {
+            "lead_time_days": 0,
+            "target_date_verified": "2026-08-10",
+            "per_model_scores": {
+              "gfs_seamless": {
+                "rain_correct": false
+              }
+            }
+          }
+        ],
+        "visible_models": [
+          "gfs_seamless"
+        ]
+      },
+      "expected": "Day+0 for 2026-08-10: gfs_seamless missed the rain call."
+    },
+    {
+      "name": "nothing verified",
+      "input": {
+        "lead_time_results": [
+          {
+            "lead_time_days": 0,
+            "target_date_verified": null,
+            "per_model_scores": {}
+          }
+        ],
+        "visible_models": [
+          "gfs_seamless"
+        ]
+      },
+      "expected": "No verification was possible this run."
+    }
+  ]
+}

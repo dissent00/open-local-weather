@@ -1313,6 +1313,13 @@ class LogEntryMeta(BaseModel):
     # both, and None on entries written before the field existed — never "",
     # which would claim an identity those runs never recorded.
     narrative_llm_model: str | None = None
+    # HOW THE LLM'S OWN CALL ENDED — ROADMAP item 189. The served numbers are
+    # code's; the model's judgment is optional, made with one attempt, and
+    # kept as a hidden scored row when it answers. This says whether it did:
+    # "served", or the refusal, the cap or "not configured". Three-valued:
+    # None means the entry predates the field, when the LLM's call WAS the
+    # served call and `llm_model` names it.
+    llm_call_outcome: str | None = None
     pipeline_version: str
     # WHICH system prompt produced this entry — ROADMAP item 70.
     #
@@ -1586,6 +1593,12 @@ class IssuanceSnapshot(BaseModel):
     cloud_anchors: list[dict[str, str]] | None = None
     wind_anchors: list[dict[str, object]] | None = None
 
+    # The call this issuance served and its source — item 189; see
+    # DailyLogEntry. A later issuance overwrites the top-level call, so the
+    # earlier one is kept here the way its narrative is.
+    served_call: dict | None = None
+    call_source: str | None = None
+
 
 class LocalBulletinRecord(BaseModel):
     """The local met service's own bulletin, stored verbatim as fetched.
@@ -1635,6 +1648,19 @@ class DailyLogEntry(BaseModel):
     temp_high_c: float
     temp_low_c: float
     temp_high_low_display: str
+
+    # THE CALL AS IT WAS BUILT, AND WHO BUILT IT — ROADMAP item 189. The
+    # fields above are the call flattened for the page; this is the whole
+    # `GeminiJudgmentResponse` as served, so a write-up asked an hour later
+    # reads exactly what the forecast committed to instead of rebuilding it
+    # from the published fields and the blend's row (which `write_up.py` had
+    # to, and could only do for the fields that survive on both). `call_source`
+    # is `code_blend` where the record-weighted blend called and `consensus`
+    # where the record was too thin and the models' equal-weight vote stood
+    # in — the first ten days of a fork. Both None on entries written before
+    # 2026-10-01, when the LLM's judgment was the served call.
+    served_call: dict | None = None
+    call_source: str | None = None
 
     # THE SKY AT EACH ANCHOR HOUR, for the at-a-glance tiles — ROADMAP item
     # 159 step 2, `ensemble` item 23. `[{"when": ..., "cover": ...}]` in time
@@ -1931,6 +1957,8 @@ class DailyLogEntry(BaseModel):
             ground_aqi=self.ground_aqi,
             narrative_markdown=self.narrative_markdown,
             whatsapp_summary=self.whatsapp_summary,
+            served_call=self.served_call,
+            call_source=self.call_source,
             generated_at_utc=self.last_issued_at,
             guidance_initialised_at=self.guidance_initialised_at,
             guidance_age_hours=self.guidance_age_hours,

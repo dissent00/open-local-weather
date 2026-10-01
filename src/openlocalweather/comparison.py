@@ -348,8 +348,11 @@ def _rain_shape(band: str, when: str | None) -> str:
     return band
 
 
-def _consensus_onset(predictions: list[ModelPrediction]) -> str | None:
+def consensus_onset(predictions: list[ModelPrediction]) -> str | None:
     """The median onset among models that expect rain, as "HH:MM".
+
+    PUBLIC SINCE ITEM 189: the code blend's row carries the served onset, and
+    it is this median over the wet voters, so one definition serves both.
 
     Median rather than mean: onset is a time of day, and one model calling
     dawn while three call evening should not average into mid-afternoon — a
@@ -551,7 +554,7 @@ def compute_day_over_day(
     # convective block, which on that same day carried CAPE to 1360 J/kg,
     # and through Today's Forecast — where a risk belongs, and where it can
     # be hedged. The Overview's job is the shape of the day.
-    today_onset = _consensus_onset(today_day0_predictions) if today_rain else None
+    today_onset = consensus_onset(today_day0_predictions) if today_rain else None
     # SYMMETRY. Today's side used to pass thunder=None always, on the
     # reasoning that today has no thunder OBSERVATION — true, and it made the
     # comparison structurally incapable of ever calling today thundery while

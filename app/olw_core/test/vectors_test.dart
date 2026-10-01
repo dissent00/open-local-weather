@@ -1600,7 +1600,8 @@ void main() {
                 reason: 'vector case "$name" gained a $key entry it should not have');
           }
           expectMatches(
-              codeBlendPrediction(preds(i['predictions'] as List), weights, highs, lows)
+              codeBlendPrediction(preds(i['predictions'] as List), weights, highs, lows,
+                      (i['wind_kmh'] as num?)?.toDouble())
                   ?.toJson(),
               expected['blend'],
               name);
@@ -1624,12 +1625,126 @@ void main() {
             return raw == null ? null : DailyActual.fromJson(raw.cast<String, Object?>());
           },
           inputs: (i['inputs'] as List).cast<String>(),
+          day0WindKmh: (i['day0_wind_kmh'] as num?)?.toDouble(),
         );
         for (final lead in leadTimesDays) {
           final want = expected['$lead'] as List;
           expect(got[lead]!.length, want.length, reason: '$name: Day+$lead');
           expectMatches([for (final p in got[lead]!) p.toJson()], want, '$name: Day+$lead');
         }
+      }
+    });
+  });
+
+  group('the served call', () {
+    // Upstream item 189: the call the reader is shown, built from code.
+    List<ModelPrediction> preds(List raw) => [
+          for (final p in raw) ModelPrediction.fromJson((p as Map).cast<String, Object?>())
+        ];
+
+    test('code_call', () {
+      for (final c in casesOf('code_call.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final name = c['name'] as String;
+        final words = (i['onset_words'] as Map).cast<String, String?>();
+        final blendRaw = (i['code_blend'] as Map).cast<String, Object?>();
+        final synopticRaw = (i['synoptic'] as Map?)?.cast<String, Object?>();
+        ServedCall run() => servedCall(
+              day0Models: preds(i['day0_models'] as List),
+              day3Models: preds(i['day3_models'] as List),
+              day7Models: preds(i['day7_models'] as List),
+              codeBlend: {
+                0: preds(blendRaw['day0'] as List),
+                3: preds(blendRaw['day3'] as List),
+                7: preds(blendRaw['day7'] as List),
+              },
+              secondaryDay0: preds(i['secondary_day0'] as List),
+              calibratedGustKmh: (i['calibrated_gust_kmh'] as num?)?.toDouble(),
+              synoptic: synopticRaw == null
+                  ? null
+                  : SynopticSnapshot(
+                      centreMslpHpa: (synopticRaw['centre_mslp_hpa'] as num?)?.toDouble(),
+                      lowestLabel: synopticRaw['lowest_label'] as String?,
+                      lowestMslpHpa: (synopticRaw['lowest_mslp_hpa'] as num?)?.toDouble(),
+                      highestLabel: synopticRaw['highest_label'] as String?,
+                      highestMslpHpa: (synopticRaw['highest_mslp_hpa'] as num?)?.toDouble(),
+                      gradientHpa: (synopticRaw['gradient_hpa'] as num?)?.toDouble(),
+                      gradientStrength: synopticRaw['gradient_strength'] as String?,
+                      tendencies: ((synopticRaw['tendencies'] as Map?) ?? const {}).cast<String, String>(),
+                      statements: ((synopticRaw['statements'] as List?) ?? const []).cast<String>(),
+                    ),
+              airQuality: (i['air_quality'] as Map?)?.cast<String, Object?>(),
+              convective: i['convective'] as bool,
+              thunderWhen: i['thunder_when'] as String?,
+              onsetWordFor: (hhmm) => words[hhmm],
+              issuedHour: (i['issued_hour'] as num?)?.toInt(),
+              inputs: (i['inputs'] as List).cast<String>(),
+            );
+        final expected = c['expected'] as Map<String, Object?>;
+        if (expected.containsKey('error')) {
+          expect(run, throwsA(isA<NoTemperatureToServe>()), reason: name);
+          continue;
+        }
+        final got = run();
+        expectMatches(
+            {'source': got.source, 'judgment': got.judgment.toJson()}, expected, name);
+      }
+    });
+
+    test('rain_label', () {
+      for (final c in casesOf('rain_label.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final got = rainLabel(
+          rain: i['rain'] as bool,
+          precipMm: (i['precip_mm'] as num?)?.toDouble(),
+          convective: i['convective'] as bool,
+          when: i['when'] as String?,
+        );
+        expect(got, c['expected'], reason: c['name'] as String);
+        expect(got.length, lessThanOrEqualTo(rainLabelMaxChars), reason: c['name'] as String);
+      }
+    });
+
+    test('onset_window_label', () {
+      for (final c in casesOf('onset_window_label.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        expect(
+            onsetWindowLabel((i['onsets'] as List).cast<String>(),
+                issuedHour: (i['issued_hour'] as num?)?.toInt()),
+            c['expected'],
+            reason: c['name'] as String);
+      }
+    });
+
+    test('cams_peak_aqi', () {
+      for (final c in casesOf('cams_peak_aqi.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        expect(camsPeakAqi((i['air_quality'] as Map?)?.cast<String, Object?>()), c['expected'],
+            reason: c['name'] as String);
+      }
+    });
+
+    test('verification_summary', () {
+      for (final c in casesOf('verification_summary.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final results = [
+          for (final r in (i['lead_time_results'] as List).cast<Map>())
+            LeadTimeResult(
+              leadTimeDays: (r['lead_time_days'] as num).toInt(),
+              targetDateVerified: r['target_date_verified'] == null
+                  ? null
+                  : DateTime.parse(r['target_date_verified'] as String),
+              perModelScores: {
+                for (final e in (r['per_model_scores'] as Map).entries)
+                  e.key as String: VerificationScore(
+                      rainCorrect: (e.value as Map)['rain_correct'] as bool),
+              },
+            ),
+        ];
+        expect(
+            verificationSummary(results, visibleModels: (i['visible_models'] as List).cast<String>()),
+            c['expected'],
+            reason: c['name'] as String);
       }
     });
   });
@@ -2203,6 +2318,12 @@ void main() {
       'comparison_subject.json',
       'gust_calibration.json',
       'code_blend.json',
+      // Upstream item 189 — the served call built from code.
+      'code_call.json',
+      'rain_label.json',
+      'onset_window_label.json',
+      'cams_peak_aqi.json',
+      'verification_summary.json',
       'prompt_rounding.json',
       'describe_day_over_day.json',
       'glossary.json',

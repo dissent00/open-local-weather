@@ -428,8 +428,9 @@ def test_the_live_config_is_what_we_think_it_is():
     # and 10 minutes apart.
     direct, gateway = live.llm_providers
     assert (direct.kind, direct.max_attempts, direct.retry_delays_s) == ("gemini", 3, [180, 420])
-    # PER RUN: three tries for each of the run's two calls.
-    assert direct.max_calls_per_run == 2 * direct.max_attempts
+    # PER PROCESS: a write-up's tries; the forecast run sends one request
+    # since item 189.
+    assert direct.max_calls_per_run == direct.max_attempts
     # The 24h ceiling is a runaway guard: two mornings can fall in one
     # rolling 24 hours, and a run refused for yesterday's spending is the
     # failure the guard exists to prevent.
@@ -801,3 +802,21 @@ def test_a_bare_openai_entry_still_inherits_the_top_level_model_order(monkeypatc
     )
 
     assert built.fallback_models == ["nvidia/nemotron:free", "google/gemma:free"]
+
+
+def test_an_empty_provider_list_builds_nothing(monkeypatch):
+    """ROADMAP item 189: `llm_providers: []` is a deployment with no model."""
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    assert _build_llm_provider(providers=[]) is None
+
+
+def test_an_optional_build_with_no_keys_warns_and_returns_none(monkeypatch, capsys):
+    """`olw forecast` runs from code when no link holds a key — item 189;
+    the one-off commands keep the exit, because they cannot run without one."""
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+
+    assert _build_llm_provider(providers=["gemini"], optional=True) is None
+    assert "no LLM provider holds a key" in capsys.readouterr().err
+    with pytest.raises(SystemExit, match="GEMINI_API_KEY"):
+        _build_llm_provider(providers=["gemini"])

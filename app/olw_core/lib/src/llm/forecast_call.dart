@@ -1,8 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 dissent00
-import 'prompt.dart';
-import 'provider.dart';
-import 'schema.dart';
 
 /// What the reader is shown where the forecast would have been.
 ///
@@ -16,76 +13,25 @@ The forecast below could not be written up this issuance: the model call that tu
 
 There is no discussion, no extended outlook and no hazard section for this issuance. Check a later one.''';
 
-const String narrativeUnavailableVerification =
-    'Not written this issuance — the write-up call did not complete.';
+/// How the model's own call ended — stored by the caller beside the run.
+/// Mirrors the pipeline's `LLM_CALL_*` (upstream item 189).
+const String llmCallServed = 'served';
+const String llmCallNotConfigured = 'not configured';
 
-/// The merged forecast, and whether half of it had to be invented.
-class ForecastCall {
-  const ForecastCall({required this.response, this.narrativeError});
+/// `yesterday_verification` on a run: the record scores yesterday itself,
+/// and the model is no longer asked to narrate it (upstream items 147, 189).
+const String verificationNotWritten =
+    'Not written this run; the record scores yesterday itself.';
 
-  final ForecastResponse response;
-
-  /// The provider's own message when the rendering call failed, so the
-  /// caller records a degradation rather than inferring one from the
-  /// placeholder prose. Null on a clean run.
-  final String? narrativeError;
-}
-
-/// The forecast as two calls, returning the merged RESPONSE.
-///
-/// Named for what it returns, because `forecast.dart` already exports a
-/// public `generateForecast` that returns a whole [ForecastRun] — and a
-/// collision there resolves to the outer function, which is a silent
-/// infinite recursion rather than an error at the call site.
-///
-/// The forecast as two calls — upstream ROADMAP item 59 step 3.
-///
-/// ONE DEFINITION OF THE ORDER, mirroring Python's `llm/forecast_call.py`.
-/// The renderer is handed the judgment's answer, so the judgment has to have
-/// happened first. That is the whole shape of the split: one call decides,
-/// the other describes what was decided.
-///
-/// `onCall` fires after each call with its name, for a caller that needs the
-/// provider's per-call report before the next call overwrites it. Called
-/// AFTER the call returns, so a thrown call fires nothing.
-Future<ForecastCall> generateForecastResponse({
-  required LlmProvider provider,
-  required String judgmentPrompt,
-  required String narrativePrompt,
-  required String userPrompt,
-  void Function(String name)? onCall,
-}) async {
-  final judgment = await provider.generate(
-    systemPrompt: judgmentPrompt,
-    userPrompt: userPrompt,
-    shape: judgmentShape,
-  );
-  onCall?.call('judgment');
-
-  // THE SECOND CALL MAY FAIL WITHOUT COSTING THE FIRST. By here the scored
-  // call exists and has been paid for, and it is the half the record
-  // verifies against observations. Narrow on purpose: only the provider's
-  // own failure is caught, so a bug in the merge still throws.
-  NarrativeResponse narrative;
-  String? narrativeError;
-  try {
-    narrative = await provider.generate(
-      systemPrompt: narrativePrompt,
-      userPrompt: buildNarrativeUserPrompt(userPrompt, judgment.toJson()),
-      shape: narrativeShape,
-    );
-    onCall?.call('narrative');
-  } on LlmResponseError catch (e) {
-    narrative = const NarrativeResponse(
-      yesterdayVerification: narrativeUnavailableVerification,
-      skillProfileSummaries: [],
-      todayNarrative: narrativeUnavailableMarkdown,
-    );
-    narrativeError = e.toString();
-  }
-
-  return ForecastCall(
-    response: mergeForecastResponse(judgment, narrative),
-    narrativeError: narrativeError,
-  );
-}
+/// THE PENDING MARKER'S WORDS — upstream item 189. `degradationNarrative`
+/// used to mean the rendering call failed after the judgment succeeded; it
+/// now means the write-up has not been asked for yet, because the forecast
+/// is stored before any prose is. The caller removes it when
+/// `writeUpForecast` lands. Not an apology.
+const String narrativePendingSummary =
+    "Today's figures are decided. The written discussion follows when a "
+    'model answers; the numbers are the same ones this forecast is scored on.';
+const String narrativePendingDetail =
+    'The write-up is asked for after the forecast is stored (upstream '
+    'ROADMAP item 189), by writeUpForecast; until it lands the run carries '
+    'the placeholder.';

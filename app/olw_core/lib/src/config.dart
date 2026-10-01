@@ -285,7 +285,10 @@ const Duration spendKeepHistory = Duration(days: 7);
 /// Deliberately not unlimited: a cap only protects people who have one.
 const int defaultMaxLlmCallsPer24h = 20;
 
-/// What one forecast costs, in calls — upstream ROADMAP item 59 step 3.
+/// What one forecast costs, in calls, on a clean day — since upstream item
+/// 189 the model's own call inside the run and the write-up asked after the
+/// forecast is stored. The run asks the cap for both before the model's call,
+/// so the hidden row never takes the write-up's last call.
 ///
 /// Named because the settings screen turns a budget into a number of
 /// forecasts, and a bare 2 there would be a constant nobody finds when the

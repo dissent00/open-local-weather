@@ -1,0 +1,75 @@
+{
+  "vector_format_version": 1,
+  "function": "cams_peak_aqi",
+  "description": "The day's peak US AQI from the CAMS hourly block, rounded; absent series or block gives no number.",
+  "cases": [
+    {
+      "name": "the peak, rounded",
+      "input": {
+        "air_quality": {
+          "hourly": {
+            "time": [
+              "a",
+              "b",
+              "c"
+            ],
+            "us_aqi": [
+              61,
+              null,
+              84.4
+            ]
+          }
+        }
+      },
+      "expected": 84
+    },
+    {
+      "name": "all gaps",
+      "input": {
+        "air_quality": {
+          "hourly": {
+            "us_aqi": [
+              null,
+              null
+            ]
+          }
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "no series",
+      "input": {
+        "air_quality": {
+          "hourly": {
+            "time": [
+              "a"
+            ]
+          }
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "no block",
+      "input": {
+        "air_quality": null
+      },
+      "expected": null
+    },
+    {
+      "name": "a half rounds to even",
+      "input": {
+        "air_quality": {
+          "hourly": {
+            "us_aqi": [
+              84.5,
+              83.5
+            ]
+          }
+        }
+      },
+      "expected": 84
+    }
+  ]
+}

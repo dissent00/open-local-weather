@@ -343,6 +343,9 @@ class LocationConfig(BaseModel):
     # Seconds between the scored call returning and the write-up call. At
     # 03:01Z the write-up drew a 503 13-21 s after a served scored call on 3
     # of 4 days (09-27 to 09-30); a pause costs no request. 0 is none.
+    # RETIRED BY ROADMAP ITEM 189 (2026-10-01): the write-up is no longer asked
+    # inside the forecast run, so there is nothing to pause before. Kept so a
+    # location.yaml that still names it loads; read by nothing.
     llm_write_up_delay_s: int = Field(default=0, ge=0)
 
     @field_validator("llm_providers")
@@ -365,11 +368,12 @@ class LocationConfig(BaseModel):
         what is left in a `FallbackProvider`. The warning is gone because it
         became false, and the schema never had to change to get here.
         """
+        # AN EMPTY LIST IS A DEPLOYMENT — ROADMAP item 189, 2026-10-01. The
+        # served call is code's and the write-up has a code-written floor, so
+        # a fork with no key publishes every day; this refused that until the
+        # LLM stopped being load-bearing.
         if not v:
-            raise ValueError(
-                "llm_providers must name at least one provider; "
-                f"expected one of {', '.join(VALID_LLM_PROVIDERS)}."
-            )
+            return []
 
         # A MAPPING ENTRY VALIDATES ITS OWN `kind`, so this checks only the
         # bare strings. Both paths reject a name nothing can build, and for

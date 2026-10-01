@@ -93,6 +93,12 @@ TOOL_NAME = "structured_response"
 
 
 class AnthropicProvider:
+    # HOW MANY REQUESTS ONE CALL MAY SEND, per instance — the knob
+    # GeminiProvider has had since ROADMAP item 186, here since item 189:
+    # the pipeline sets it to 1 around the model's optional judgment and
+    # puts it back. The whole schedule by default.
+    max_attempts = MAX_ATTEMPTS
+
     def __init__(
         self,
         api_key: str,
@@ -139,7 +145,7 @@ class AnthropicProvider:
         }
 
         last_exc: Exception | None = None
-        for attempt in range(1, MAX_ATTEMPTS + 1):
+        for attempt in range(1, self.max_attempts + 1):
             if self.before_attempt is not None:
                 self.before_attempt()
             started = time.monotonic()
@@ -163,16 +169,16 @@ class AnthropicProvider:
                 last_exc = e
                 delay = _retry_delay(attempt)
 
-            if attempt < MAX_ATTEMPTS:
+            if attempt < self.max_attempts:
                 print(
                     f"Anthropic call failed ({last_exc}); retrying in {delay}s "
-                    f"(attempt {attempt}/{MAX_ATTEMPTS}).",
+                    f"(attempt {attempt}/{self.max_attempts}).",
                     file=sys.stderr,
                 )
                 time.sleep(delay)
 
         raise LLMUnavailableError(
-            f"Anthropic request failed after {MAX_ATTEMPTS} attempts: {last_exc}"
+            f"Anthropic request failed after {self.max_attempts} attempts: {last_exc}"
         ) from last_exc
 
     def generate(self, system_prompt: str, user_prompt: str, response_schema: type[T]) -> T:

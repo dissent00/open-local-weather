@@ -75,19 +75,18 @@ See *The two-call split* and *Every run is an issuance* below.
    └───────────────────────────────────┬────────────────────────────────┘
                                        │
    ┌───────────────────────────────────▼────────────────────────────────┐
-   │ 5. SYNTHESIZE     llm/prompt.py → the configured provider          │
-   │    TWO CALLS since 2026-09-11 (ROADMAP item 59 step 3):            │
+   │ 5. THE SERVED CALL  code_call.py — CODE, since item 189            │
+   │    The code blend (code_blend.py) where it calls, the inputs'      │
+   │    consensus where the record is thin; the calibrated gust; the    │
+   │    tile labels; the ring's pattern; the CAMS AQI. Stored on the    │
+   │    entry as `served_call` with `call_source`.                      │
    │                                                                    │
-   │    5a. JUDGMENT   build_judgment_prompt → today_properties and     │
-   │                   extended_properties. THE SCORED COMMITMENT.      │
-   │    5b. NARRATIVE  build_narrative_prompt, handed 5a's answer as    │
-   │                   settled. Prose only — CANNOT alter a scored      │
-   │                   field. See "The two-call split" below.           │
-   │                                                                    │
-   │    Both receive raw disagreeing model data + PRE-COMPUTED scores.  │
-   │    The LLM never does arithmetic.                                  │
-   │    WHICH provider: config/location.yaml `llm_providers`, not code  │
-   │    and not a GitHub variable. LLM_PROVIDER env overrides it.       │
+   │ 5b. THE MODEL'S OWN CALL  llm/prompt.py → the configured provider  │
+   │    OPTIONAL, one attempt per link, never load-bearing. Its answer  │
+   │    is the hidden `olw_blend` row, scored beside the code's. A      │
+   │    refusal, a timeout or a cap adds no row and changes nothing.    │
+   │    WHICH provider: config/location.yaml `llm_providers` (may be    │
+   │    empty), not code and not a GitHub variable.                     │
    └───────────────────────────────────┬────────────────────────────────┘
                                        │
    ┌───────────────────────────────────▼────────────────────────────────┐
@@ -98,6 +97,15 @@ See *The two-call split* and *Every run is an issuance* below.
    │    • data/track_record.json    (rewritten)                         │
    │    • docs/                     (regenerated static site)           │
    │    • workflow commits + pushes all of the above                    │
+   └───────────────────────────────────┬────────────────────────────────┘
+                                       │
+   ┌───────────────────────────────────▼────────────────────────────────┐
+   │ 6b. THE WRITE-UP   olw write-up, a separate step after the commit  │
+   │    Asked once at once and once an hour later, from the archived    │
+   │    prompts and the stored call; a served answer replaces the       │
+   │    placeholder and republishes. Prose only — cannot alter a scored │
+   │    field. Until it lands the entry carries `narrative_unavailable` │
+   │    as the pending marker.                                          │
    └───────────────────────────────────┬────────────────────────────────┘
                                        │
    ┌───────────────────────────────────▼────────────────────────────────┐
@@ -141,6 +149,12 @@ See *The two-call split* and *Every run is an issuance* below.
 ## The load-bearing ideas
 
 ### The two-call split, and the firewall it creates
+
+> **Since 2026-10-01 (item 189) the scored call is code's**, and the
+> judgment call below is the model's OWN call, kept as a hidden scored row.
+> The firewall this section describes still holds, in a stronger form: the
+> narrative is asked in a separate process, from the stored call, and cannot
+> reach a scored field at all.
 
 Since 2026-09-11 a forecast is two LLM calls, not one (ROADMAP item 59 step
 3). The JUDGMENT call returns `today_properties` and `extended_properties` —

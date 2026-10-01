@@ -171,3 +171,25 @@ def test_a_prompt_that_cannot_be_rebuilt_is_refused_before_the_wait(tmp_path, wi
     assert _run(tmp_path) == 1
     assert wired["slept"] == []
     assert wired["providers"] == []
+
+
+def test_the_write_up_reads_the_stored_call_as_the_forecasters_call(tmp_path, wired):
+    """ROADMAP item 189: the entry carries the call as served, so the
+    narrative is rendered around exactly what was published rather than a
+    rebuild from the page's fields and the blend's row."""
+    day = _store(tmp_path, missing=True)
+    entry = log_store.read_log_entry(tmp_path, day)
+    entry.served_call = {
+        "today_properties": {"rain": True, "rain_expected": "Evening Showers", "temp_high_c": 31.0,
+                             "temp_low_c": 19.0, "onset_hour": "17:00", "precip_mm": 4.4, "rain_probability_pct": 71},
+        "extended_properties": [{"lead_time_days": 3, "rain": False, "rain_probability_pct": 30}],
+    }
+    entry.call_source = "code_blend"
+    log_store.write_log_entry(tmp_path, entry)
+
+    assert cli.main(["write-up", "--config", CONFIG, "--data-dir", str(tmp_path), "--docs-dir", str(tmp_path / "docs"),
+                     "--public-url", "https://example.test/", "--wait-s", "0"]) == 0
+
+    _system, user, _schema = wired["writer"].calls[-1]
+    assert '"rain_expected": "Evening Showers"' in user and '"onset_hour": "17:00"' in user
+    assert '"rain_probability_pct": 71' in user

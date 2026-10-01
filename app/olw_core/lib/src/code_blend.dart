@@ -17,6 +17,7 @@
 /// `round()` half to even.
 library;
 
+import 'comparison.dart' show consensusOnset;
 import 'config.dart';
 import 'dates.dart';
 import 'models.dart';
@@ -138,6 +139,7 @@ ModelPrediction? codeBlendPrediction(
   Map<String, double> weights, [
   Map<String, double>? highCorrections,
   Map<String, double>? lowCorrections,
+  double? windKmh,
 ]) {
   final voters = [
     for (final p in predictions)
@@ -153,16 +155,38 @@ ModelPrediction? codeBlendPrediction(
     for (final p in voters)
       if (p.rain!) weights[p.model]!,
   ]);
+  // wet * 2 > total, as Python compares it, so the tie is decided by the
+  // same arithmetic and not by a division.
+  final rain = wet * 2 > total;
 
   return ModelPrediction(
     model: codeBlendModelId,
-    // wet * 2 > total, as Python compares it, so the tie is decided by the
-    // same arithmetic and not by a division.
-    rain: wet * 2 > total,
+    rain: rain,
     rainProbabilityPct: roundLikePython(100 * wet / total, 0).toInt(),
     highC: _correctedMean(predictions, highCorrections, (p) => p.highC),
     lowC: _correctedMean(predictions, lowCorrections, (p) => p.lowC),
+    // ONSET, AMOUNT AND WIND SINCE UPSTREAM ITEM 189: this row is the served
+    // call, so it carries what the reader is shown. The onset is the median
+    // over the WET voters, the amount the record-weighted mean of the
+    // voters' totals to one decimal, the wind whatever the caller served.
+    onset: rain ? consensusOnset([for (final p in voters) if (p.rain!) p]) : null,
+    precipMm: _weightedAmount(voters, weights),
+    windKmh: windKmh,
   );
+}
+
+/// The voters' daily totals, weighted by their rain weights, to one decimal.
+/// Null when no voter carries an amount. Mirrors `_weighted_amount`.
+double? _weightedAmount(List<ModelPrediction> voters, Map<String, double> weights) {
+  final withAmount = [for (final p in voters) if (p.precipMm != null) p];
+  if (withAmount.isEmpty) {
+    return null;
+  }
+
+  final total = compensatedSum([for (final p in withAmount) weights[p.model]!]);
+  final weighted = compensatedSum([for (final p in withAmount) p.precipMm! * weights[p.model]!]);
+
+  return roundLikePython(weighted / total, 1);
 }
 
 /// The code blend for one issuance, keyed by lead: a one-element list where
@@ -174,6 +198,8 @@ Map<int, List<ModelPrediction>> codeBlendPredictions({
       predictionsFor,
   required DailyActual? Function(DateTime targetDate) actualFor,
   required List<String> inputs,
+  // The served gust (upstream item 189), carried on the Day+0 row alone.
+  double? day0WindKmh,
 }) {
   final blends = <int, List<ModelPrediction>>{};
 
@@ -201,7 +227,8 @@ Map<int, List<ModelPrediction>> codeBlendPredictions({
     }
 
     final blend = codeBlendPrediction(
-        issuedPredictions(lead), rainWeights(long), highs, lows);
+        issuedPredictions(lead), rainWeights(long), highs, lows,
+        lead == 0 ? day0WindKmh : null);
     blends[lead] = [if (blend != null) blend];
   }
 

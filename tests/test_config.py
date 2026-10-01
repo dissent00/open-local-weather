@@ -336,29 +336,50 @@ def test_a_retry_schedule_that_cannot_hold_is_rejected(fields, why):
         LLMProviderEntry(**fields)
 
 
-def test_the_write_up_may_wait_after_the_scored_call():
-    from openlocalweather.config import load_location_config
+def test_the_in_run_write_up_pause_is_retired():
+    """ROADMAP item 189: the write-up is no longer asked inside the run, so
+    the pause before it reads nothing. The field still loads, for a
+    location.yaml that names it; the live config no longer does."""
+    from openlocalweather.config import LocationConfig, load_location_config
 
-    assert load_location_config("config/location.yaml").llm_write_up_delay_s == 120
+    assert load_location_config("config/location.yaml").llm_write_up_delay_s == 0
+    assert "llm_write_up_delay_s" not in open("config/location.yaml").read()
+    assert LocationConfig.model_fields["llm_write_up_delay_s"].default == 0
 
 
 def test_the_live_config_spends_under_ten_gemini_calls_a_day():
     """The operator's target, 2026-09-30: one reliable forecast a day for
-    fewer than 10 Gemini calls. A run makes two calls (the scored call and
-    the write-up), each up to `max_attempts`; the write-up's second chance
-    makes one more call on the same link. Derived from the live config so
-    a change to either fails here."""
+    fewer than 10 Gemini calls. Since ROADMAP item 189 the run makes ONE
+    call — the model's own judgment, one attempt per link whatever the
+    link's schedule says — and the write-up is asked twice by `olw
+    write-up`, each time up to the link's `max_attempts`. Derived from the
+    live config so a change to either fails here."""
     from openlocalweather.config import load_location_config
-    from openlocalweather.spend import LLM_CALLS_PER_FORECAST
 
     location = load_location_config("config/location.yaml")
     gemini = [e for e in location.llm_providers if not isinstance(e, str) and e.kind == "gemini"]
     [direct] = gemini
-    second_chance_calls = 1
+    judgment_attempts = 1
+    write_up_chances = 2
 
-    worst_case = (LLM_CALLS_PER_FORECAST + second_chance_calls) * direct.max_attempts
+    worst_case = judgment_attempts + write_up_chances * direct.max_attempts
 
+    assert worst_case == 7
     assert worst_case < 10
     assert not any(not isinstance(e, str) and e.kind == "gemini-interactions" for e in location.llm_providers), (
         "the queue left the chain on 2026-09-30"
     )
+
+
+def test_no_providers_at_all_is_a_valid_deployment(tmp_path):
+    """ROADMAP item 189: a keyless fork publishes the code's forecast every
+    day, so the config may name no model."""
+    from openlocalweather.config import load_location_config
+
+    src = open("config/location.yaml").read()
+    import re
+    stripped = re.sub(r"(?ms)^  llm_providers:\n(?:    .*\n)+", "  llm_providers: []\n", src)
+    path = tmp_path / "location.yaml"
+    path.write_text(stripped)
+
+    assert load_location_config(str(path)).llm_providers == []

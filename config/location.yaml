@@ -178,15 +178,17 @@ location:
     # GEMINI DIRECT — one run a day at 03:01Z, the operator's decision
     # 2026-09-30 (ROADMAP item 186). Three tries per call, 3 and 10 minutes
     # apart: at 03:01Z a refusal cleared after 32 s once and 7 min once, and
-    # three tries inside a minute all failed. With the write-up's second
-    # chance (`olw write-up`) a day spends at most 9 Gemini calls, pinned by
-    # tests/test_config.py. The queue (Interactions API) left the chain the
-    # same day: it read 1 of its 6 jobs, at about 2 quota units a submit.
+    # three tries inside a minute all failed. Since ROADMAP item 189 the run
+    # sends ONE request, for the model's own hidden call, and `olw write-up`
+    # asks for the prose twice with this schedule, so a day spends at most 7
+    # Gemini calls, pinned by tests/test_config.py. The queue (Interactions
+    # API) left the chain on 2026-09-30: it read 1 of its 6 jobs, at about
+    # 2 quota units a submit.
     - kind: gemini
       max_attempts: 3
       retry_delays_s: [180, 420]
-      # PER RUN: three tries for each of the run's two calls.
-      max_calls_per_run: 6
+      # PER PROCESS: a write-up's three tries; the forecast run sends one.
+      max_calls_per_run: 3
       # A runaway guard: two mornings can fall in one rolling 24 hours.
       max_calls_per_24h: 18
     # ROADMAP item 81, 2026-09-21. The second entry is a CHAIN, not a
@@ -255,13 +257,12 @@ location:
   # THE FALLBACK MAKES THE SCORED CALL AND NOTHING ELSE — operator's decision
   # 2026-09-25, ROADMAP item 180. It made the scored call 2 of 2 times and
   # wrote the narrative 1 of 5, and each narrative it failed spent up to two
-  # 1700s deadlines before the issuance degraded anyway. So the narrative is
-  # Gemini's alone, and a Gemini failure there publishes the scored forecast
-  # without its write-up at once rather than an hour later.
+  # 1700s deadlines before the issuance degraded anyway. Since item 189 the
+  # scored call is code's and the model's own call is a hidden row, so what
+  # this governs is `olw write-up`: under `scored_call` only the first link
+  # is asked to write.
   llm_fallback_calls: scored_call
-  # A pause between the scored call and the write-up — see
-  # LocationConfig.llm_write_up_delay_s.
-  llm_write_up_delay_s: 120
+
 
   local_bulletin_url: "https://meteo.go.ke/our-products/daily-forecast/"
   # The national CAP warning feed — ROADMAP item 2. Verified live

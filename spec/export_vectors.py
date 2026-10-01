@@ -6132,6 +6132,210 @@ def export_extended_blend_predictions() -> None:
     )
 
 
+def export_code_call() -> None:
+    """The served call, built from code — ROADMAP item 189.
+
+    Pins `served_call` end to end: the blend row served as is; the equal-
+    weight consensus when the record is thin, with the tie dry; the plain
+    mean standing in for uncorrected temperatures; the gust read from the
+    row, the record, or the models in that order; the labels; and the one
+    refusal, a day no model carries a temperature for. The onset-word
+    function is a mapping in the vector, because the sun that places it is
+    another function's business.
+    """
+    from openlocalweather.code_call import (
+        NoTemperatureToServe,
+        cams_peak_aqi,
+        onset_window_label,
+        rain_label,
+        served_call,
+        verification_summary,
+    )
+    from openlocalweather.defaults import CODE_BLEND_MODEL_ID
+    from openlocalweather.models import ModelPredictionsByLead
+    from openlocalweather.synoptic import SynopticSnapshot
+
+    def pred(model, rain=None, onset=None, precip=None, high=None, low=None, wind=None, mslp=None, prob=None):
+        return ModelPrediction(
+            model=model, rain=rain, onset=onset, precip_mm=precip, high_c=high, low_c=low,
+            wind_kmh=wind, mslp_trend=mslp, rain_probability_pct=prob,
+        )
+
+    inputs = ["gfs_seamless", "ecmwf_ifs025", "icon_seamless", "ukmo_seamless"]
+    day0 = [
+        pred("gfs_seamless", rain=True, onset="14:00", precip=3.0, high=29.0, low=18.0, wind=30.0, mslp=-1.0),
+        pred("ecmwf_ifs025", rain=True, onset="16:00", precip=5.0, high=30.0, low=19.0, wind=34.0, mslp=-2.0),
+        pred("icon_seamless", rain=False, onset=None, precip=0.2, high=31.0, low=20.0, wind=26.0, mslp=-1.5),
+        # A yardstick and the model's own row sit in the stored set and must not vote.
+        pred("persistence", rain=True, high=35.0, low=10.0),
+        pred("olw_blend", rain=True, high=35.0, low=10.0, prob=99),
+    ]
+    day3 = [pred("gfs_seamless", rain=False), pred("ecmwf_ifs025", rain=True), pred("persistence", rain=True)]
+    day7 = [pred("ecmwf_ifs025", rain=True)]
+    secondary = [pred("gfs_seamless", wind=40.0), pred("ecmwf_ifs025", wind=44.0)]
+    ring = SynopticSnapshot(
+        centre_mslp_hpa=1012.0, lowest_label="NE", lowest_mslp_hpa=1006.0, highest_label="S",
+        highest_mslp_hpa=1020.0, gradient_hpa=14.0, gradient_strength="strong",
+    )
+    air = {"hourly": {"time": ["a", "b", "c"], "us_aqi": [61, None, 84.4]}}
+    onset_words = {"14:00": "afternoon", "16:00": "evening", "18:00": "evening"}
+
+    def case(name, *, code_blend=None, calibrated=None, synoptic=None, air_quality=None,
+             convective=False, thunder_when=None, issued_hour=6, models0=day0, models3=day3, models7=day7):
+        blend = code_blend or ModelPredictionsByLead()
+        kwargs = dict(
+            day0_models=models0, day3_models=models3, day7_models=models7, code_blend=blend,
+            secondary_day0=secondary, calibrated_gust_kmh=calibrated, synoptic=synoptic,
+            air_quality=air_quality, convective=convective, thunder_when=thunder_when,
+            onset_word_for=lambda hhmm: onset_words.get(hhmm), issued_hour=issued_hour, inputs=inputs,
+        )
+        try:
+            got = served_call(**kwargs)
+            expected = {"source": got.source, "judgment": dump(got.judgment)}
+        except NoTemperatureToServe:
+            expected = {"error": "NoTemperatureToServe"}
+        return {
+            "name": name,
+            "input": {
+                "day0_models": [dump(p) for p in models0],
+                "day3_models": [dump(p) for p in models3],
+                "day7_models": [dump(p) for p in models7],
+                "code_blend": dump(blend),
+                "secondary_day0": [dump(p) for p in secondary],
+                "calibrated_gust_kmh": calibrated,
+                "synoptic": None if synoptic is None else asdict(synoptic),
+                "air_quality": air_quality,
+                "convective": convective,
+                "thunder_when": thunder_when,
+                "onset_words": onset_words,
+                "issued_hour": issued_hour,
+                "inputs": inputs,
+            },
+            "expected": expected,
+        }
+
+    blend_full = ModelPredictionsByLead(
+        day0=[pred(CODE_BLEND_MODEL_ID, rain=True, onset="16:00", precip=4.1, high=29.4, low=18.6, wind=36.0, prob=64)],
+        day3=[pred(CODE_BLEND_MODEL_ID, rain=False, prob=40)],
+    )
+    blend_dry_uncorrected = ModelPredictionsByLead(day0=[pred(CODE_BLEND_MODEL_ID, rain=False, prob=20)])
+
+    write(
+        "code_call.json",
+        "served_call",
+        "The served call in the judgment call's shape: the code blend's row where it "
+        "calls, else the inputs' equal-weight consensus with a dry tie; temperatures "
+        "from the blend's corrected means or the inputs' plain mean, to one decimal; "
+        "the gust from the row, else the calibrated consensus, else the inputs' mean; "
+        "the labels from the amount band, the thunder and the onset's word; the pattern "
+        "from the ring; the AQI as the CAMS day's peak; extended leads from the blend's "
+        "rows or the inputs' majority. The onset-word function is given as a mapping.",
+        [
+            case("the blend row is served as is; Day+7 falls to the inputs' majority", code_blend=blend_full,
+                 synoptic=ring, air_quality=air),
+            case("a thin record serves the inputs' equal-weight consensus"),
+            case("the blend's uncorrected temperatures fall back to the inputs' mean", code_blend=blend_dry_uncorrected),
+            case("the calibrated gust is the primary wind when the row carries none", calibrated=41.37),
+            case("a dry day with thunder names the thunder's phase", code_blend=blend_dry_uncorrected,
+                 convective=True, thunder_when="this evening"),
+            case("a wet consensus names the band and the served onset's word", convective=True),
+            case("an onset behind the issuance is not a window ahead", issued_hour=15),
+            case("a consensus tie breaks dry", models0=[
+                pred("gfs_seamless", rain=True, high=28.0, low=18.0), pred("ecmwf_ifs025", rain=False, high=28.0, low=18.0),
+            ]),
+            case("no temperature anywhere cannot be served", models0=[pred("gfs_seamless", rain=False)]),
+        ],
+    )
+
+    write(
+        "rain_label.json",
+        "rain_label",
+        "The rain tile's label from the call: the band under 5 mm reads isolated, 15 mm "
+        "and over reads rain, thunder names the storms, and the onset's word says when.",
+        [
+            {"name": f"{'wet' if rain else 'dry'} {precip} mm {'convective' if convective else 'calm'} {when or 'no word'}",
+             "input": {"rain": rain, "precip_mm": precip, "convective": convective, "when": when},
+             "expected": rain_label(rain=rain, precip_mm=precip, convective=convective, when=when)}
+            for rain, precip, convective, when in [
+                (False, 0.0, False, None), (False, 0.0, True, "Evening"), (False, 0.0, True, None),
+                (True, 8.0, False, "Evening"), (True, 8.0, True, "Afternoon"), (True, 0.6, False, "Evening"),
+                (True, 4.0, True, "Evening"), (True, 20.0, False, "Morning"), (True, 8.0, False, None),
+                (True, 8.0, True, None), (True, 0.6, False, None), (True, None, False, "Overnight"),
+            ]
+        ],
+    )
+
+    write(
+        "onset_window_label.json",
+        "onset_window_label",
+        "The onset tile's label: the spread of the wet models' onsets still ahead of the "
+        "issuance, 'From HH:MM' when they agree, and nothing when none is ahead.",
+        [
+            {"name": name, "input": {"onsets": onsets, "issued_hour": hour},
+             "expected": onset_window_label(onsets, issued_hour=hour)}
+            for name, onsets, hour in [
+                ("a spread", ["16:00", "14:00", "19:00"], 6),
+                ("agreement", ["16:00", "16:00"], 6),
+                ("nothing to say", [], 6),
+                ("one behind the issuance", ["14:00", "16:00"], 15),
+                ("all behind the issuance", ["14:00"], 15),
+                ("no issuance hour", ["09:00", "11:00"], None),
+            ]
+        ],
+    )
+
+    write(
+        "cams_peak_aqi.json",
+        "cams_peak_aqi",
+        "The day's peak US AQI from the CAMS hourly block, rounded; absent series or block "
+        "gives no number.",
+        [
+            {"name": name, "input": {"air_quality": aq}, "expected": cams_peak_aqi(aq)}
+            for name, aq in [
+                ("the peak, rounded", air),
+                ("all gaps", {"hourly": {"us_aqi": [None, None]}}),
+                ("no series", {"hourly": {"time": ["a"]}}),
+                ("no block", None),
+                ("a half rounds to even", {"hourly": {"us_aqi": [84.5, 83.5]}}),
+            ]
+        ],
+    )
+
+    class _Score:
+        def __init__(self, ok):
+            self.rain_correct = ok
+
+    class _Lead:
+        def __init__(self, lead, target, scores):
+            self.lead_time_days, self.target_date_verified, self.per_model_scores = lead, target, scores
+
+    leads = [
+        ("one lead verified", [(0, date(2026, 8, 10), {"ecmwf_ifs025": True, "gfs_seamless": False, "olw_blend": True}), (3, None, {})],
+         ["gfs_seamless", "ecmwf_ifs025"]),
+        ("two leads, everyone right at one", [(0, date(2026, 8, 10), {"gfs_seamless": True, "ecmwf_ifs025": True}),
+                                              (3, date(2026, 8, 7), {"gfs_seamless": False, "ecmwf_ifs025": True, "icon_seamless": False})],
+         ["gfs_seamless", "ecmwf_ifs025", "icon_seamless"]),
+        ("everyone wrong", [(0, date(2026, 8, 10), {"gfs_seamless": False})], ["gfs_seamless"]),
+        ("nothing verified", [(0, None, {})], ["gfs_seamless"]),
+    ]
+    write(
+        "verification_summary.json",
+        "verification_summary",
+        "yesterday_verification written by code from the scored table: who called the "
+        "rain right at each lead that verified, over the visible models, in their order.",
+        [
+            {"name": name,
+             "input": {"lead_time_results": [{"lead_time_days": l, "target_date_verified": None if t is None else _iso(t),
+                                              "per_model_scores": {m: {"rain_correct": ok} for m, ok in scores.items()}}
+                                             for l, t, scores in results],
+                       "visible_models": visible},
+             "expected": verification_summary([_Lead(l, t, {m: _Score(ok) for m, ok in scores.items()}) for l, t, scores in results],
+                                              visible_models=visible)}
+            for name, results, visible in leads
+        ],
+    )
+
+
 def export_code_blend() -> None:
     """The record-weighted code blend — ROADMAP item 173.
 
@@ -6158,10 +6362,13 @@ def export_code_blend() -> None:
             high_err=high_err, low_err=low_err, mslp_err=None,
         )
 
-    def pred(model, rain, high=None, low=None, prob=None):
-        return ModelPrediction(model=model, rain=rain, high_c=high, low_c=low, rain_probability_pct=prob)
+    def pred(model, rain, high=None, low=None, prob=None, onset=None, precip=None):
+        return ModelPrediction(
+            model=model, rain=rain, high_c=high, low_c=low, rain_probability_pct=prob,
+            onset=onset, precip_mm=precip,
+        )
 
-    def pure(name, long, short, predictions):
+    def pure(name, long, short, predictions, wind_kmh=None):
         weights = rain_weights(long)
         highs, lows = temperature_corrections(short) if short is not None else ({}, {})
         return {
@@ -6173,12 +6380,14 @@ def export_code_blend() -> None:
                     for m, w in short.items()
                 },
                 "predictions": [dump(p) for p in predictions],
+                # ITEM 189: the served gust the caller hands the Day+0 row.
+                "wind_kmh": wind_kmh,
             },
             "expected": {
                 "weights": weights,
                 "high_corrections": highs,
                 "low_corrections": lows,
-                "blend": dump(code_blend_prediction(predictions, weights, highs, lows)),
+                "blend": dump(code_blend_prediction(predictions, weights, highs, lows, wind_kmh=wind_kmh)),
             },
         }
 
@@ -6228,15 +6437,18 @@ def export_code_blend() -> None:
                               llm_provider="t", llm_model="t", pipeline_version="0"),
         )
 
-    def composer(name, days):
+    def composer(name, days, wind_kmh=None):
         predictions, actuals = record(days)
         logs = {d: entry(d, by_lead) for d, by_lead in predictions.items()}
-        got = code_blend_predictions(logs[issued].model_predictions, issued, logs.get, actuals, models)
+        got = code_blend_predictions(
+            logs[issued].model_predictions, issued, logs.get, actuals, models, day0_wind_kmh=wind_kmh
+        )
         return {
             "name": name,
             "input": {
                 "issued": _iso(issued),
                 "inputs": models,
+                "day0_wind_kmh": wind_kmh,
                 "predictions": {
                     _iso(d): {k: [dump(p) for p in v] for k, v in by_lead.items()}
                     for d, by_lead in sorted(predictions.items())
@@ -6258,6 +6470,24 @@ def export_code_blend() -> None:
             pure("the weighted majority decides, and its share is the probability",
                  {"ecmwf_ifs025": window(30, 80.0), "gfs_seamless": window(30, 70.0)}, None,
                  [pred("ecmwf_ifs025", True), pred("gfs_seamless", False)]),
+            # ITEM 189: the row is the served call, so it carries the onset, the
+            # amount and the gust the reader is shown.
+            pure("the onset is the wet voters' median, hour-floored; a dry voter's does not vote",
+                 {"gfs_seamless": window(30, 80.0), "ecmwf_ifs025": window(30, 75.0), "icon_seamless": window(30, 60.0)}, None,
+                 [pred("gfs_seamless", True, onset="14:30"), pred("ecmwf_ifs025", True, onset="18:00"),
+                  pred("icon_seamless", False, onset="09:00")]),
+            pure("a dry call has no onset even when a voter carries one",
+                 {"gfs_seamless": window(30, 80.0), "ecmwf_ifs025": window(30, 75.0)}, None,
+                 [pred("gfs_seamless", False, onset="14:00"), pred("ecmwf_ifs025", True, onset="16:00")]),
+            pure("the amount is the record-weighted mean to one decimal: 3.25 rounds half to even, 3.2",
+                 {"gfs_seamless": window(30, 80.0), "ecmwf_ifs025": window(30, 60.0)}, None,
+                 [pred("gfs_seamless", True, precip=4.0), pred("ecmwf_ifs025", True, precip=1.0)]),
+            pure("a voter without an amount does not vote on it, and none means no amount",
+                 {"gfs_seamless": window(30, 80.0), "ecmwf_ifs025": window(30, 60.0)}, None,
+                 [pred("gfs_seamless", True, precip=4.0), pred("ecmwf_ifs025", True)]),
+            pure("the served gust rides on the row as handed in",
+                 {"gfs_seamless": window(30, 80.0)}, None,
+                 [pred("gfs_seamless", True, precip=2.2)], wind_kmh=36.4),
             pure("a tie breaks dry",
                  {"ecmwf_ifs025": window(30, 80.0), "gfs_seamless": window(30, 70.0), "icon_seamless": window(30, 60.0)},
                  None, [pred("ecmwf_ifs025", True), pred("gfs_seamless", False), pred("icon_seamless", False)]),
@@ -6288,6 +6518,7 @@ def export_code_blend() -> None:
                   pred("gfs_seamless", True, high=40.0, low=10.0),
                   pred("icon_seamless", True, high=31.0, low=18.25)]),
             composer("fourteen days: Day+0 with temperatures, Day+3 rain only, Day+7 declined", 14),
+            composer("fourteen days with the served gust: Day+0 carries it, the extended leads do not", 14, wind_kmh=41.37),
             composer("a thin record declines at every lead", 5),
         ],
     )
@@ -6654,6 +6885,7 @@ def main() -> None:
     export_blend_prediction()
     export_extended_blend_predictions()
     export_code_blend()
+    export_code_call()
     print("\nDone. Commit the result — the vectors are the contract.")
 
 

@@ -91,10 +91,15 @@ from openlocalweather.llm.errors import LLMUnavailableError
 # unlimited — an unset cap protects nobody.
 DEFAULT_MAX_LLM_CALLS_PER_24H = 20
 
-# What one forecast costs, in calls. Named because three places reason about
-# it — the cap above, the app's settings screen, and anything that turns a
-# budget into a number of forecasts — and a bare 2 in any of them would be
-# the kind of constant nobody finds when it changes.
+# What one forecast costs, in calls, on a clean day. Since ROADMAP item 189
+# that is the model's own call (one attempt, inside the run) and the
+# write-up, asked by `olw write-up` after the forecast is published. The run
+# asks the cap for both before making the model's call, so the hidden row
+# never takes the write-up's last call: the prose is the one thing the model
+# does that code cannot. Named because three places reason about it — the
+# cap above, the app's settings screen, and anything that turns a budget
+# into a number of forecasts — and a bare 2 in any of them would be the
+# kind of constant nobody finds when it changes.
 LLM_CALLS_PER_FORECAST = 2
 
 WINDOW = timedelta(hours=24)

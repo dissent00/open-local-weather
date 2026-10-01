@@ -1,0 +1,127 @@
+{
+  "vector_format_version": 1,
+  "function": "rain_label",
+  "description": "The rain tile's label from the call: the band under 5 mm reads isolated, 15 mm and over reads rain, thunder names the storms, and the onset's word says when.",
+  "cases": [
+    {
+      "name": "dry 0.0 mm calm no word",
+      "input": {
+        "rain": false,
+        "precip_mm": 0.0,
+        "convective": false,
+        "when": null
+      },
+      "expected": "Dry / No Rain"
+    },
+    {
+      "name": "dry 0.0 mm convective Evening",
+      "input": {
+        "rain": false,
+        "precip_mm": 0.0,
+        "convective": true,
+        "when": "Evening"
+      },
+      "expected": "Dry / Evening Thunder Possible"
+    },
+    {
+      "name": "dry 0.0 mm convective no word",
+      "input": {
+        "rain": false,
+        "precip_mm": 0.0,
+        "convective": true,
+        "when": null
+      },
+      "expected": "Dry / Thunder Possible"
+    },
+    {
+      "name": "wet 8.0 mm calm Evening",
+      "input": {
+        "rain": true,
+        "precip_mm": 8.0,
+        "convective": false,
+        "when": "Evening"
+      },
+      "expected": "Evening Showers"
+    },
+    {
+      "name": "wet 8.0 mm convective Afternoon",
+      "input": {
+        "rain": true,
+        "precip_mm": 8.0,
+        "convective": true,
+        "when": "Afternoon"
+      },
+      "expected": "Afternoon Showers & Thunderstorms"
+    },
+    {
+      "name": "wet 0.6 mm calm Evening",
+      "input": {
+        "rain": true,
+        "precip_mm": 0.6,
+        "convective": false,
+        "when": "Evening"
+      },
+      "expected": "Isolated Evening Showers"
+    },
+    {
+      "name": "wet 4.0 mm convective Evening",
+      "input": {
+        "rain": true,
+        "precip_mm": 4.0,
+        "convective": true,
+        "when": "Evening"
+      },
+      "expected": "Isolated Evening Showers & Thunderstorms"
+    },
+    {
+      "name": "wet 20.0 mm calm Morning",
+      "input": {
+        "rain": true,
+        "precip_mm": 20.0,
+        "convective": false,
+        "when": "Morning"
+      },
+      "expected": "Morning Rain"
+    },
+    {
+      "name": "wet 8.0 mm calm no word",
+      "input": {
+        "rain": true,
+        "precip_mm": 8.0,
+        "convective": false,
+        "when": null
+      },
+      "expected": "Showers Likely"
+    },
+    {
+      "name": "wet 8.0 mm convective no word",
+      "input": {
+        "rain": true,
+        "precip_mm": 8.0,
+        "convective": true,
+        "when": null
+      },
+      "expected": "Showers & Thunderstorms Likely"
+    },
+    {
+      "name": "wet 0.6 mm calm no word",
+      "input": {
+        "rain": true,
+        "precip_mm": 0.6,
+        "convective": false,
+        "when": null
+      },
+      "expected": "Isolated Showers"
+    },
+    {
+      "name": "wet None mm calm Overnight",
+      "input": {
+        "rain": true,
+        "precip_mm": null,
+        "convective": false,
+        "when": "Overnight"
+      },
+      "expected": "Overnight Showers"
+    }
+  ]
+}

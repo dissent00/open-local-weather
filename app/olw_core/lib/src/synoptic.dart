@@ -215,6 +215,19 @@ String _articleFor(double value) {
       : 'a';
 }
 
+/// The one-line pattern label the served call carries — upstream item 189.
+/// Mirrors `describe_pattern`: the gradient's strength and where the lowest
+/// pressure lies, in the statements' own bounded vocabulary; null without a
+/// ring or a gradient.
+String? describePattern(SynopticSnapshot? s) {
+  if (s == null || s.gradientHpa == null || s.gradientStrength == null || s.gradientStrength!.isEmpty) {
+    return null;
+  }
+  final lowDir = _compassNames[s.lowestLabel] ?? s.lowestLabel;
+  final strength = s.gradientStrength!;
+  return '${strength[0].toUpperCase()}${strength.substring(1)} large-scale gradient, lowest pressure toward the $lowDir';
+}
+
 List<String> _statements(SynopticSnapshot s) {
   final lines = <String>[];
   final lowDir = _compassNames[s.lowestLabel] ?? s.lowestLabel;

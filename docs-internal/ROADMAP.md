@@ -58,7 +58,9 @@ interpreter is unproven rather than unrealistic and comes last.
 1. **Item 189, publish before asking.** The code blend becomes the served
    call, the LLM's call a hidden scored row made with one attempt, and the
    entry is written and published before any prose is asked for. Closes the
-   no-entry hole in both repositories. Python, vectors, Dart, re-pin.
+   no-entry hole in both repositories. **Shipped 2026-10-01** on the
+   Python, vector and Dart sides; the app's half is the next Ensemble
+   commit.
 2. **Item 190, the floor.** A code-written write-up from the composers that
    exist replaces "Write-up unavailable". The operator reads it over the
    eight placeholder days before it ships; nothing after it moves until
@@ -27237,7 +27239,7 @@ Related: items 37, 75, 158, 159, 164, 173, 187; Ensemble item 23.
 
 ---
 
-## 189. Publish before asking: the code blend is the served call · **Next — item 173 point 1 as the required path; raised 2026-10-01**
+## 189. Publish before asking: the code blend is the served call · **Shipped 2026-10-01 on the Python, vector and Dart sides; the app's half owed in Ensemble**
 
 **Two holes, one cause.** The day's entry is written after the LLM calls:
 `_generate_forecast` at pipeline.py:4030, `write_log_entry` at 4156, and
@@ -27311,6 +27313,61 @@ level that read the value back off disk. Vectors for the row and the call.
 Dart: `codeBlendPrediction`'s new fields, the split in `generateForecast`.
 Re-pin; Ensemble's runner and empty state. Workflow: the write-up step runs
 immediately after the push, then the hour later.
+
+**Shipped 2026-10-01, Python, vectors and Dart.** `code_call.py` builds the
+call (`served_call`, the two labels, `cams_peak_aqi`, `verification_summary`);
+the code blend's Day+0 row carries onset, amount and wind **from 2026-10-01**,
+the switch date: rows before it hold None there, which the scorer reads as
+absent. `_optional_judgment` makes the model's call with one attempt per
+link and stores its outcome as `meta.llm_call_outcome`; `llm_providers: []`
+loads, `olw forecast` runs with no key and says so. The entry carries
+`served_call` and `call_source`; `olw write-up` reads the stored call and the
+workflow runs it twice, at once after the push and an hour later. The page's
+credit line reads "figures by code". Dart: `codeBlendPrediction`'s new
+fields, `servedCall`, `generateForecast` split over `LlmProvider?` and a
+`CodeBlendFor` callback, `writeUpForecast` for the caller's second step.
+Vectors: `code_call.json` and four files beside it, `code_blend.json`
+extended. Sweeps: 20,000 random blend rows (`app/olw_core/tool/
+sweep_code_blend.py`) and 5,250 trend strings, 0 divergences each.
+
+**The measure-first step, run on the stored record rather than the 29
+backtested days** (51 entries, 2026-08-11 to 09-30, rebuilt from each
+day's scored rows; `code_blend` called on 41, the consensus stood in on the
+first 10). Every field the record can rebuild is filled by code on every
+day, with one exception: `onset_window` is blank on 15 days where the LLM
+wrote one on a dry call, which the schema says has no window. Three fields
+cannot be rebuilt from the record because their inputs are not stored (the
+ring for `synoptic_pattern`, the CAMS block for `air_quality_aqi`, the
+secondary point's rows for its gust) and are filled live from the same
+guidance; `synoptic_pattern` is blank on a day the ring has no gradient,
+and reads as a bounded label where the LLM wrote freely. The two calls
+agree on rain on 21 of the 24 days that hold both; code is wet and the LLM
+dry on 09-08, 09-09 and 09-18. Code's high averages 0.12 °C below the LLM's
+and its low 0.03 °C below, over 51 days. Go.
+
+**Decided while building.** The model's call asks the cap for
+`LLM_CALLS_PER_FORECAST` (2) rather than 1, so when the budget holds one
+call the hidden row yields it to the write-up, which is the one thing the
+model does that code cannot. Gemini's `max_calls_per_run` is 3, a write-up's
+tries, since the forecast run now sends one request; a day's worst case is
+7 Gemini calls, pinned, where it was 9.
+
+**Fallout.** 54 tests rewritten: the published numbers are code's, the
+narrative is the placeholder until `olw write-up`, the pending marker is on
+every run. Item 180's `_NarrativeRouting` and item 186's queue-write-up
+tests went with the code they tested: the write-up no longer runs in the
+process that made the judgment, so there is nothing to route.
+`tests/test_narrative_fallback.py` deleted; `_combined_meta` gone, and with
+it the unused `_call_meta`. Reading the diff as a separate act found three
+stale comments (the 9-call day, "two calls" on the per-run ceiling, the
+cost constant's meaning) and the cap priority above.
+
+**Not checked.** No live run: this session held no key, so the first real
+pass is the 03:01Z run of 2026-10-02 and its two write-up steps — read the
+Actions log. The app's half (point 6) is owed in Ensemble: the runner's
+split, `served_call` and `call_source` on its entry, the write-up after the
+store, `isConfigured` without a key, and `verificationSummary` on the app's
+own scored table.
 
 Related: items 173, 59, 126, 147, 171, 186; Ensemble items 1, 22, 24.
 

@@ -769,6 +769,18 @@
           "default": null,
           "title": "Air Quality Aqi"
         },
+        "call_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Call Source"
+        },
         "cloud_anchors": {
           "anyOf": [
             {
@@ -922,6 +934,19 @@
         "rain_expected": {
           "title": "Rain Expected",
           "type": "string"
+        },
+        "served_call": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Served Call"
         },
         "synoptic_pattern": {
           "title": "Synoptic Pattern",
@@ -1123,6 +1148,18 @@
           ],
           "default": null,
           "title": "Issued Local Time"
+        },
+        "llm_call_outcome": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Llm Call Outcome"
         },
         "llm_model": {
           "title": "Llm Model",
@@ -1933,6 +1970,18 @@
       "default": null,
       "title": "Air Quality Index"
     },
+    "call_source": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Call Source"
+    },
     "cloud_anchors": {
       "items": {
         "additionalProperties": {
@@ -2122,6 +2171,19 @@
     "rain_expected": {
       "title": "Rain Expected",
       "type": "string"
+    },
+    "served_call": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Served Call"
     },
     "sunrise": {
       "anyOf": [

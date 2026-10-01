@@ -313,12 +313,48 @@ jobs:
       # the commit spent exactly as much as one that failed. On a successful
       # run the step above has already committed the ledger, so the guard
       # below finds a clean file and does nothing.
+      # THE WRITE-UP, ASKED AFTER THE FORECAST IS PUBLISHED — ROADMAP item 189,
+      # 2026-10-01. The forecast step above no longer asks for prose: the
+      # served call is code's, the entry is committed and pushed before any
+      # model is asked to write, and this step asks at once, from the archived
+      # prompts and the stored call. A refusal leaves the day's placeholder
+      # and the second chance below asks again an hour later. Worst case per
+      # day, pinned by tests/test_config.py: 7 Gemini calls (one for the
+      # model's own hidden judgment, three here, three below).
+      - name: Write-up, first chance
+        if: ${{ success() && github.event.inputs.dry_run != 'true' }}
+        env:
+          LLM_PROVIDER: ${{ github.event.inputs.llm_provider || vars.LLM_PROVIDER }}
+          GEMINI_THINKING_LEVEL: ${{ vars.GEMINI_THINKING_LEVEL }}
+        run: |
+          set -euo pipefail
+          olw write-up --public-url "${{ steps.pages_url.outputs.url }}" --wait-s 0
+
+          git add data/ docs/
+          if git diff --cached --quiet; then
+            echo "No write-up to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "write-up: $(date -u +%Y-%m-%d)"
+          for attempt in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              break
+            fi
+            echo "git push rejected (attempt $attempt/3); pulling --rebase and retrying" >&2
+            git pull --rebase
+          done
+          echo "git push failed after retries" >&2
+          exit 1
+
       # THE WRITE-UP'S SECOND CHANCE — the operator's decision, 2026-09-30
-      # (ROADMAP item 186). One run a day: when its write-up was refused, ask
-      # once more for the prose alone, an hour later, after the forecast is
-      # already committed and live. `olw write-up` returns at once, spending
-      # nothing, when the day has its write-up. Worst case per day, pinned by
-      # tests/test_config.py: 9 Gemini calls.
+      # (ROADMAP item 186). When the first chance was refused, ask once more
+      # for the prose alone, an hour later. `olw write-up` returns at once,
+      # spending nothing, when the day has its write-up.
       - name: Second chance for the write-up
         if: ${{ success() && github.event.inputs.dry_run != 'true' }}
         env:

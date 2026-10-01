@@ -796,7 +796,9 @@ def test_vectors_code_blend():
                 "weights": weights,
                 "high_corrections": highs,
                 "low_corrections": lows,
-                "blend": as_json(code_blend_prediction(preds(i["predictions"]), weights, highs, lows)),
+                "blend": as_json(code_blend_prediction(
+                    preds(i["predictions"]), weights, highs, lows, wind_kmh=i.get("wind_kmh")
+                )),
             }
         else:
             logs = {
@@ -816,7 +818,10 @@ def test_vectors_code_blend():
             }
             actuals = {date.fromisoformat(d): DailyActual.model_validate(a) for d, a in i["actuals"].items()}
             issued = date.fromisoformat(i["issued"])
-            blend = code_blend_predictions(logs[issued].model_predictions, issued, logs.get, actuals, i["inputs"])
+            blend = code_blend_predictions(
+                logs[issued].model_predictions, issued, logs.get, actuals, i["inputs"],
+                day0_wind_kmh=i.get("day0_wind_kmh"),
+            )
             got = {str(k): as_json(blend.for_lead(k)) for k in (0, 3, 7)}
 
         assert as_json(got) == case["expected"], f"vector case failed: {case['name']}"
@@ -1235,6 +1240,12 @@ def test_every_vector_file_is_exercised():
         "llm_system_prompt.json",
         "llm_schema_split.json",
         "observation_disagreements.json",
+        # ROADMAP item 189 — the served call built from code.
+        "code_call.json",
+        "rain_label.json",
+        "onset_window_label.json",
+        "cams_peak_aqi.json",
+        "verification_summary.json",
         "notable_disagreements.json",
         "notable_disagreement_notes.json",
         "low_divergence.json",
@@ -1504,11 +1515,14 @@ NOT_KEYWORD_CALLS = frozenset({
 # Input keys that are not arguments — the same exemption the Dart guard has.
 INPUT_KEYS_NOT_ARGUMENTS = {
     "llm_user_prompt.json": {"verification_already_written"},
+    # The onset-word function, given as a mapping — item 189.
+    "code_call.json": {"onset_words"},
 }
 
 # Parameters no case sets, for a reason that makes that correct.
 UNSET_BY_DESIGN = {
     "day_over_day.json": {"onset_word_for": "a function; a JSON case cannot carry one"},
+    "code_call.json": {"onset_word_for": "a function; the case carries it as the `onset_words` mapping"},
     "describe_day_over_day.json": {
         "subject_prefix": "reached through day_over_day.json's five evening cases, "
                           "whose composed sentence carries it",
@@ -1587,3 +1601,82 @@ def test_every_parameter_of_a_vectored_function_is_set_by_some_case():
         f"defaults (item 175): {unset}"
     )
     assert not stale, stale
+
+
+def test_vectors_code_call():
+    """ROADMAP item 189 — the served call, built from code."""
+    from openlocalweather.code_call import NoTemperatureToServe, served_call
+    from openlocalweather.models import ModelPredictionsByLead
+    from openlocalweather.synoptic import SynopticSnapshot
+
+    def preds(raw):
+        return [ModelPrediction.model_validate(p) for p in raw]
+
+    for case in load("code_call.json")["cases"]:
+        i = case["input"]
+        words = i["onset_words"]
+        kwargs = dict(
+            day0_models=preds(i["day0_models"]),
+            day3_models=preds(i["day3_models"]),
+            day7_models=preds(i["day7_models"]),
+            code_blend=ModelPredictionsByLead.model_validate(i["code_blend"]),
+            secondary_day0=preds(i["secondary_day0"]),
+            calibrated_gust_kmh=i["calibrated_gust_kmh"],
+            synoptic=None if i["synoptic"] is None else SynopticSnapshot(**i["synoptic"]),
+            air_quality=i["air_quality"],
+            convective=i["convective"],
+            thunder_when=i["thunder_when"],
+            onset_word_for=lambda hhmm, words=words: words.get(hhmm),
+            issued_hour=i["issued_hour"],
+            inputs=i["inputs"],
+        )
+        if "error" in case["expected"]:
+            with pytest.raises(NoTemperatureToServe):
+                served_call(**kwargs)
+            continue
+        got = served_call(**kwargs)
+        assert {"source": got.source, "judgment": as_json(got.judgment)} == case["expected"], case["name"]
+
+
+def test_vectors_rain_label():
+    from openlocalweather.code_call import rain_label
+
+    for case in load("rain_label.json")["cases"]:
+        i = case["input"]
+        assert rain_label(rain=i["rain"], precip_mm=i["precip_mm"], convective=i["convective"], when=i["when"]) == case["expected"], case["name"]
+
+
+def test_vectors_onset_window_label():
+    from openlocalweather.code_call import onset_window_label
+
+    for case in load("onset_window_label.json")["cases"]:
+        i = case["input"]
+        assert onset_window_label(i["onsets"], issued_hour=i["issued_hour"]) == case["expected"], case["name"]
+
+
+def test_vectors_cams_peak_aqi():
+    from openlocalweather.code_call import cams_peak_aqi
+
+    for case in load("cams_peak_aqi.json")["cases"]:
+        assert cams_peak_aqi(case["input"]["air_quality"]) == case["expected"], case["name"]
+
+
+def test_vectors_verification_summary():
+    from openlocalweather.code_call import verification_summary
+
+    class Score:
+        def __init__(self, ok):
+            self.rain_correct = ok
+
+    class Lead:
+        def __init__(self, raw):
+            self.lead_time_days = raw["lead_time_days"]
+            self.target_date_verified = (
+                None if raw["target_date_verified"] is None else date.fromisoformat(raw["target_date_verified"])
+            )
+            self.per_model_scores = {m: Score(v["rain_correct"]) for m, v in raw["per_model_scores"].items()}
+
+    for case in load("verification_summary.json")["cases"]:
+        i = case["input"]
+        got = verification_summary([Lead(r) for r in i["lead_time_results"]], visible_models=i["visible_models"])
+        assert got == case["expected"], case["name"]

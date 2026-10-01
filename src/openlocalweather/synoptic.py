@@ -155,6 +155,23 @@ def _article_for(value: int | float) -> str:
     return "an" if digits in _VOWEL_SOUND_NAMES or digits.startswith("8") else "a"
 
 
+def describe_pattern(s: SynopticSnapshot | None) -> str | None:
+    """The one-line pattern label the served call carries — ROADMAP item 189.
+
+    The LLM wrote this field freely ("Weak equatorial troughing with afternoon
+    lake breeze convergence"); the ring cannot support that much, so the
+    label says what the ring can: the gradient's strength and where the
+    lowest pressure lies, in the same bounded vocabulary as the statements.
+    None without a ring or a gradient, so the field reads as absent.
+    """
+    if s is None or s.gradient_hpa is None or not s.gradient_strength:
+        return None
+
+    low_dir = _COMPASS_NAMES.get(s.lowest_label, s.lowest_label)
+
+    return f"{s.gradient_strength.capitalize()} large-scale gradient, lowest pressure toward the {low_dir}"
+
+
 def _statements(s: SynopticSnapshot) -> list[str]:
     """Sentences bounded by what point sampling at this spacing can support.
 

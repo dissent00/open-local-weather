@@ -409,6 +409,7 @@ def _build_llm_provider(
     thinking_level: str | None = None,
     providers: list[str] | None = None,
     fallback_models: list[str] | None = None,
+    optional: bool = False,
 ):
     """Builds the configured LLMProvider.
 
@@ -447,8 +448,16 @@ def _build_llm_provider(
     # list since 2026-09-15 with a validator saying only the first entry was
     # used; that validator's warning is what this removes.
     override = _env("LLM_PROVIDER")
+    # AN EMPTY LIST IS A DEPLOYMENT WITH NO MODEL — ROADMAP item 189. None
+    # means the caller did not say, and the default stands; [] means the
+    # config said "none", and nothing is built. Returns None for that case
+    # and for a deployment whose keys are all absent when `optional`: the
+    # forecast is code's and runs without a model, which `olw forecast`
+    # asks for and the one-off commands do not.
+    if providers is not None and not providers and not override:
+        return None
     entries = _resolve_provider_entries(
-        [override.lower()] if override else list(providers or [DEFAULT_LLM_PROVIDER]),
+        [override.lower()] if override else list(providers if providers is not None else [DEFAULT_LLM_PROVIDER]),
         fallback_models,
     )
     names = [entry.kind for entry in entries]
@@ -495,7 +504,7 @@ def _build_llm_provider(
             # A SINGLE NAME KEEPS ITS OLD BEHAVIOUR EXACTLY: the message that
             # names the missing variable, and a non-zero exit. Nothing about a
             # one-provider deployment changes, which is most of them.
-            if len(entries) == 1:
+            if len(entries) == 1 and not optional:
                 raise
             # In a CHAIN a missing key means "this deployment does not have
             # that vendor", which is the operator's own answer to "if the user
@@ -503,6 +512,20 @@ def _build_llm_provider(
             # printed here so the order of the report follows the order of the
             # chain even when the first entry is the one that is missing.
             unavailable.append(f"{entry.label}: {e}")
+
+    if not built and optional:
+        # SAID OUT LOUD AND CARRIED ON — item 189. A keyless fork, or a key
+        # that lapsed, publishes the code's forecast every day; the warning
+        # is what tells an operator the model's row is missing by their
+        # own hand rather than by a refusal.
+        for reason in unavailable:
+            print(f"WARNING: LLM provider unavailable — {reason}", file=sys.stderr)
+        print(
+            "WARNING: no LLM provider holds a key; the forecast is code's alone "
+            "and no model's own call will be stored.",
+            file=sys.stderr,
+        )
+        return None
 
     if not built:
         raise SystemExit(
@@ -683,6 +706,8 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
         thinking_level=gemini_thinking_level,
         providers=location.llm_providers,
         fallback_models=location.llm_fallback_models,
+        # The forecast is code's since item 189; a model is an upgrade.
+        optional=True,
     )
     waqi_token = _env("WAQI_TOKEN")
 
@@ -1185,16 +1210,22 @@ def _run_check_health(args: argparse.Namespace) -> int:
         providers=location.llm_providers,
         fallback_models=location.llm_fallback_models,
     )
-    # WHICH MODEL IS CHECKED is the configured primary's, taken before the
-    # chain is reordered below — the gateway leads it then, and its model is
-    # not on Gemini's deprecations page.
-    model_name = llm.model
-    llm = _health_check_chain(llm)
+    if llm is None:
+        # A deployment with no model has no model to check — item 189.
+        print("No LLM provider configured; the model-deprecation check is skipped.")
+        ok = True
+        model_name = None
+    else:
+        # WHICH MODEL IS CHECKED is the configured primary's, taken before the
+        # chain is reordered below — the gateway leads it then, and its model is
+        # not on Gemini's deprecations page.
+        model_name = llm.model
+        llm = _health_check_chain(llm)
 
     # THE QUEUE ON THE CHECK'S OWN SCHEDULE — 2026-09-29. Built from the
     # forecast's chain, it polled the queue at +8 and +16 min, the wait a
     # reader needs. Nobody reads this check the moment it runs.
-    for link in chain_links(llm):
+    for link in chain_links(llm) if llm is not None else ():
         schedule = getattr(link, "health_check_poll_delays_s", None)
         if schedule is not None:
             link.poll_delays_s = schedule
@@ -1209,28 +1240,29 @@ def _run_check_health(args: argparse.Namespace) -> int:
     # A refusal is caught below and reported as a skipped check, which is the
     # right outcome: being out of budget is a real answer, not a reason to
     # spend anyway.
-    attach_spend_cap(
-        llm,
-        Path(args.data_dir),
-        max_calls=location.max_llm_calls_per_24h,
-        purpose="health-check",
-    )
+    if llm is not None:
+        attach_spend_cap(
+            llm,
+            Path(args.data_dir),
+            max_calls=location.max_llm_calls_per_24h,
+            purpose="health-check",
+        )
 
-    ok = True
+        ok = True
 
-    print(f"Checking whether '{model_name}' is listed as deprecated...")
-    try:
-        result = check_model_deprecation(llm, model_name)
-    except LLMResponseError as e:
-        print(f"  Could not complete the model-deprecation check: {e}", file=sys.stderr)
-        ok = False
-    else:
-        if result.deprecated_or_scheduled:
-            print(f"  WARNING: '{model_name}' may be deprecated or scheduled for shutdown.")
-            print(f"  {result.notes}")
+        print(f"Checking whether '{model_name}' is listed as deprecated...")
+        try:
+            result = check_model_deprecation(llm, model_name)
+        except LLMResponseError as e:
+            print(f"  Could not complete the model-deprecation check: {e}", file=sys.stderr)
             ok = False
         else:
-            print(f"  OK — {result.notes}")
+            if result.deprecated_or_scheduled:
+                print(f"  WARNING: '{model_name}' may be deprecated or scheduled for shutdown.")
+                print(f"  {result.notes}")
+                ok = False
+            else:
+                print(f"  OK — {result.notes}")
 
     # Data coverage. Runs offline off the committed record, so it costs
     # nothing and works even when the LLM check above failed. `location` is
@@ -1607,6 +1639,9 @@ def _run_replay(args) -> int:
     #
     # `purpose="replay"` rather than "forecast" so a later read can tell a
     # harness run from the forecast it was meant to be compared against.
+    if deps.llm_provider is None:
+        print("Replay needs an LLM provider and none is configured or keyed.", file=sys.stderr)
+        return 1
     verify_spend, _ = attach_spend_cap(
         deps.llm_provider,
         deps.data_dir,
@@ -1801,10 +1836,12 @@ def _run_backfill_code_blend(args) -> int:
 
 
 def _run_write_up(args) -> int:
-    """The write-up's second chance — the operator's decision, 2026-09-30.
+    """The write-up, asked after the forecast is published — ROADMAP items
+    186 and 189.
 
-    One run a day. When its write-up was refused, the forecast job runs this
-    after its own commit: it waits `--wait-s`, then asks for the prose alone,
+    One run a day, and it asks for no prose itself. The forecast job runs
+    this twice after its own commit: at once, and an hour later when the
+    first was refused. Each waits `--wait-s`, then asks for the prose alone,
     on the links allowed to write it, and republishes the day. A day that
     has its write-up returns at once, without waiting or spending.
 
@@ -1852,14 +1889,18 @@ def _run_write_up(args) -> int:
         thinking_level=_env("GEMINI_THINKING_LEVEL", DEFAULT_GEMINI_THINKING_LEVEL) or None,
         providers=links,
         fallback_models=location.llm_fallback_models,
+        optional=True,
     )
+    if provider is None:
+        print(f"No link may write the write-up for {day}; the day keeps its placeholder.")
+        return 0
     verify_spend, _ = attach_spend_cap(
         provider, data_dir, max_calls=location.max_llm_calls_per_24h, purpose="write-up"
     )
     try:
         narrative = provider.generate(system_prompt, user_prompt, GeminiNarrativeResponse)
     except (LLMResponseError, SpendCapExceeded) as e:
-        print(f"The second chance was refused too ({e}); the day keeps its placeholder.", file=sys.stderr)
+        print(f"The write-up was refused ({e}); the day keeps its placeholder.", file=sys.stderr)
         return 0
     verify_spend()
 

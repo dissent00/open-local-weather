@@ -62,12 +62,6 @@ CAPPED_BY_CALLER = {
         "step 3 live here so the pipeline and the replay cannot disagree "
         "about what a forecast is; both callers attach the cap above it."
     ),
-    "_generate_forecast": (
-        "Takes the provider as an argument. pipeline's wrapper around "
-        "generate_forecast, adding the per-call meta snapshot. "
-        "pipeline._issue_forecast attaches the cap before calling it — one "
-        "caller since item 104 merged the two pipelines."
-    ),
 }
 
 

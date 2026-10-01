@@ -176,16 +176,25 @@ def test_the_evening_refresh_archives_its_own_prompt_not_the_mornings(tmp_path):
     issuances = prompt_archive.read_prompt_archive(tmp_path, TODAY)
     assert len(issuances) == 2, "the morning issuance must survive the refresh"
 
-    # The JUDGMENT call's user prompt is the archived one: the narrative call
-    # is sent that same message with THE FORECASTER'S CALL appended, so the
-    # judgment's is the input the issuance actually started from.
+    # The JUDGMENT call's user prompt is the archived one: the write-up is
+    # sent that same message with THE FORECASTER'S CALL appended, so the
+    # judgment's is the input the issuance actually started from. Since item
+    # 189 the run sends only the judgment; the narrative prompt it archives
+    # is rebuilt here under the re-issue's flag and held to the hash.
+    from openlocalweather.llm.prompt import build_narrative_prompt
+    from tests.test_pipeline_run import LOCATION
+
     sent_judgment, sent_user = llm.calls[0]
-    sent_narrative, _ = llm.calls[-1]
+    assert len(llm.calls) == 1
+    narrative = build_narrative_prompt(
+        LOCATION, verification_already_written=True, ground_stations_configured=True,
+        local_bulletin_configured=False, extended_outlook_available=True,
+    )
     assert issuances[-1]["user_prompt"] == sent_user
     assert issuances[-1]["judgment_prompt_sha256"] == prompt_sha256(sent_judgment)
-    assert issuances[-1]["narrative_prompt_sha256"] == prompt_sha256(sent_narrative)
+    assert issuances[-1]["narrative_prompt_sha256"] == prompt_sha256(narrative)
     assert issuances[-1]["system_prompt_sha256"] == combined_prompt_sha256(
-        sent_judgment, sent_narrative
+        sent_judgment, narrative
     )
 
     # The two issuances are genuinely different forecasters, and the record

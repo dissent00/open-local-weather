@@ -159,10 +159,16 @@ def test_the_default_is_not_unlimited():
     from openlocalweather.llm.gemini import MAX_ATTEMPTS
     from openlocalweather.spend import LLM_CALLS_PER_FORECAST
 
-    issuances_per_day = 2  # morning, plus the evening refresh
-    worst_case = issuances_per_day * LLM_CALLS_PER_FORECAST * MAX_ATTEMPTS
+    # Since ROADMAP item 189 the run sends ONE request for the model's own
+    # call, and `olw write-up` asks twice, each up to the default schedule.
+    # Two runs can fall inside one rolling 24 hours.
+    judgment_attempts = 1
+    write_up_chances = 2
+    runs_per_day = 2
+    worst_case = runs_per_day * (judgment_attempts + write_up_chances * MAX_ATTEMPTS)
 
-    assert worst_case == 16, "recount the default if this moved"
+    assert LLM_CALLS_PER_FORECAST == 2, "a clean day: the model's own call and the write-up"
+    assert worst_case == 18, "recount the default if this moved"
     assert DEFAULT_MAX_LLM_CALLS_PER_24H >= worst_case
     assert DEFAULT_MAX_LLM_CALLS_PER_24H < 100, "a cap this loose protects nobody"
 

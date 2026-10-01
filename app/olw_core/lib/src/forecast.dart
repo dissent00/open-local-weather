@@ -7,6 +7,8 @@ import 'daypart.dart';
 import 'solar.dart';
 import 'dates.dart';
 import 'calibration.dart';
+import 'code_blend.dart' show blendInputs;
+import 'code_call.dart';
 import 'comparison.dart';
 import 'scoring.dart';
 import 'config.dart';
@@ -130,9 +132,24 @@ class RunDegradation {
       );
 }
 
+/// The code blend for this run, from the caller's record — upstream item
+/// 189. Handed the three extractions and the served gust, because the blend
+/// reads this device's own stored rows and [generateForecast] reads no store.
+/// `{}` is the honest answer on a thin record: every lead declines.
+typedef CodeBlendFor = Map<int, List<ModelPrediction>> Function(
+  List<ModelPrediction> day0,
+  List<ModelPrediction> day3,
+  List<ModelPrediction> day7,
+  double? day0WindKmh,
+);
+
 class ForecastRun {
   const ForecastRun({
     required this.response,
+    required this.servedCall,
+    required this.judgment,
+    required this.llmCallOutcome,
+    required this.codeBlend,
     required this.day0Predictions,
     required this.day3Predictions,
     required this.day7Predictions,
@@ -142,7 +159,26 @@ class ForecastRun {
     required this.degradations,
   });
 
+  /// What the reader is shown: the served call's numbers and, until
+  /// [writeUpForecast] lands, the placeholder narrative.
   final ForecastResponse response;
+
+  /// The call as built, and who built it — upstream item 189. Stored by the
+  /// caller as `served_call` and `call_source`, so a later write-up reads
+  /// exactly what was shown.
+  final ServedCall servedCall;
+
+  /// The model's OWN call, when a provider answered; null otherwise. Its
+  /// row is already in [day0Predictions] as `olw_blend`.
+  final JudgmentResponse? judgment;
+
+  /// How the model's call ended — `llmCallServed`, `llmCallNotConfigured`,
+  /// or the refusal in the provider's words.
+  final String llmCallOutcome;
+
+  /// The code blend's rows by lead, as the caller computed them, for the
+  /// caller to store beside the model rows.
+  final Map<int, List<ModelPrediction>> codeBlend;
   final List<ModelPrediction> day0Predictions;
   final List<ModelPrediction> day3Predictions;
   final List<ModelPrediction> day7Predictions;
@@ -249,7 +285,13 @@ ModelPrediction blendPrediction(TodayProperties tp) => ModelPrediction(
 
 Future<ForecastRun> generateForecast({
   required OpenMeteoClient client,
-  required LlmProvider llm,
+
+  /// Null when the install holds no key — upstream item 189. The forecast
+  /// is code's; the model's own call is an upgrade.
+  required LlmProvider? llm,
+
+  /// The code blend over the caller's record; see [CodeBlendFor].
+  required CodeBlendFor codeBlendFor,
   required LocationConfig location,
   required DateTime today,
   required String publicWebpageUrl,
@@ -557,6 +599,40 @@ Future<ForecastRun> generateForecast({
     'newer_than_previous_issuance': null,
   };
 
+  // --- THE SERVED CALL, FROM CODE — upstream ROADMAP item 189 ---
+  //
+  // Decided before any model is asked: the code blend where the record lets
+  // it call, the inputs' equal-weight consensus where it is too thin, the
+  // calibrated gust, the labels. Mirrors pipeline.py's step 6, and is held
+  // to it by spec/vectors/code_call.json.
+  //
+  // ONE GUST FOR THE ROW AND THE SCREEN: the record's calibrated consensus
+  // (upstream item 126) where it has one, else the models' mean, handed to
+  // the blend so the number tomorrow scores is the number the reader saw.
+  final calibratedGust = calibratedGustConsensus(day0, gustBias);
+  final servedGust = calibratedGust ?? mean([for (final p in day0) p.windKmh]);
+  final codeBlend = codeBlendFor(day0, day3, day7, servedGust);
+  final timing = convectiveTimingFor(resolvedIssuance, today, instability);
+  final served = servedCall(
+    day0Models: day0,
+    day3Models: day3,
+    day7Models: day7,
+    codeBlend: codeBlend,
+    // The app has no secondary point; its gust stays absent, never invented.
+    secondaryDay0: const [],
+    calibratedGustKmh: calibratedGust,
+    synoptic: synoptic,
+    airQuality: airQuality,
+    convective: instability?.convective ?? false,
+    thunderWhen: timing?.peak,
+    onsetWordFor: _onsetWordFor(resolvedIssuance, today),
+    // 24 when the moment could not be established, as pipeline.py's
+    // `_issued_hour` returns it: later than any onset, so no window is ahead.
+    issuedHour: issuedHourOf(resolvedIssuance),
+    // The app scores no met service model yet, so the inputs are the models'.
+    inputs: blendInputs(),
+  );
+
   final judgmentPrompt = buildJudgmentPrompt(
     location,
     verificationAlreadyWritten: verificationAlreadyWritten,
@@ -613,7 +689,7 @@ Future<ForecastRun> generateForecast({
     // Applied to THIS run's extraction, above: the models alone, as in the
     // Python pipeline's `day0_models`. The yardsticks are added by the caller
     // after the run, for scoring.
-    calibratedGustKmh: calibratedGustConsensus(day0, gustBias),
+    calibratedGustKmh: calibratedGust,
     todayWeatherData: {
       // Not sent — upstream item 73's first cut; see llm/prompt.dart. The
       // hourly response is still fetched and still read by code here.
@@ -701,58 +777,112 @@ Future<ForecastRun> generateForecast({
     ),
   );
 
-  // TWO CALLS since upstream ROADMAP item 59 step 3, and the doubling is
-  // spend against the reader's own cap — see item 26.
-  final call = await generateForecastResponse(
-    provider: llm,
-    judgmentPrompt: judgmentPrompt,
-    narrativePrompt: narrativePrompt,
-    userPrompt: userPrompt,
-  );
-  final response = call.response;
-
-  // The write-up failed and the scored call did not. Recorded rather than
-  // rethrown: the numbers are real, and losing them to publish nothing would
-  // put a hole in the accuracy record — see [degradationNarrative].
-  if (call.narrativeError != null) {
-    degradations.add(RunDegradation(
-      code: degradationNarrative,
-      summary:
-          "Today's figures are here, but the write-up that normally explains "
-          'them could not be produced this time. The numbers are the same '
-          'ones this forecast is scored on.',
-      detail:
-          'The rendering call failed after its retries while the judgment '
-          'call had already succeeded, so the scored prediction was kept '
-          'without a narrative: ${call.narrativeError}',
-    ));
+  // THE MODEL'S OWN CALL — optional, never load-bearing; upstream item 189.
+  // The served numbers were decided above, in code. What the model is asked
+  // for is its OWN judgment, kept as the hidden `olw_blend` row so the record
+  // keeps answering whether it beats arithmetic. A refusal adds no row and
+  // changes nothing else. The write-up is NOT asked for here: the caller
+  // stores the forecast first and then asks [writeUpForecast] — the app's
+  // form of the pipeline publishing before it asks. How many attempts the
+  // provider makes is the caller's retry policy; the pipeline's rule is one
+  // per link.
+  JudgmentResponse? judgment;
+  String llmCallOutcome;
+  if (llm == null) {
+    llmCallOutcome = llmCallNotConfigured;
+  } else {
+    try {
+      judgment = await llm.generate(
+        systemPrompt: judgmentPrompt,
+        userPrompt: userPrompt,
+        shape: judgmentShape,
+      );
+      llmCallOutcome = llmCallServed;
+    } on LlmResponseError catch (e) {
+      llmCallOutcome = 'refused: $e';
+    }
   }
+
+  final response = ForecastResponse(
+    yesterdayVerification: verificationNotWritten,
+    skillProfileSummaries: const [],
+    todayProperties: served.judgment.todayProperties,
+    extendedProperties: served.judgment.extendedProperties,
+    todayNarrative: narrativeUnavailableMarkdown,
+  );
+  // THE PENDING MARKER — see [narrativePendingSummary].
+  degradations.add(RunDegradation(
+    code: degradationNarrative,
+    summary: narrativePendingSummary,
+    detail: narrativePendingDetail,
+  ));
+
   return ForecastRun(
     degradations: degradations,
     response: response,
-    // The blend joins Day+0 as a peer of the models it synthesizes, so what
-    // gets scored tomorrow includes the forecast this run actually produced
-    // and not only the guidance that fed it. Day+0 only: today_properties is
-    // a call about today, and there is no extended-range equivalent to score
-    // until the outlook carries structured numbers too.
-    day0Predictions: [...day0, blendPrediction(response.todayProperties)],
-    // And joins Day+3 and Day+7 the same way — ROADMAP item 72's minimal
-    // shape, rain and its probability, which is what Brier scores. Without
-    // these the app recorded no forecaster call at the leads where the models
-    // disagree most, which is the whole argument for asking at all.
+    servedCall: served,
+    judgment: judgment,
+    llmCallOutcome: llmCallOutcome,
+    codeBlend: codeBlend,
+    // The model's own rows, on the days it answered — hidden from the
+    // forecaster, scored beside the code blend's; absent otherwise, which
+    // the record reads as no call, never as a wrong one.
+    day0Predictions: [
+      ...day0,
+      if (judgment != null) blendPrediction(judgment.todayProperties),
+    ],
     day3Predictions: [
       ...day3,
-      ...extendedBlendPredictions(response.extendedProperties, 3),
+      if (judgment != null) ...extendedBlendPredictions(judgment.extendedProperties, 3),
     ],
     day7Predictions: [
       ...day7,
-      ...extendedBlendPredictions(response.extendedProperties, 7),
+      if (judgment != null) ...extendedBlendPredictions(judgment.extendedProperties, 7),
     ],
     judgmentPrompt: judgmentPrompt,
     narrativePrompt: narrativePrompt,
     userPrompt: userPrompt,
   );
 }
+
+/// The write-up, asked AFTER the caller has stored [run] — upstream item 189.
+///
+/// The narrative call is handed the served call, so the prose is written
+/// around exactly what the reader was shown. A thrown [LlmResponseError] is
+/// the caller's to record: the forecast is already stored, and the day keeps
+/// its placeholder.
+Future<NarrativeResponse> writeUpForecast({
+  required LlmProvider provider,
+  required ForecastRun run,
+}) =>
+    provider.generate(
+      systemPrompt: run.narrativePrompt,
+      userPrompt: buildNarrativeUserPrompt(run.userPrompt, run.servedCall.judgment.toJson()),
+      shape: narrativeShape,
+    );
+
+/// The rain onset's sun-relative word for today, or null without a sun —
+/// mirrors pipeline.py's `_onset_word_for`.
+String? Function(String? hhmm)? _onsetWordFor(Object? issuance, DateTime today) {
+  if (issuance == null) return null;
+
+  final Map<String, Object?> d;
+  try {
+    d = issuance is Map<String, Object?>
+        ? issuance
+        : (issuance as dynamic).toJson() as Map<String, Object?>;
+  } catch (_) {
+    return null;
+  }
+
+  final now = _clockOn(today, d['local_time'] as String?);
+  final sunrise = _clockOn(today, d['sunrise'] as String?);
+  final sunset = _clockOn(today, d['sunset'] as String?);
+  if (now == null || sunrise == null || sunset == null) return null;
+
+  return (hhmm) => onsetWord(hhmm, now: now, sunrise: sunrise, sunset: sunset);
+}
+
 
 /// Python's `datetime.isoformat()`, reproduced exactly — same measured
 /// finding as `_isoLikePython` in aqi.dart: Dart's `toIso8601String()` would

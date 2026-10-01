@@ -49,6 +49,7 @@ from openlocalweather.defaults import (
     models_visible_to_the_forecaster,
 )
 from openlocalweather.dates import add_days
+from openlocalweather.comparison import consensus_onset
 from openlocalweather.models import DailyActual, ModelPrediction, ModelPredictionsByLead
 from openlocalweather.verify.scoring import (
     LogLookup,
@@ -160,6 +161,8 @@ def code_blend_prediction(
     weights: Mapping[str, float],
     high_corrections: Mapping[str, float] | None = None,
     low_corrections: Mapping[str, float] | None = None,
+    *,
+    wind_kmh: float | None = None,
 ) -> ModelPrediction | None:
     """The record-weighted call, or None when no model carries a vote.
 
@@ -172,6 +175,17 @@ def code_blend_prediction(
     service have none), and it keeps the boolean and the number consistent:
     rain exactly when the share is over half. A tie breaks dry, for the
     reason climatology_prediction gives.
+
+    ONSET, AMOUNT AND WIND SINCE ITEM 189 (2026-10-01), because this row is
+    the served call: the numbers the reader is shown have to be the numbers
+    tomorrow scores, which is why `olw_blend` was ever scored. The onset is
+    the median over the WET voters (a dry voter's onset is an hour it did
+    not forecast rain for), the amount is the record-weighted mean of the
+    voters' totals to one decimal, and the wind is handed in by the caller —
+    the calibrated gust of item 126 where the record has one — because the
+    gust correction is a different record from the rain weights. Rows
+    stored before that date carry None in all three, which the scorer reads
+    as absent, never wrong.
     """
     voters = [p for p in predictions if p.model in weights and p.rain is not None]
     total = sum(weights[p.model] for p in voters)
@@ -179,22 +193,38 @@ def code_blend_prediction(
         return None
 
     wet = sum(weights[p.model] for p in voters if p.rain)
+    rain = wet * 2 > total
 
     return ModelPrediction(
         model=CODE_BLEND_MODEL_ID,
         # Compared as wet * 2 > total rather than wet / total > 0.5, so the tie
         # is decided by the arithmetic climatology uses and not by a division.
-        rain=wet * 2 > total,
+        rain=rain,
         rain_probability_pct=round(100 * wet / total),
         high_c=_corrected_mean(predictions, high_corrections, "high_c"),
         low_c=_corrected_mean(predictions, low_corrections, "low_c"),
-        # No view on these. A field the blend did not compute must not enter
+        onset=consensus_onset([p for p in voters if p.rain]) if rain else None,
+        precip_mm=_weighted_amount(voters, weights),
+        wind_kmh=wind_kmh,
+        # No view on this. A field the blend did not compute must not enter
         # the record as a value it never gave.
-        onset=None,
-        precip_mm=None,
-        wind_kmh=None,
         mslp_trend=None,
     )
+
+
+def _weighted_amount(
+    voters: list[ModelPrediction], weights: Mapping[str, float]
+) -> float | None:
+    """The voters' daily totals, weighted by their rain weights, to one
+    decimal — the precision the instruments and the prompt use. None when
+    no voter carries an amount."""
+    with_amount = [p for p in voters if p.precip_mm is not None]
+    if not with_amount:
+        return None
+
+    total = sum(weights[p.model] for p in with_amount)
+
+    return round(sum(p.precip_mm * weights[p.model] for p in with_amount) / total, 1)
 
 
 def _corrected_mean(
@@ -222,13 +252,17 @@ def code_blend_predictions(
     log_lookup: LogLookup,
     actuals: Mapping[date, DailyActual],
     inputs: list[str],
+    *,
+    day0_wind_kmh: float | None = None,
 ) -> ModelPredictionsByLead:
     """The code blend for one issuance, at every lead it can call.
 
     THE ONE PLACE the pieces are put together, so the live run, the backfill
     and the backtest cannot build it three ways. A lead where it declines is
     an empty list, never a guessed row. Temperatures at Day+0 only: that is
-    where the LLM's call commits to them.
+    where the LLM's call commits to them. `day0_wind_kmh` is the served gust
+    (item 189), carried on the Day+0 row alone: the extended leads have no
+    gust call to serve.
     """
     blends: dict[int, list[ModelPrediction]] = {}
 
@@ -240,7 +274,10 @@ def code_blend_predictions(
             short = windows_as_of(inputs, 0, ROLLING_WINDOW_SHORT, issued, log_lookup, actuals)
             highs, lows = temperature_corrections(short)
 
-        blend = code_blend_prediction(predictions.for_lead(lead), rain_weights(long), highs, lows)
+        blend = code_blend_prediction(
+            predictions.for_lead(lead), rain_weights(long), highs, lows,
+            wind_kmh=day0_wind_kmh if lead == 0 else None,
+        )
         blends[lead] = [blend] if blend is not None else []
 
     return ModelPredictionsByLead(day0=blends[0], day3=blends[3], day7=blends[7])

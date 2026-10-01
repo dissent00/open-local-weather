@@ -9,6 +9,7 @@ from openlocalweather.defaults import BASELINE_MODEL_IDS, CODE_BLEND_MODEL_ID, M
 from openlocalweather.claims import CLAIM_DISPLAY_TOO_LONG
 from openlocalweather.disagreement import DISAGREEMENT_RAIN_WHILE_DRY
 from openlocalweather.llm.gemini import LLMResponseError
+from openlocalweather.llm.forecast_call import NARRATIVE_UNAVAILABLE_MARKDOWN
 from openlocalweather.llm.schema import (
     GeminiJudgmentResponse,
     GeminiNarrativeResponse,
@@ -387,6 +388,41 @@ def make_deps(tmp_path, llm=None) -> PipelineDeps:
     )
 
 
+# What the entry holds in place of prose until `olw write-up` lands it —
+# ROADMAP item 189. Every in-run narrative is this; the prose is another
+# process's since 2026-10-01.
+PLACEHOLDER = NARRATIVE_UNAVAILABLE_MARKDOWN
+
+
+def _gaps(degradations) -> list[str]:
+    """The degradation codes that are GAPS. The pending write-up marker is
+    on every run since item 189 and is not one; a test about what a run
+    lost reads past it."""
+    return [d.code for d in degradations or [] if d.code != DEGRADATION_NARRATIVE]
+
+
+def _narrative_prompt_sent(entry, location=LOCATION, **flags) -> str:
+    """The narrative prompt the run built for this entry.
+
+    Since item 189 the run builds and hashes both prompts and sends only the
+    judgment; the narrative is sent by `olw write-up` from the archive. So a
+    test about what the write-up will be told rebuilds the prompt under the
+    flags the run should have used and holds it to the entry's hash."""
+    from openlocalweather.llm.prompt import build_judgment_prompt, build_narrative_prompt
+    from openlocalweather.store.prompt_archive import combined_prompt_sha256
+
+    used = dict(
+        verification_already_written=False, ground_stations_configured=True,
+        local_bulletin_configured=False, extended_outlook_available=True,
+    )
+    used.update(flags)
+    judgment, narrative = build_judgment_prompt(location, **used), build_narrative_prompt(location, **used)
+    assert entry.meta.system_prompt_sha256 == combined_prompt_sha256(judgment, narrative), (
+        "the run built its prompts under different flags than these"
+    )
+    return narrative
+
+
 def predictions_block(user_prompt: str) -> str:
     """Just the EXTRACTED PER-MODEL PREDICTIONS section. The raw guidance
     arrays above it carry the same numbers, so an assertion against the whole
@@ -413,7 +449,7 @@ def test_dry_run_does_not_write_any_files(tmp_path):
     deps = make_deps(tmp_path)
     result = issue(deps, today=date(2026, 8, 11), dry_run=True)
 
-    assert result.log_entry.rain_expected == "Unlikely"
+    assert result.log_entry.rain_expected == "Dry / No Rain"  # code's label since item 189
     assert log_store.read_log_entry(tmp_path, date(2026, 8, 11)) is None
     assert not (tmp_path / "track_record.json").exists()
     assert not (tmp_path / "actuals_cache" / "actuals.json").exists()
@@ -427,8 +463,8 @@ def test_real_run_writes_log_entry_and_track_record(tmp_path):
 
     written = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert written is not None
-    assert written.rain_expected == "Unlikely"
-    assert written.temp_high_c == 27.0
+    assert written.rain_expected == "Dry / No Rain"
+    assert written.temp_high_c == 25.7, "the models' mean, not the fake's 27.0 — item 189"
     assert (tmp_path / "track_record.json").exists()
     assert (tmp_path / "actuals_cache" / "actuals.json").exists()
     assert result.published is False  # no publisher configured
@@ -458,17 +494,21 @@ def test_today_entry_carries_extracted_model_predictions(tmp_path):
     }
 
 
+
 def test_the_blend_is_scored_on_what_it_committed_to(tmp_path):
-    # Built from today_properties' structured fields, not parsed back out of
-    # the prose. What gets scored is what the forecaster committed to.
+    """Built from today_properties' structured fields, not parsed back out of
+    the prose. What gets scored is what the forecaster committed to — and
+    since item 189 that is the model's OWN call, a hidden row beside the
+    code's served call. On this fixture the two differ: the fake answers
+    27.0 and the models' mean is 25.7."""
     deps = make_deps(tmp_path)
     result = issue(deps, today=date(2026, 8, 11), dry_run=False)
     blend = next(
         p for p in scored_predictions(result.log_entry).day0 if p.model == BLEND_MODEL_ID
     )
 
-    assert blend.high_c == result.log_entry.temp_high_c
-    assert blend.low_c == result.log_entry.temp_low_c
+    assert (blend.high_c, blend.low_c) == (27.0, 18.0), "the model's own commitment"
+    assert result.log_entry.temp_high_c == 25.7, "and the page shows code's"
     # ITEM 144: the PRIMARY point's gust is scored and the secondary's is not.
     # This asserted `is None` until 2026-09-16 with a reason the split made
     # false, and it passed because the fixture supplied no gust — so it would
@@ -875,38 +915,14 @@ def test_the_window_pass_fetches_the_evening_before_its_oldest_entry(tmp_path, m
     assert "kenya_met" in log_store.read_log_entry(tmp_path, oldest).prediction_rows[0].window_scores
 
 
-def test_the_write_up_waits_after_the_scored_call(tmp_path, monkeypatch):
-    """One run a day (2026-09-30). At 03:01Z the write-up drew a 503 13-21 s
-    after a served scored call on 3 of 4 days; a pause spends no request."""
-    events = []
-    llm = FakeLLMProvider()
-    real = llm.generate
-
-    def generate(system_prompt, user_prompt, response_schema):
-        events.append(response_schema.__name__)
-        return real(system_prompt, user_prompt, response_schema)
-
-    llm.generate = generate
-    monkeypatch.setattr(pipeline.time, "sleep", lambda s: events.append(("sleep", s)))
-    deps = make_deps(tmp_path, llm=llm)
-    deps.location = deps.location.model_copy(update={"llm_write_up_delay_s": 120})
-
-    issue(deps, today=date(2026, 8, 11), dry_run=False)
-
-    judgment, narrative = events.index("GeminiJudgmentResponse"), events.index("GeminiNarrativeResponse")
-    assert events[judgment + 1:narrative] == [("sleep", 120)]
-
-
 def test_llm_receives_system_and_user_prompt(tmp_path):
     llm = FakeLLMProvider()
     deps = make_deps(tmp_path, llm=llm)
     issue(deps, today=date(2026, 8, 11), dry_run=True)
 
-    # Two calls since ROADMAP item 59 step 3: judgment, then narrative.
-    assert len(llm.calls) == 2
-    # Both calls' instructions. Whether a rule reached the forecaster is a
-    # question about the run; WHICH of the two calls carries it is
-    # tests/test_prompt_seam.py's.
+    # ONE call since ROADMAP item 189: the model's own judgment. The
+    # write-up is `olw write-up`'s, after the forecast is published.
+    assert len(llm.calls) == 1
     system_prompt, user_prompt = llm.system_prompts, llm.user_prompts
     assert "Test Town" in system_prompt
     assert "2026-08-11" in user_prompt
@@ -1087,6 +1103,7 @@ def test_stations_configured_still_get_their_blocks(tmp_path, monkeypatch):
     assert "Ground AQI stations may occasionally be offline" in system_prompt
 
 
+
 def test_no_met_service_configured_is_a_state_not_a_missing_bulletin(tmp_path):
     """LOCATION has no local_bulletin_source_name.
 
@@ -1100,16 +1117,17 @@ def test_no_met_service_configured_is_a_state_not_a_missing_bulletin(tmp_path):
     report of a failure but not an invention.
     """
     llm = FakeLLMProvider()
-    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+    result = issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
 
-    # Both calls' instructions. Whether a rule reached the forecaster is a
-    # question about the run; WHICH of the two calls carries it is
-    # tests/test_prompt_seam.py's.
+    # The judgment call's instructions were sent; the narrative's are built
+    # by the run for `olw write-up` — item 189 — and read back by hash.
     system_prompt, user_prompt = llm.system_prompts, llm.user_prompts
+    narrative = _narrative_prompt_sent(result.log_entry, local_bulletin_configured=False)
     assert "LOCAL BULLETIN" not in user_prompt
-    assert "NAME THE LOCAL MET SERVICE" not in system_prompt
-    assert "LOCAL MET SERVICE AS A MODEL" not in system_prompt
-    assert "No national met service is configured" in system_prompt
+    assert "NAME THE LOCAL MET SERVICE" not in system_prompt + narrative
+    assert "LOCAL MET SERVICE AS A MODEL" not in system_prompt + narrative
+    assert "No national met service is configured" in narrative
+
 
 
 def test_a_configured_met_service_is_named_and_carried(tmp_path):
@@ -1120,15 +1138,13 @@ def test_a_configured_met_service_is_named_and_carried(tmp_path):
     deps.location = LOCATION.model_copy(
         update={"local_bulletin_source_name": "Kenya Meteorological Department (KMD)"}
     )
-    issue(deps, today=date(2026, 8, 11), dry_run=True)
+    result = issue(deps, today=date(2026, 8, 11), dry_run=True)
 
-    # Both calls' instructions. Whether a rule reached the forecaster is a
-    # question about the run; WHICH of the two calls carries it is
-    # tests/test_prompt_seam.py's.
-    system_prompt, user_prompt = llm.system_prompts, llm.user_prompts
+    user_prompt = llm.user_prompts
+    narrative = _narrative_prompt_sent(result.log_entry, location=deps.location, local_bulletin_configured=True)
     assert "LOCAL BULLETIN (Kenya Meteorological Department (KMD)):" in user_prompt
-    assert "NAME THE LOCAL MET SERVICE EVERY TIME" in system_prompt
-    assert "No national met service is configured" not in system_prompt
+    assert "NAME THE LOCAL MET SERVICE EVERY TIME" in narrative
+    assert "No national met service is configured" not in narrative
 
 
 def test_a_configured_service_whose_fetch_failed_still_says_so(tmp_path):
@@ -1166,15 +1182,16 @@ def test_a_configured_service_whose_fetch_failed_still_says_so(tmp_path):
 # test_forecast_runs_the_full_pipeline_when_the_day_is_empty.
 
 
+
 def test_a_later_run_preserves_the_first_runs_model_predictions(tmp_path):
     # NAMED FOR FIRST AND LATER, not morning and evening — nothing in these
     # fixtures is clock-dependent, and the day does not have exactly two runs.
-    # First, the day's first run.
-    first_deps = make_deps(tmp_path)
-    first_result = issue(first_deps, today=date(2026, 8, 11), dry_run=False)
+    first_result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     original_predictions = scored_predictions(first_result.log_entry)
 
-    # Then a later run with DIFFERENT fresh model data.
+    # A later run whose model answers differently. Since item 189 the model's
+    # answer is a hidden row and never the published call, so "Now raining"
+    # reaches the record and not the page.
     later_llm = FakeLLMProvider(
         GeminiForecastResponse(
             yesterday_verification="n/a — refresh",
@@ -1186,15 +1203,15 @@ def test_a_later_run_preserves_the_first_runs_model_predictions(tmp_path):
             today_narrative="## Overview\nRain has moved in this evening.",
         )
     )
-    refresh_deps = make_deps(tmp_path, llm=later_llm)
-    refresh_result = issue(refresh_deps, today=date(2026, 8, 11), dry_run=False)
+    refresh_result = issue(make_deps(tmp_path, llm=later_llm), today=date(2026, 8, 11), dry_run=False)
 
-    # Narrative/properties changed...
-    assert refresh_result.log_entry.rain_expected == "Now raining"
-    assert refresh_result.log_entry.temp_high_c == 25.0
-    assert "Rain has moved in" in refresh_result.log_entry.narrative_markdown
-    # ...but model_predictions (what tomorrow's verification scores) did NOT.
-    assert scored_predictions(refresh_result.log_entry) == original_predictions
+    entry = refresh_result.log_entry
+    assert entry.rain_expected != "Now raining" and entry.served_call is not None
+    assert len(entry.prediction_rows) == 2, "the later run has its own row"
+    later_blend = [p for p in entry.prediction_rows[1].predictions.day0 if p.model == BLEND_MODEL_ID]
+    assert later_blend and later_blend[0].high_c == 25.0, "the model's own call, in ITS row"
+    # ...but model_predictions (what tomorrow's verification scores) did NOT change.
+    assert scored_predictions(entry) == original_predictions
 
 
 def test_a_later_run_keeps_what_the_first_one_published(tmp_path):
@@ -1234,14 +1251,14 @@ def test_a_later_run_keeps_what_the_first_one_published(tmp_path):
     assert refresh_result.log_entry.morning_issuance is None, (
         "and it is preserved WITHOUT the legacy duplicate — item 137"
     )
-    assert snapshot.rain_expected == "Unlikely"  # FakeLLMProvider's default morning response
-    assert snapshot.temp_high_c == 27.0
-    assert "Dry and warm" in snapshot.narrative_markdown
+    assert snapshot.rain_expected == "Dry / No Rain"  # code's call on the fixture — item 189
+    assert snapshot.temp_high_c == 25.7
+    assert snapshot.narrative_markdown.startswith(PLACEHOLDER)
     assert snapshot.generated_at_utc == first_result.log_entry.meta.generated_at_utc
-    # And the top-level fields really did move on to the evening's values —
-    # the snapshot is an addition, not a substitute for the overwrite.
-    assert refresh_result.log_entry.rain_expected == "Now raining"
-    assert "Rain has moved in" in refresh_result.log_entry.narrative_markdown
+    # The model's prose never reaches the page from the run — item 189 —
+    # and the later issuance carries its own served call at the top level.
+    assert "Rain has moved in" not in refresh_result.log_entry.narrative_markdown
+    assert refresh_result.log_entry.served_call is not None
 
 
 def test_refresh_does_not_resnapshot_on_a_second_same_day_refresh(tmp_path):
@@ -1277,10 +1294,12 @@ def test_refresh_does_not_resnapshot_on_a_second_same_day_refresh(tmp_path):
     # first refresh's "Light rain" — that would mean the real morning
     # issuance got silently replaced by an intermediate refreshed state.
     first = second_result.log_entry.issuance_log()[0]
-    assert first.rain_expected == "Unlikely"
-    assert "Dry and warm" in first.narrative_markdown
-    # And the top-level fields reflect the LATEST (second) refresh.
-    assert second_result.log_entry.rain_expected == "Heavy rain"
+    assert first.rain_expected == "Dry / No Rain"
+    assert first.narrative_markdown.startswith(PLACEHOLDER)
+    # And every issuance is on the record, in order — the model's "Heavy
+    # rain" is a hidden row in the third one, never the page (item 189).
+    assert len(second_result.log_entry.issuance_log()) == 3
+    assert second_result.log_entry.rain_expected != "Heavy rain"
 
 
 def test_refresh_preserves_verification_and_meta_generated_at(tmp_path):
@@ -1351,21 +1370,21 @@ def test_refresh_never_emails_even_when_email_sender_configured(tmp_path):
     assert emailed_entries == []
 
 
+
 def test_a_later_issuance_is_told_it_is_one_and_shown_what_was_published(tmp_path):
     morning_llm = FakeLLMProvider()
     issue(make_deps(tmp_path, llm=morning_llm), today=date(2026, 8, 11), dry_run=False)
 
     later_llm = FakeLLMProvider()
-    issue(make_deps(tmp_path, llm=later_llm), today=date(2026, 8, 11), dry_run=True)
+    result = issue(make_deps(tmp_path, llm=later_llm), today=date(2026, 8, 11), dry_run=True)
 
-    system_prompt, user_prompt = later_llm.system_prompts, later_llm.user_prompts
-    assert "VERIFICATION IS ALREADY WRITTEN" in system_prompt
+    narrative = _narrative_prompt_sent(result.log_entry, verification_already_written=True)
+    assert "VERIFICATION IS ALREADY WRITTEN" in narrative
     # AND THE DAY'S EARLIER NARRATIVE IS NOT SENT — items 137/138,
-    # 2026-09-16. The system prompt still says verification is written,
+    # 2026-09-16. The narrative prompt still says verification is written,
     # because that is a fact about the day; the USER prompt no longer carries
     # what was published, because every run is a fresh forecast.
-    assert "EARLIER TODAY" not in user_prompt
-    assert "Dry and warm" not in user_prompt  # the morning provider's narrative
+    assert "EARLIER TODAY" not in later_llm.user_prompts
 
 
 def test_a_third_run_is_shown_no_earlier_narrative_at_all(tmp_path):
@@ -1597,15 +1616,18 @@ def test_the_kept_reading_reaches_the_prompt_with_its_age(tmp_path, monkeypatch)
 # ---------------------------------------------------------------------------
 
 
+
 def test_the_cap_refuses_a_run_and_the_llm_is_never_called(tmp_path, monkeypatch):
     """The guard has to stop the call, not merely count it.
 
     A cap that records an attempt and then lets the request through would
-    look correct in the ledger and cost exactly as much money.
+    look correct in the ledger and cost exactly as much money. Since item
+    189 a refusal costs the model's hidden row and not the day: the forecast
+    is code's and is written regardless.
     """
     from dataclasses import replace
 
-    from openlocalweather.spend import SpendCapExceeded, record_attempt
+    from openlocalweather.spend import record_attempt
 
     called = []
 
@@ -1617,38 +1639,33 @@ def test_the_cap_refuses_a_run_and_the_llm_is_never_called(tmp_path, monkeypatch
             return super().generate(*a, **kw)
 
     deps = make_deps(tmp_path, llm=RefusingProvider())
-    # LocationConfig is a pydantic model, so model_copy rather than replace.
-    # TWO, so a run fits exactly and the burn below is what tips it over.
     deps = replace(
         deps, location=LOCATION.model_copy(update={"max_llm_calls_per_24h": 2})
     )
 
-    # Burn one of the two — ON THE CREDENTIAL THE RUN WILL CALL. This used to
-    # burn `provider="x", model="y"` and passed only because the pre-flight
-    # counted the whole ledger. Once it counted per link (ROADMAP item 178) a
-    # row for "x" stopped counting against this run, and at a cap of 1 the run
-    # was refused anyway for needing 2 — so the burn did nothing and the test
-    # would have passed with it deleted. Now it is load-bearing again.
-    record_attempt(
-        tmp_path, provider="RefusingProvider", model="fake-model",
-        purpose="test", max_calls=2,
-    )
+    # Burn both — ON THE CREDENTIAL THE RUN WILL CALL. The run needs one.
+    for _ in range(2):
+        record_attempt(
+            tmp_path, provider="RefusingProvider", model="fake-model",
+            purpose="test", max_calls=2,
+        )
 
-    with pytest.raises(SpendCapExceeded):
-        issue(deps, today=date(2026, 8, 11), dry_run=False)
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     assert called == [], "the provider must never be reached once the cap is hit"
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry is not None and entry.meta.llm_call_outcome.startswith("cap: ")
 
 
-def test_a_normal_run_records_exactly_two_calls(tmp_path):
+
+def test_a_normal_run_records_exactly_one_call(tmp_path):
     """Counting has to be accurate in the ordinary case too — an
     over-counting cap would refuse legitimate forecasts.
 
-    TWO SINCE ROADMAP ITEM 59 STEP 3, and the number is the point of the
-    test rather than an incidental. A forecast is a judgment call and then a
-    rendering call, so a cap sized for one forecast a day must be sized for
-    two calls a day — see item 26, where the reader's own cap is what this
-    doubling actually spends.
+    ONE SINCE ROADMAP ITEM 189, and the number is the point of the test
+    rather than an incidental: the run makes the model's own judgment call
+    and nothing else. The write-up is `olw write-up`'s own spend, filed under
+    its own purpose.
     """
     from openlocalweather.spend import read_ledger
 
@@ -1656,8 +1673,8 @@ def test_a_normal_run_records_exactly_two_calls(tmp_path):
     issue(deps, today=date(2026, 8, 11), dry_run=False)
 
     ledger = read_ledger(tmp_path)
-    assert len(ledger) == 2
-    assert [e.purpose for e in ledger] == ["forecast", "forecast"]
+    assert len(ledger) == 1
+    assert [e.purpose for e in ledger] == ["forecast"]
     assert all(e.model for e in ledger)
 
 
@@ -1669,7 +1686,7 @@ def test_a_dry_run_still_counts_because_it_still_calls_the_llm(tmp_path):
 
     deps = make_deps(tmp_path)
     issue(deps, today=date(2026, 8, 11), dry_run=True)
-    assert len(read_ledger(tmp_path)) == 2
+    assert len(read_ledger(tmp_path)) == 1  # the model's own call — item 189
 
 
 def test_a_failed_sun_lookup_still_tells_the_model_the_time(tmp_path, monkeypatch):
@@ -1741,8 +1758,8 @@ def test_neither_failure_stops_a_forecast_being_produced(tmp_path, monkeypatch):
         make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True
     )
     assert result.log_entry is not None
-    # Two calls since ROADMAP item 59 step 3: judgment, then narrative.
-    assert len(llm.calls) == 2
+    # One call since ROADMAP item 189: the model's own judgment.
+    assert len(llm.calls) == 1
 
 
 def test_sunrise_and_sunset_are_stored_from_code_not_the_narrative(tmp_path):
@@ -1810,6 +1827,7 @@ def test_missing_sun_times_are_stored_as_absent_not_as_an_empty_clock(tmp_path, 
     assert result.log_entry.sunset is None
 
 
+
 def test_three_issuances_are_all_recoverable_from_the_stored_entry(tmp_path):
     """Storage used to keep the FIRST issuance and the LATEST, not the ones
     between: morning_issuance was written only if not already set, so run 3
@@ -1819,36 +1837,24 @@ def test_three_issuances_are_all_recoverable_from_the_stored_entry(tmp_path):
 
     Now every issuance before the current one is kept, oldest first, in
     earlier_issuances — the current one stays where it always has, at the
-    top level. morning_issuance still tracks the first, unchanged.
+    top level. Told apart here by the model's own hidden row (item 189): the
+    page shows code's numbers on every run, and on this fixture those are
+    the same three times.
     """
-    deps1 = make_deps(tmp_path, llm=FakeLLMProvider())
-    issue(deps1, today=date(2026, 8, 11), dry_run=False)
-
-    second = FakeLLMProvider()
-    second.response = second.response.model_copy(
-        update={"today_narrative": "## Overview\nSECOND issuance."}
-    )
-    issue(make_deps(tmp_path, llm=second), today=date(2026, 8, 11), dry_run=False)
-
-    third = FakeLLMProvider()
-    third.response = third.response.model_copy(
-        update={"today_narrative": "## Overview\nTHIRD issuance."}
-    )
-    issue(make_deps(tmp_path, llm=third), today=date(2026, 8, 11), dry_run=False)
+    for high in (27.0, 26.0, 25.0):
+        llm = FakeLLMProvider()
+        llm.response = llm.response.model_copy(
+            update={"today_properties": llm.response.today_properties.model_copy(update={"temp_high_c": high})}
+        )
+        issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
 
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
-    assert "THIRD" in entry.narrative_markdown, "the latest stays at the top level"
-    assert len(entry.earlier_issuances) == 2
-    assert "Dry and warm" in entry.earlier_issuances[0].narrative_markdown, "first, oldest first"
-    assert "SECOND" in entry.earlier_issuances[1].narrative_markdown, "second, no longer lost"
-    assert "Dry and warm" in entry.issuance_log()[0].narrative_markdown, "still the first"
-
-    log = entry.issuance_log()
-    assert [i.narrative_markdown for i in log] == [
-        entry.earlier_issuances[0].narrative_markdown,
-        entry.earlier_issuances[1].narrative_markdown,
-        entry.narrative_markdown,
-    ]
+    assert len(entry.earlier_issuances) == 2 and len(entry.issuance_log()) == 3
+    assert len(entry.prediction_rows) == 3, "one row per issuance"
+    assert [
+        next(p.high_c for p in row.predictions.day0 if p.model == BLEND_MODEL_ID)
+        for row in entry.prediction_rows
+    ] == [27.0, 26.0, 25.0], "first, second and third, none lost"
 
 
 def test_a_later_issuance_never_changes_what_gets_scored(tmp_path):
@@ -1904,22 +1910,19 @@ def test_run_daily_a_SECOND_time_KEEPS_the_days_predictions(tmp_path, monkeypatc
     assert second == first, "a second run rewrote the numbers tomorrow scores"
 
 
-def test_a_second_run_still_writes_a_fresh_narrative(tmp_path):
-    """The other half of the rule: force forces the NARRATIVE, and can never
-    reach the scored numbers. A guard that also froze the prose would make a
-    forced re-run pointless."""
+
+def test_a_second_run_still_serves_a_fresh_call(tmp_path):
+    """The other half of the rule: force forces the ISSUANCE, and can never
+    reach the scored numbers. A guard that also froze the served call would
+    make a forced re-run pointless. The prose is `olw write-up`'s since item
+    189, so every in-run narrative is the placeholder."""
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
     issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
-    evening = FakeLLMProvider()
-    evening.response = evening.response.model_copy(
-        update={"today_narrative": "## Overview\nStorms arrived after all."}
-    )
-    issue(
-        make_deps(tmp_path, llm=evening), today=date(2026, 8, 11), dry_run=False
-    )
-
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
-    assert entry.narrative_markdown == "## Overview\nStorms arrived after all."
+    assert len(entry.issuance_log()) == 2
+    assert entry.served_call is not None and entry.call_source is not None
+    assert entry.narrative_markdown.startswith(PLACEHOLDER)
 
 
 def test_a_second_run_describes_the_numbers_the_record_holds(tmp_path, monkeypatch):
@@ -1997,7 +2000,7 @@ def test_a_forced_re_run_keeps_the_days_history(tmp_path):
     """
     entry, _ = _forced_rerun(tmp_path, "## Overview\nForced re-run.", after_refresh=True)
 
-    assert entry.issuance_log()[0].narrative_markdown == "## Overview\nDry and warm.", (
+    assert entry.issuance_log()[0].narrative_markdown.startswith(PLACEHOLDER), (
         "the morning issuance must stay the MORNING's, not the last run's"
     )
     assert entry.meta.generated_at_utc == entry.issuance_log()[0].generated_at_utc, (
@@ -2006,7 +2009,7 @@ def test_a_forced_re_run_keeps_the_days_history(tmp_path):
     assert entry.meta.refreshed_at is not None, (
         "a later run IS a narrative refresh; clearing this re-opens the evening gate"
     )
-    assert entry.narrative_markdown == "## Overview\nForced re-run."
+    assert entry.narrative_markdown.startswith(PLACEHOLDER), "the prose is olw write-up's — item 189"
 
 
 def test_a_forced_re_run_snapshots_a_morning_that_was_never_refreshed(tmp_path):
@@ -2015,20 +2018,21 @@ def test_a_forced_re_run_snapshots_a_morning_that_was_never_refreshed(tmp_path):
     entry, _ = _forced_rerun(tmp_path, "## Overview\nSecond run.", after_refresh=False)
 
     assert len(entry.issuance_log()) == 2
-    assert entry.issuance_log()[0].narrative_markdown == "## Overview\nDry and warm."
+    assert entry.issuance_log()[0].narrative_markdown.startswith(PLACEHOLDER)
+
 
 
 def test_a_forced_re_run_is_told_its_verification_is_already_written(tmp_path):
     """Otherwise it writes a fresh morning-style forecast over one its readers
     have already read, and emails it as though it were the day's first."""
-    _, forced = _forced_rerun(tmp_path, "## Overview\nForced re-run.", after_refresh=True)
+    entry, forced = _forced_rerun(tmp_path, "## Overview\nForced re-run.", after_refresh=True)
 
-    system_prompt, user_prompt = forced.system_prompts, forced.user_prompts
-    assert "VERIFICATION IS ALREADY WRITTEN" in system_prompt
-    assert "Evening refresh." not in user_prompt, (
+    narrative = _narrative_prompt_sent(entry, verification_already_written=True)
+    assert "VERIFICATION IS ALREADY WRITTEN" in narrative
+    assert "Evening refresh." not in forced.user_prompts, (
         "the day's published narrative is NOT sent — items 137/138. The "
-        "system prompt still says verification is written, because that is a "
-        "fact about the day; what was published is not."
+        "narrative prompt still says verification is written, because that is "
+        "a fact about the day; what was published is not."
     )
 
 
@@ -2293,7 +2297,7 @@ def test_forecast_re_issues_when_the_day_already_has_an_entry(tmp_path):
     assert result.first_issuance is False
     assert result.newly_verified is None, "a later issuance does not verify"
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
-    assert entry.narrative_markdown == "## Overview\nEvening update."
+    assert entry.narrative_markdown.startswith(PLACEHOLDER), "the prose is olw write-up's — item 189"
     assert scored_predictions(entry) == scored_predictions(before)
     assert entry.meta.refreshed_at is not None
 
@@ -2337,7 +2341,7 @@ def test_forecast_force_overrides_the_skip_but_not_the_predictions(tmp_path):
 
     assert result.first_issuance is False
     after = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
-    assert after.narrative_markdown == "## Overview\nForced."
+    assert after.narrative_markdown.startswith(PLACEHOLDER)
     assert scored_predictions(after) == scored_predictions(entry)
 
 
@@ -2649,7 +2653,14 @@ def today_only_hourly_from_now(**extra_series):
     start = now_in_tz(LOCATION.timezone).replace(minute=0, second=0, microsecond=0)
     times = [(start + timedelta(hours=i)).strftime("%Y-%m-%dT%H:00") for i in range(6)]
     series = {name: values(times) for name, values in extra_series.items()}
-    return {"hourly": {"time": times, "precipitation_gfs_seamless": [0.0] * len(times), **series}}
+    # A temperature series, because the real endpoint always carries one and
+    # since item 189 the served call needs a high and a low from the models.
+    return {"hourly": {
+        "time": times,
+        "precipitation_gfs_seamless": [0.0] * len(times),
+        "temperature_2m_gfs_seamless": [20.0 + i for i in range(len(times))],
+        **series,
+    }}
 
 
 def test_a_failed_forward_window_falls_back_to_the_day_zero_cape(tmp_path, monkeypatch):
@@ -2829,7 +2840,7 @@ def test_a_run_that_lost_the_forward_window_records_it(tmp_path, monkeypatch):
 
 def test_a_clean_run_records_no_degradations(tmp_path):
     result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
-    assert result.log_entry.meta.degradations == []
+    assert _gaps(result.log_entry.meta.degradations) == []
 
 
 def test_a_configured_station_that_did_not_answer_is_recorded(tmp_path, monkeypatch):
@@ -2886,8 +2897,8 @@ def test_a_re_issue_keeps_the_earlier_issuance_s_own_degradation(tmp_path, monke
     result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
     entry = result.log_entry
-    assert entry.meta.degradations == [], "the re-issue was clean and must say so"
-    assert [d.code for d in entry.earlier_issuances[0].degradations] == [
+    assert _gaps(entry.meta.degradations) == [], "the re-issue was clean and must say so"
+    assert _gaps(entry.earlier_issuances[0].degradations) == [
         "hours_ahead_narrowed"
     ], "the morning's own gap must survive being overwritten"
 
@@ -2901,8 +2912,8 @@ def test_a_degraded_re_issue_records_its_own_gap(tmp_path, monkeypatch):
     )
     result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
-    assert [d.code for d in result.log_entry.meta.degradations] == ["hours_ahead_narrowed"]
-    assert result.log_entry.earlier_issuances[0].degradations == []
+    assert _gaps(result.log_entry.meta.degradations) == ["hours_ahead_narrowed"]
+    assert _gaps(result.log_entry.earlier_issuances[0].degradations) == []
 
 
 def test_a_forced_re_run_keeps_its_own_and_the_earlier_gap(tmp_path, monkeypatch):
@@ -2922,8 +2933,8 @@ def test_a_forced_re_run_keeps_its_own_and_the_earlier_gap(tmp_path, monkeypatch
     )
     result = issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
 
-    assert result.log_entry.meta.degradations == []
-    assert [d.code for d in result.log_entry.earlier_issuances[0].degradations] == [
+    assert _gaps(result.log_entry.meta.degradations) == []
+    assert _gaps(result.log_entry.earlier_issuances[0].degradations) == [
         "hours_ahead_narrowed"
     ]
 
@@ -3235,7 +3246,7 @@ def test_a_lost_forward_window_is_tried_once_more_later_in_the_run(tmp_path, mon
     assert calls["n"] == 2, "the second attempt must actually be made"
     # And having succeeded, the run is NOT degraded: the reader gets the full
     # window and the record must not claim otherwise.
-    assert [d.code for d in result.log_entry.meta.degradations] == []
+    assert _gaps(result.log_entry.meta.degradations) == []
 
 
 def test_the_retry_is_not_attempted_when_the_first_one_worked(tmp_path, monkeypatch):
@@ -3383,22 +3394,6 @@ def test_a_stored_summary_carrying_a_figure_never_comes_back(tmp_path):
     # column was absent altogether rather than because the figure was filtered.
     assert "\tskill_profile_summary" in user_prompt, "the block never carried one"
     assert "63% of the time too warm" not in user_prompt
-
-
-def test_a_figureless_summary_is_kept(tmp_path):
-    """A filter, not a delete. The qualitative picture is the whole value and
-    survives a cycle intact — it is only the numbers that go stale."""
-    clean = "At Day+0, strong on precip timing and pressure, with highs running warm."
-    issue(
-        make_deps(tmp_path, llm=summarising_provider(clean)),
-        today=date(2026, 8, 11), dry_run=False,
-    )
-    issue(make_deps(tmp_path), today=date(2026, 8, 12), dry_run=False)
-
-    llm = FakeLLMProvider()
-    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 13), dry_run=False)
-
-    assert clean in llm.calls[-1][1]
 
 
 def test_a_forecast_survives_losing_the_seven_day_outlook(tmp_path):
@@ -3694,284 +3689,6 @@ def test_a_failed_write_up_still_publishes_the_scored_call(tmp_path):
     assert blend[0].high_c is not None
 
 
-@pytest.mark.parametrize("policy, fallback_calls", [("scored_call", 1), ("both_calls", 2)])
-def test_the_configured_fallback_policy_reaches_the_run(tmp_path, policy, fallback_calls):
-    """`llm_fallback_calls` read by a real issuance, not only stored —
-    ROADMAP item 180. With the primary down for both calls, the fallback is
-    sent the judgment alone under `scored_call`, and the day publishes
-    scored and degraded; under `both_calls` it is sent both, as before.
-    Either way the primary, having failed the scored call, is not asked for
-    the narrative, and a degraded day's record names that failure."""
-    import dataclasses
-
-    from openlocalweather.llm.errors import LLMUnavailableError
-    from openlocalweather.llm.fallback import FallbackProvider
-
-    primary = FakeLLMProvider()
-    primary.fail_judgment = LLMUnavailableError("503")
-    primary.fail_narrative = LLMUnavailableError("503")
-    fallback = FakeLLMProvider()
-    deps = dataclasses.replace(
-        make_deps(tmp_path, llm=FallbackProvider([primary, fallback])),
-        location=LOCATION.model_copy(update={"llm_fallback_calls": policy}),
-    )
-
-    issue(deps, today=date(2026, 8, 11), dry_run=False)
-
-    assert len(fallback.calls) == fallback_calls
-    assert len(primary.calls) == 1
-    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
-    degraded = [d for d in entry.meta.degradations or [] if d.code == "narrative_unavailable"]
-    assert bool(degraded) == (policy == "scored_call")
-    if degraded:
-        assert "(fake-model) failed the scored call" in degraded[0].detail
-
-
-def _queue_chain(tmp_path, *, queue_fails_judgment=False):
-    """ROADMAP item 186's chain: Gemini direct, Gemini's queue, the gateway.
-    The direct link refuses both calls, as at 15:01Z on most days since 09-21."""
-    import dataclasses
-
-    from openlocalweather.llm.errors import LLMUnavailableError
-    from openlocalweather.llm.fallback import FallbackProvider
-
-    direct = FakeLLMProvider()
-    direct.fail_judgment = LLMUnavailableError("503")
-    direct.fail_narrative = LLMUnavailableError("503")
-    direct.credential_family = "gemini"
-
-    class Queue(FakeLLMProvider):
-        credential_family = "gemini"
-        poll_delays_s = (480, 480)
-        write_up_poll_delays_s = (480, 480, 840, 1800)
-
-        def generate(self, system_prompt, user_prompt, response_schema):
-            self.schedules = [*getattr(self, "schedules", []), self.poll_delays_s]
-            return super().generate(system_prompt, user_prompt, response_schema)
-
-    queue = Queue()
-    if queue_fails_judgment:
-        # Accepted, and not finished inside the scored call's wait.
-        queue.fail_judgment = LLMUnavailableError("still queued")
-        queue.fail_outcome = "http_200"
-    gateway = FakeLLMProvider()
-    gateway.credential_family = "openai"
-
-    deps = dataclasses.replace(
-        make_deps(tmp_path, llm=FallbackProvider([direct, queue, gateway])),
-        location=LOCATION.model_copy(update={"llm_fallback_calls": "scored_call"}),
-    )
-    return deps, direct, queue, gateway
-
-
-def test_the_queue_may_write_what_the_gateway_may_not(tmp_path):
-    """`scored_call` keeps the GATEWAY off the write-up — it wrote a usable
-    one 1 time in 5 (item 180). Gemini's queue is the same vendor as the
-    first link reached another way, so the rule is keyed on vendor, not on
-    position, or the queue could never write one. Item 186."""
-    deps, direct, queue, gateway = _queue_chain(tmp_path)
-
-    issue(deps, today=date(2026, 8, 11), dry_run=False)
-
-    assert len(direct.calls) == 1, "a link that failed the scored call is not asked again"
-    assert len(queue.calls) == 2, "the queue served the scored call and the write-up"
-    assert gateway.calls == []
-    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
-    assert not [d for d in entry.meta.degradations or [] if d.code == "narrative_unavailable"]
-
-
-def test_the_write_up_waits_on_the_queue_links_longer_schedule(tmp_path):
-    """Nothing replaces a write-up Gemini never sends, so it waits longer than
-    the scored call, which has the gateway behind it. The link's own schedule
-    comes back afterwards: a chain object outlives one run in the app."""
-    deps, direct, queue, gateway = _queue_chain(tmp_path)
-
-    issue(deps, today=date(2026, 8, 11), dry_run=False)
-
-    assert queue.schedules == [(480, 480), (480, 480, 840, 1800)]
-    assert queue.poll_delays_s == (480, 480)
-
-
-def test_the_queue_chain_end_to_end_through_the_real_providers(tmp_path, monkeypatch):
-    """ROADMAP item 186 with nothing faked but HTTP: the chain built by cli.py
-    from config entries, the real providers, the real routing and the real
-    spend ledger. Gemini refuses direct calls; the queue accepts both jobs and
-    finishes them after a few polls, as the design hopes an overload does."""
-    import dataclasses
-    import json
-
-    import requests
-
-    import openlocalweather.llm.gemini_interactions as gi
-    from openlocalweather.cli import _build_llm_provider
-    from openlocalweather.llm.provider import chain_links
-    from openlocalweather.spend import read_ledger
-
-    for name, value in {
-        "GEMINI_API_KEY": "gem-key", "LLM_API_KEY": "sk-test",
-        "LLM_BASE_URL": "https://openrouter.ai/api/v1", "LLM_MODEL": "nex-agi/nex-n2.5-pro:free",
-    }.items():
-        monkeypatch.setenv(name, value)
-
-    chain = _build_llm_provider(providers=[
-        {"kind": "gemini", "max_attempts": 1},
-        {"kind": "gemini-interactions", "name": "gemini-queue", "background": True,
-         "max_attempts": 1, "poll_delays_s": [480, 480],
-         "write_up_poll_delays_s": [480, 480, 840, 1800]},
-        "openai",
-    ])
-    queue = chain_links(chain)[1]
-
-    answer = FakeLLMProvider().response.model_dump()
-    texts = {
-        "job-scored": json.dumps(GeminiJudgmentResponse.model_validate(answer).model_dump(mode="json")),
-        "job-write-up": json.dumps(GeminiNarrativeResponse.model_validate(answer).model_dump(mode="json")),
-    }
-    # How many polls each job needs before it is done.
-    polls_until_done = {"job-scored": 2, "job-write-up": 3}
-    polled = {job: 0 for job in texts}
-    submitted = []
-    sent = []
-
-    class Reply:
-        def __init__(self, status_code, body):
-            self.status_code, self._body = status_code, body
-            self.text = json.dumps(body)
-
-        def json(self):
-            return self._body
-
-    def post(url, **kwargs):
-        sent.append(url)
-        if "generateContent" in url:
-            return Reply(503, {"error": {"code": 503, "message": "high demand"}})
-        if url == gi.INTERACTIONS_URL:
-            job = ("job-scored", "job-write-up")[len(submitted)]
-            submitted.append(job)
-            return Reply(200, {"id": job, "status": "queued"})
-        raise AssertionError(f"the gateway was asked: {url}")
-
-    def get(url, **kwargs):
-        job = url.rsplit("/", 1)[1]
-        polled[job] += 1
-        if polled[job] < polls_until_done[job]:
-            return Reply(200, {"id": job, "status": "queued"})
-        return Reply(200, {"id": job, "status": "completed",
-                           "usage": {"total_input_tokens": 100, "total_output_tokens": 10},
-                           "steps": [{"type": "model_output", "content": [{"type": "text", "text": texts[job]}]}]})
-
-    slept = []
-    monkeypatch.setattr(requests, "post", post)
-    monkeypatch.setattr(requests, "get", get)
-    # One `time` module serves both providers; the direct link makes one
-    # attempt and never sleeps, so every recorded sleep is a poll delay.
-    monkeypatch.setattr(gi.time, "sleep", slept.append)
-
-    deps = dataclasses.replace(
-        make_deps(tmp_path, llm=chain),
-        location=LOCATION.model_copy(update={"llm_fallback_calls": "scored_call"}),
-    )
-    issue(deps, today=date(2026, 8, 11), dry_run=False)
-
-    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
-    assert entry.meta.llm_provider == "GeminiInteractionsProvider"
-    assert entry.meta.narrative_llm_model == "gemini-3.6-flash"
-    assert not [d for d in entry.meta.degradations or [] if d.code == "narrative_unavailable"]
-
-    # One direct attempt, on the scored call only: having failed it, the
-    # direct link is not asked for the write-up.
-    assert sum("generateContent" in u for u in sent) == 1
-    assert submitted == ["job-scored", "job-write-up"]
-    # Each call on its own schedule, and the link's own restored afterwards.
-    assert slept == [480, 480, 480, 480, 840]
-    assert queue.poll_delays_s == (480, 480)
-
-    rows = read_ledger(tmp_path)
-    assert [(r.provider, r.outcome) for r in rows if not r.purpose.endswith("-poll")] == [
-        ("GeminiProvider", "http_503"),
-        ("GeminiInteractionsProvider", "http_200"),
-        ("GeminiInteractionsProvider", "http_200"),
-    ]
-    assert sum(r.purpose.endswith("-poll") for r in rows) == 5, "every poll on the record"
-
-
-def test_the_15_01z_shape_end_to_end_through_the_real_providers(tmp_path, monkeypatch):
-    """ROADMAP item 186, 2026-09-28 15:01Z, with nothing faked but HTTP. The
-    direct link is refused; the queue accepts the scored job and both polls
-    come back empty-bodied 503s; the gateway serves the scored call. Then the
-    queue, slow rather than refused, is asked for the write-up and serves it,
-    and every poll row says what it got back."""
-    import dataclasses
-    import json
-    import re
-
-    import requests_mock
-
-    import openlocalweather.llm.gemini_interactions as gi
-    from openlocalweather.cli import _build_llm_provider
-    from openlocalweather.spend import read_ledger
-
-    for name, value in {
-        "GEMINI_API_KEY": "gem-key", "LLM_API_KEY": "sk-test",
-        "LLM_BASE_URL": "https://openrouter.ai/api/v1", "LLM_MODEL": "nex-agi/nex-n2.5-pro:free",
-    }.items():
-        monkeypatch.setenv(name, value)
-
-    chain = _build_llm_provider(providers=[
-        {"kind": "gemini", "max_attempts": 1},
-        {"kind": "gemini-interactions", "name": "gemini-queue", "background": True,
-         "max_attempts": 1, "poll_delays_s": [480, 480],
-         "write_up_poll_delays_s": [480, 480, 840, 1800]},
-        "openai",
-    ])
-
-    answer = FakeLLMProvider().response.model_dump()
-    judgment = json.dumps(GeminiJudgmentResponse.model_validate(answer).model_dump(mode="json"))
-    write_up = json.dumps(GeminiNarrativeResponse.model_validate(answer).model_dump(mode="json"))
-    slept = []
-    monkeypatch.setattr(gi.time, "sleep", slept.append)
-    # The module's network guard replaces these two. requests_mock intercepts
-    # beneath them and refuses any address not registered, so the guard holds.
-    monkeypatch.setattr(requests, "post", requests.api.post)
-    monkeypatch.setattr(requests, "get", requests.api.get)
-
-    with requests_mock.Mocker() as m:
-        m.post(re.compile("generateContent"), status_code=503,
-               json={"error": {"code": 503, "message": "high demand"}})
-        m.post(gi.INTERACTIONS_URL, [
-            {"json": {"id": "job-scored", "status": "in_progress"}},
-            {"json": {"id": "job-write-up", "status": "in_progress"}},
-        ])
-        m.get(gi.INTERACTION_URL.format(id="job-scored"), status_code=503, text="")
-        m.get(gi.INTERACTION_URL.format(id="job-write-up"), [
-            {"json": {"id": "job-write-up", "status": "in_progress"}},
-            {"json": {"id": "job-write-up", "status": "completed",
-                      "usage": {"total_input_tokens": 100, "total_output_tokens": 10},
-                      "steps": [{"type": "model_output",
-                                 "content": [{"type": "text", "text": write_up}]}]}},
-        ])
-        m.post("https://openrouter.ai/api/v1/chat/completions", json={
-            "model": "dots-studio/dots-3-note-preview:free",
-            "choices": [{"message": {"role": "assistant", "content": judgment},
-                         "finish_reason": "stop"}],
-        })
-
-        deps = dataclasses.replace(
-            make_deps(tmp_path, llm=chain),
-            location=LOCATION.model_copy(update={"llm_fallback_calls": "scored_call"}),
-        )
-        issue(deps, today=date(2026, 8, 11), dry_run=False)
-
-    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
-    assert entry.meta.llm_provider == "OpenAICompatProvider"
-    assert entry.meta.narrative_llm_model == "gemini-3.6-flash"
-    assert not [d for d in entry.meta.degradations or [] if d.code == "narrative_unavailable"]
-    assert slept == [480, 480, 480, 480]
-
-    polls = [r.outcome for r in read_ledger(tmp_path) if r.purpose.endswith("-poll")]
-    assert polls == ["http_503", "http_503", "http_200", "http_200"]
-
-
 def _live_bad_morning(tmp_path, monkeypatch, gemini_answers):
     """The deployment's OWN chain, allowances and waits through a morning
     whose Gemini answers are `gemini_answers` in order: 503 or a JSON text.
@@ -4035,62 +3752,30 @@ def _answers():
     )
 
 
-def test_the_live_config_waits_out_a_bad_morning(tmp_path, monkeypatch):
-    """One run a day, 2026-09-30: each call tries again after 3 minutes, and
-    the write-up waits 2 minutes after the scored call before it starts."""
-    judgment, write_up = _answers()
 
-    entry, slept, gemini = _live_bad_morning(tmp_path, monkeypatch, [503, judgment, 503, write_up])
+def test_the_live_config_asks_the_models_call_once(tmp_path, monkeypatch):
+    """One attempt per link for the model's own call — item 189. The live
+    link's 180/420 s schedule belongs to the write-up, in `olw write-up`;
+    here a refusal hands over at once and the gateway serves the hidden row
+    while the page shows code's call."""
+    entry, slept, gemini = _live_bad_morning(tmp_path, monkeypatch, [503])
 
-    assert slept == [180, 120, 180]
-    assert entry.meta.narrative_llm_model == "gemini-3.6-flash"
-    assert not [d for d in entry.meta.degradations or [] if d.code == "narrative_unavailable"]
-    assert len(gemini) == 4
-
-
-def test_the_live_config_leaves_a_refused_morning_to_the_second_chance(tmp_path, monkeypatch):
-    """Three refusals over ten minutes: the gateway takes the scored call and
-    the write-up is not asked of a Gemini that just refused, which leaves it
-    to `olw write-up` an hour later. Three Gemini calls, not six."""
-    entry, slept, gemini = _live_bad_morning(tmp_path, monkeypatch, [503, 503, 503])
-
-    # The write-up's pause is still taken, though no link will be asked:
-    # two minutes, and no request.
-    assert slept == [180, 420, 120]
-    assert [d for d in entry.meta.degradations or [] if d.code == "narrative_unavailable"]
-    assert len(gemini) == 3
+    assert slept == [], "no retry wait inside the run"
+    assert len(gemini) == 1
+    assert entry.served_call is not None and entry.call_source == "consensus"
+    assert entry.meta.llm_call_outcome == "served" and entry.meta.llm_provider == "OpenAICompatProvider"
+    assert DEGRADATION_NARRATIVE in {d.code for d in entry.meta.degradations}, "the write-up is pending"
 
 
-def test_the_gateway_still_takes_the_scored_call_when_the_queue_cannot(tmp_path):
-    """And the queue, slow rather than refused, still writes the write-up.
-    Until item 186's fix on 2026-09-28 it was barred, and that day's 15:01Z
-    write-up was never asked."""
-    deps, direct, queue, gateway = _queue_chain(tmp_path, queue_fails_judgment=True)
 
-    issue(deps, today=date(2026, 8, 11), dry_run=False)
+def test_the_live_config_stores_the_models_row_when_gemini_answers(tmp_path, monkeypatch):
+    judgment, _ = _answers()
 
-    assert len(gateway.calls) == 1, "the gateway served the scored call only"
-    assert len(queue.calls) == 2, "the slow queue was asked for the write-up"
-    assert queue.schedules[-1] == (480, 480, 840, 1800), "on the write-up's own schedule"
-    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
-    assert not [d for d in entry.meta.degradations or [] if d.code == "narrative_unavailable"]
+    entry, slept, gemini = _live_bad_morning(tmp_path, monkeypatch, [judgment])
 
-
-def test_a_failed_judgment_call_still_aborts_the_whole_run(tmp_path):
-    """The degradation above is deliberately ONE-SIDED.
-
-    There is nothing to publish without the scored call — a page of prose
-    around numbers that were never decided is not a degraded forecast, it is
-    an invented one. So the judgment call failing aborts exactly as it did
-    before the split.
-    """
-    llm = FakeLLMProvider()
-    llm.fail_judgment = LLMResponseError("Gemini request failed after 4 attempts")
-
-    with pytest.raises(LLMResponseError):
-        issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
-
-    assert log_store.read_log_entry(tmp_path, date(2026, 8, 11)) is None
+    assert slept == [] and len(gemini) == 1
+    assert entry.meta.llm_model == "gemini-3.6-flash"
+    assert [p for p in scored_predictions(entry).day0 if p.model == BLEND_MODEL_ID], "the hidden row"
 
 
 def test_a_first_issuance_records_that_it_had_nothing_to_move_from(tmp_path):
@@ -4213,7 +3898,7 @@ def test_force_spends_whatever_the_signals_say(tmp_path):
 
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert entry.meta.information_moved.guidance_is_newer is False
-    assert len(read_ledger(tmp_path)) == before + 2, "the refresh still made both calls"
+    assert len(read_ledger(tmp_path)) == before + 1, "the refresh still made the model's call"
     assert entry.meta.refreshed_at is not None, "and still published"
 
 
@@ -4716,7 +4401,7 @@ def test_every_forecast_run_files_under_one_purpose(tmp_path):
     issue(make_deps(tmp_path, llm=later_llm), today=date(2026, 8, 11), dry_run=False)
 
     purposes = [e.purpose for e in read_ledger(tmp_path)]
-    assert purposes == ["forecast"] * 4, (
+    assert purposes == ["forecast"] * 2, (
         f"a later run must file under the same label as the first: {purposes}"
     )
 
@@ -5014,46 +4699,32 @@ def test_a_sound_phrase_is_passed_through_untouched(tmp_path, monkeypatch):
     ]
 
 
-def test_an_overlong_tile_value_is_recorded_as_a_finding(tmp_path, monkeypatch):
+
+def test_an_overlong_tile_value_is_recorded_as_a_finding(tmp_path):
     """ROADMAP item 7, and the wiring a mutation pass found untested.
 
-    `overlong_display_values` had vectors on both sides and nothing proved the
-    RUN consulted it: deleting the call from `_narrative_findings` left all
-    1,503 tests green. The check is only worth having if what it finds reaches
-    the record, so this drives the pipeline rather than the function.
-
-    The value is the real one published on 2026-09-20, 149 characters of prose
-    in a box the page renders as a tile.
+    The labels are code's since item 189 and stay inside the tile's 48
+    characters by construction, so the check is driven on the function with
+    the real value published on 2026-09-20 — 149 characters of prose in a
+    box the page renders as a tile — and the run is shown to consult it: a
+    clean run records an empty list, never None.
     """
-    monkeypatch.setattr(
-        pipeline.metar_fetch,
-        "observed_station_data",
-        lambda icao, start, end, tz, data_dir=None, on_fallback=None: ({}, {}),
-    )
     overlong = (
         "Dry conditions expected today with zero measurable accumulation, though "
         "scattered thunderstorm activity remains possible late afternoon into evening."
     )
-    llm = FakeLLMProvider()
-    llm.response = llm.response.model_copy(
-        update={
-            "today_properties": llm.response.today_properties.model_copy(
-                update={"rain_expected": overlong}
-            )
-        }
+    response = FakeLLMProvider().response
+    response = response.model_copy(
+        update={"today_properties": response.today_properties.model_copy(update={"rain_expected": overlong})}
     )
-    deps = make_deps(tmp_path, llm=llm)
-    issue(deps, today=date(2026, 8, 11), dry_run=False)
-
-    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
-    found = [f for f in (entry.meta.narrative_findings or []) if f.kind == CLAIM_DISPLAY_TOO_LONG]
-    assert len(found) == 1, "the tile check never reached the run"
+    found = [f for f in pipeline._narrative_findings(response, date(2026, 8, 11)) if f.kind == CLAIM_DISPLAY_TOO_LONG]
+    assert len(found) == 1
     assert found[0].quote == overlong
     assert "149 characters" in found[0].detail
-    # THE RUN STILL PUBLISHES. This is a layout complaint, and a reader would
-    # rather have an overlong tile than no forecast — the same call the
-    # weekday check carries.
-    assert entry.rain_expected == overlong
+
+    issue(make_deps(tmp_path), today=date(2026, 8, 11), dry_run=False)
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry.meta.narrative_findings == [], "checked by the run, and clean"
 
 
 def test_a_tile_value_that_fits_leaves_no_finding(tmp_path, monkeypatch):
@@ -5214,16 +4885,19 @@ def test_the_tiles_anchors_survive_the_entry_that_is_written(tmp_path, monkeypat
 def test_the_index_halves_are_on_the_day_record(tmp_path, monkeypatch):
     """UV and AQI reach the record as a number, a word and a joined display.
 
-    THE NUMBER IS STILL THE MODEL'S — its blended call across the models and
-    the ground sensors, which is a judgement about which source to trust.
-    THE WORD IS CODE'S, looked up in `scales.py` from the WHO and US EPA
-    tables. The archive is why: 41 stored UV values in 4 shapes and 39 AQI
+    THE NUMBER IS CODE'S SINCE ITEM 189 — the day's peak of the CAMS
+    `us_aqi` series, as the judgment prompt defined the field. THE WORD IS
+    CODE'S too, looked up in `scales.py` from the WHO and US EPA tables. The archive is why: 41 stored UV values in 4 shapes and 39 AQI
     values in TWENTY, ten of those a range rather than a number.
 
     Asserted off disk rather than on the model, because that is the check the
     anchor fields did not have when they spent a day being silently discarded
     by pydantic — see `test_the_tiles_anchors_survive_the_entry_that_is_written`.
     """
+    monkeypatch.setattr(
+        open_meteo, "fetch_air_quality",
+        lambda *a, **k: {"hourly": {"time": ["a", "b", "c"], "us_aqi": [60, 85, 70]}},
+    )
     deps = make_deps(tmp_path)
     issue(deps, today=date(2026, 8, 11))
 
@@ -5339,13 +5013,18 @@ def test_the_entry_carries_its_composed_tiles(tmp_path, monkeypatch):
     assert stored.tiles == compose_tiles(stored.model_dump(mode="json"), metric=True)
     assert [t["label"] for t in stored.tiles][:2] == ["High / Low", "Rain"]
 
-    # a RE-ISSUE recomposes rather than inheriting
-    deps.llm_provider.response.today_properties.rain_expected = "Heavy Rain All Day"
+    # a RE-ISSUE recomposes rather than inheriting: wet guidance flips the
+    # code's rain label (item 189), and the tile follows the merged entry.
+    wet = hourly_fixture()
+    for model in MODELS:
+        wet["hourly"][f"precipitation_{model}"] = [0.0] * 12 + [1.5] * 12
+    monkeypatch.setattr(open_meteo, "fetch_forecast_hourly_today", lambda *a, **k: wet)
     issue(deps, today=date(2026, 8, 11))
 
     reissued = log_store.read_log_entry(deps.data_dir, date(2026, 8, 11))
+    assert reissued.rain_expected != stored.rain_expected
     rain = next(t for t in reissued.tiles if t["label"] == "Rain")
-    assert rain["lines"][0]["text"] == "Heavy Rain All Day", reissued.tiles
+    assert rain["lines"][0]["text"] == reissued.rain_expected, reissued.tiles
 
 
 def test_the_direction_block_reaches_the_prompt_with_its_anchors(tmp_path, monkeypatch):
@@ -5559,9 +5238,9 @@ def test_the_entry_names_the_link_that_served_not_the_one_that_failed(tmp_path):
 
     assert entry.meta.llm_model == "nex-agi/nex-n2.5-pro:free"
     assert entry.meta.llm_provider == "FakeLLMProvider"
-    # Both calls fell through to the same link here, so the prose is credited
-    # to it too. The fields differ only when the chain moves between calls.
-    assert entry.meta.narrative_llm_model == "nex-agi/nex-n2.5-pro:free"
+    # The prose is `olw write-up`'s since item 189, so nothing is credited
+    # for it by the run.
+    assert entry.meta.narrative_llm_model is None
 
 
 def test_the_entry_and_the_ledger_name_the_model_the_gateway_served(tmp_path):
@@ -5593,7 +5272,7 @@ def test_the_entry_and_the_ledger_name_the_model_the_gateway_served(tmp_path):
 
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert entry.meta.llm_model == served
-    assert entry.meta.narrative_llm_model == served
+    assert entry.meta.narrative_llm_model is None, "the write-up is another process's — item 189"
 
     from openlocalweather.spend import read_ledger
 
@@ -5700,11 +5379,11 @@ def test_yesterdays_failures_on_one_vendor_do_not_refuse_todays_run(tmp_path):
     )
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
 
-    # Gemini's last call took the scored judgment; its refusal on the next
-    # handed the write-up on. Item 171 names each call's server separately.
+    # Gemini's last call took the model's judgment — one call since item 189,
+    # so its one remaining call covers the run.
     assert entry.meta.llm_model == "gemini-3.6-flash"
-    assert entry.meta.narrative_llm_model == "nex-agi/nex-n2.5-pro:free"
-    assert not entry.meta.degradations
+    assert entry.meta.narrative_llm_model is None
+    assert _gaps(entry.meta.degradations) == []
 
 
 def test_a_vendor_at_its_own_limit_hands_the_run_to_the_next(tmp_path):
@@ -5724,7 +5403,7 @@ def test_a_vendor_at_its_own_limit_hands_the_run_to_the_next(tmp_path):
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
 
     assert entry.meta.llm_model == "nex-agi/nex-n2.5-pro:free"
-    assert entry.meta.narrative_llm_model == "nex-agi/nex-n2.5-pro:free"
+    assert entry.meta.narrative_llm_model is None
     assert gemini.calls == [], "refused before a request, so never reached"
 
 
@@ -5759,23 +5438,26 @@ def test_every_vendor_running_out_mid_run_still_publishes_the_scored_call(tmp_pa
     assert DEGRADATION_NARRATIVE in {d.code for d in entry.meta.degradations or []}
 
 
-def test_a_chain_with_no_calls_left_anywhere_refuses_to_start(tmp_path):
-    """The loud path, unchanged: when no link can cover the run, it is refused
-    before any vendor is asked — the guard stops the call, not just counts."""
+
+def test_a_chain_with_no_calls_left_anywhere_publishes_without_the_models_row(tmp_path):
+    """The guard stops the call, not just counts: when no link can cover the
+    run, no vendor is asked. Since item 189 that costs the model's hidden row
+    and nothing else — the forecast is code's and is written."""
     from openlocalweather.llm.fallback import FallbackProvider
-    from openlocalweather.spend import SpendCapExceeded
 
     gemini = _link("gemini-3.6-flash")
     openrouter = _link("nex-agi/nex-n2.5-pro:free")
     _spent(tmp_path, gemini, 20)
     _spent(tmp_path, openrouter, 20)
 
-    with pytest.raises(SpendCapExceeded):
-        issue(
-            make_deps(tmp_path, llm=FallbackProvider([gemini, openrouter])),
-            today=date(2026, 8, 11), dry_run=False,
-        )
+    issue(
+        make_deps(tmp_path, llm=FallbackProvider([gemini, openrouter])),
+        today=date(2026, 8, 11), dry_run=False,
+    )
     assert gemini.calls == [] and openrouter.calls == []
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry is not None and entry.meta.llm_call_outcome.startswith("cap: ")
+
 
 
 def test_the_pre_flight_holds_each_link_to_its_own_ceiling(tmp_path):
@@ -5784,33 +5466,34 @@ def test_the_pre_flight_holds_each_link_to_its_own_ceiling(tmp_path):
 
     Gemini's own ceiling is 2, OpenRouter's 1, the deployment's 20. Reading
     the deployment's number for every link, the pre-flight saw 38 calls left
-    and started a run that had one. That mutation SURVIVED both suites until
+    and started a run that had none. That mutation SURVIVED both suites until
     this test existed: the per-link ceiling reached the hook and nothing
-    checked it reached the pre-flight.
+    checked it reached the pre-flight. Since item 189 the refusal is recorded
+    on the entry rather than raised.
     """
     from openlocalweather.llm.fallback import FallbackProvider
-    from openlocalweather.spend import SpendCapExceeded
 
     gemini = _link("gemini-3.6-flash", limit=2)
     openrouter = _link("nex-agi/nex-n2.5-pro:free", limit=1)
     _spent(tmp_path, gemini, 2)
+    _spent(tmp_path, openrouter, 1)
 
-    with pytest.raises(SpendCapExceeded, match="refused before starting"):
-        issue(
-            make_deps(tmp_path, llm=FallbackProvider([gemini, openrouter])),
-            today=date(2026, 8, 11), dry_run=False,
-        )
+    issue(
+        make_deps(tmp_path, llm=FallbackProvider([gemini, openrouter])),
+        today=date(2026, 8, 11), dry_run=False,
+    )
     assert gemini.calls == [] and openrouter.calls == []
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry.meta.llm_call_outcome.startswith("cap: ")
+    assert "refused before starting" in entry.meta.llm_call_outcome
+
 
 
 def test_a_run_may_be_split_across_links_with_one_call_each(tmp_path):
     """Why the pre-flight SUMS the links rather than asking for one link that
-    could carry the whole run: a chain splits a run naturally. Each vendor has
-    exactly one call left; Gemini spends its last on the judgment, is refused
-    on the write-up, and OpenRouter spends ITS last on that. A complete
-    forecast, no degradation — and asking for a single link with two left
-    would have refused it before it began.
-    """
+    could carry the whole run. Since item 189 a run is one call, so a chain
+    whose links each have one left spends Gemini's on the model's judgment
+    and asks OpenRouter for nothing."""
     from openlocalweather.llm.fallback import FallbackProvider
 
     gemini = _link("gemini-3.6-flash", limit=2)
@@ -5825,5 +5508,167 @@ def test_a_run_may_be_split_across_links_with_one_call_each(tmp_path):
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
 
     assert entry.meta.llm_model == "gemini-3.6-flash"
-    assert entry.meta.narrative_llm_model == "nex-agi/nex-n2.5-pro:free"
-    assert not entry.meta.degradations
+    assert entry.meta.narrative_llm_model is None
+    assert openrouter.calls == []
+    assert _gaps(entry.meta.degradations) == []
+
+
+# --- ROADMAP item 189: publish before asking ---------------------------------
+#
+# The served call is code's and the entry is written before any model is
+# asked for prose. The model's own judgment is optional, one attempt per
+# link, a hidden scored row when it answers.
+
+
+def _judgment_only(llm: FakeLLMProvider) -> list[str]:
+    """The schemas the run asked the provider for, in order."""
+    schemas: list[str] = []
+    real = llm.generate
+
+    def generate(system_prompt, user_prompt, response_schema):
+        schemas.append(response_schema.__name__)
+        return real(system_prompt, user_prompt, response_schema)
+
+    llm.generate = generate
+    return schemas
+
+
+def test_a_refused_judgment_still_writes_the_day_from_code(tmp_path):
+    """The hole item 189 closes: until 2026-10-01 a judgment refused everywhere
+    left no entry, no model rows and no code-blend row, though extraction
+    had already run."""
+    llm = FakeLLMProvider()
+    llm.fail_judgment = LLMResponseError("Gemini request failed after 1 attempt: HTTP 503")
+
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry is not None, "the day must be written whatever the model did"
+    # A fresh record: the blend declines, so the consensus served.
+    assert entry.call_source == "consensus"
+    served = entry.served_call["today_properties"]
+    assert entry.temp_high_c == served["temp_high_c"] and entry.rain_expected == served["rain_expected"]
+    day0 = scored_predictions(entry).day0
+    assert [p.model for p in day0 if p.model == BLEND_MODEL_ID] == [], "no row for a call that was not served"
+    assert {p.model for p in day0} >= set(MODELS), "the models' rows are stored regardless"
+    assert entry.meta.llm_call_outcome.startswith("refused: ")
+    assert (entry.meta.llm_provider, entry.meta.llm_model) == ("code", CODE_BLEND_MODEL_ID)
+    assert DEGRADATION_NARRATIVE in {d.code for d in entry.meta.degradations}, "the write-up is pending"
+
+
+def test_no_provider_at_all_still_publishes(tmp_path):
+    """A keyless fork — `llm_providers: []`, or a key that lapsed."""
+    from dataclasses import replace
+
+    deps = replace(make_deps(tmp_path), llm_provider=None)
+    result = issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry is not None and result.first_issuance
+    assert entry.meta.llm_call_outcome == "not configured"
+    assert entry.call_source == "consensus"
+    assert entry.narrative_markdown, "the placeholder stands until the write-up lands"
+    # The archive still holds the prompts a later write-up rebuilds from.
+    assert (tmp_path / "prompts" / "2026-08-11.json").exists()
+
+
+def test_the_run_asks_for_the_judgment_once_and_never_the_narrative(tmp_path):
+    llm = FakeLLMProvider()
+    llm.max_attempts = 3
+    seen_attempts: list[int] = []
+    real = llm.generate
+
+    def generate(system_prompt, user_prompt, response_schema):
+        seen_attempts.append(llm.max_attempts)
+        return real(system_prompt, user_prompt, response_schema)
+
+    llm.generate = generate
+    schemas = _judgment_only(llm)
+    llm.generate = generate  # the schema recorder wrapped the attempt recorder; keep ours outermost
+
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=True)
+
+    assert len(llm.calls) == 1, "one call: the judgment; the write-up is another process's"
+    assert "GeminiNarrativeResponse" not in schemas
+    assert seen_attempts == [1], "one attempt per link while the judgment is asked"
+    assert llm.max_attempts == 3, "and the link's own schedule is put back"
+
+
+def test_the_models_call_is_a_hidden_row_and_the_published_numbers_are_codes(tmp_path):
+    llm = FakeLLMProvider()  # answers 27.0 / 18.0, dry
+
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    # The fixture's hourly temperatures run 18 + h/3, so the models' high is
+    # 25.7 and the fake's 27.0 is not what the page shows.
+    assert entry.temp_high_c == 25.7 and entry.temp_low_c == 18.0
+    blend = [p for p in scored_predictions(entry).day0 if p.model == BLEND_MODEL_ID]
+    assert len(blend) == 1 and blend[0].high_c == 27.0, "the model's own call, scored as before"
+    assert entry.meta.llm_call_outcome == "served"
+    assert entry.meta.llm_model == "fake-model"
+    # And never shown: the prompt the model read carried neither hidden row.
+    system_prompt, user_prompt = llm.calls[-1]
+    assert BLEND_MODEL_ID not in user_prompt and CODE_BLEND_MODEL_ID not in user_prompt
+
+
+def test_the_served_call_is_the_blend_where_the_record_allows(tmp_path, monkeypatch):
+    """Twelve days, as the code-blend test above: once an input has ten
+    verified checks the blend calls, and the page shows ITS numbers, not the
+    consensus's and not the model's."""
+    from dataclasses import replace
+
+    def _whole_range(lat, lon, start, end, tz):
+        hours = [archive_fixture(start + timedelta(days=i))["hourly"] for i in range((end - start).days + 1)]
+        return {"hourly": {k: [v for h in hours for v in h[k]] for k in hours[0]}}
+
+    monkeypatch.setattr(open_meteo, "fetch_archive_range", _whole_range)
+
+    def deps():
+        return replace(make_deps(tmp_path), location=LOCATION.model_copy(update={"max_llm_calls_per_24h": 100}))
+
+    days = [date(2026, 8, 11) + timedelta(days=i) for i in range(12)]
+    for d in days:
+        issue(deps(), today=d, dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, days[-1])
+    assert entry.call_source == "code_blend"
+    blend = [p for p in scored_predictions(entry).day0 if p.model == CODE_BLEND_MODEL_ID]
+    assert len(blend) == 1
+    served = entry.served_call["today_properties"]
+    assert (served["rain"], served["rain_probability_pct"]) == (blend[0].rain, blend[0].rain_probability_pct)
+    assert blend[0].wind_kmh == entry.peak_wind_primary_kmh, "the gust tomorrow scores is the gust the reader saw"
+
+
+def test_the_models_call_yields_the_last_call_to_the_write_up(tmp_path):
+    """The budget holds one call. The write-up is asked by another process
+    after the publish and is the one thing the model does that code cannot,
+    so the hidden row is skipped rather than spend it — `calls_needed` is
+    `LLM_CALLS_PER_FORECAST`, not 1."""
+    from dataclasses import replace
+
+    llm = _link("fake-model")
+    _spent(tmp_path, llm, 4)
+    deps = replace(make_deps(tmp_path, llm=llm), location=LOCATION.model_copy(update={"max_llm_calls_per_24h": 5}))
+
+    issue(deps, today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert llm.calls == [], "one call left: the write-up's"
+    assert entry.meta.llm_call_outcome.startswith("cap: ")
+    assert [p for p in scored_predictions(entry).day0 if p.model == BLEND_MODEL_ID] == []
+
+
+def test_a_cap_refusal_drops_the_models_row_not_the_day(tmp_path):
+    """The loud path used to refuse the whole run; with the forecast code's,
+    a cap with no headroom costs the hidden row and nothing else."""
+    llm = _link("fake-model", limit=20)
+    _spent(tmp_path, llm, 20)  # the link's own ceiling, already spent
+
+    issue(make_deps(tmp_path, llm=llm), today=date(2026, 8, 11), dry_run=False)
+
+    entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
+    assert entry is not None
+    assert entry.meta.llm_call_outcome.startswith("cap: ")
+    assert llm.calls == [], "refused before a request was sent"
+    assert [p for p in scored_predictions(entry).day0 if p.model == BLEND_MODEL_ID] == []

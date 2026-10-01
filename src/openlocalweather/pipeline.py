@@ -52,10 +52,10 @@ subscribers.
 
 from __future__ import annotations
 
-import hashlib
 import sys
 import time
 from collections import Counter
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field, replace
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -80,6 +80,7 @@ from openlocalweather.instability import (
 from openlocalweather.wind import consensus_direction, describe_wind_shift, describe_wind_timeline
 from openlocalweather.calibration import calibrated_gust_consensus, gust_corrections
 from openlocalweather.code_blend import blend_inputs, code_blend_predictions, window_code_blend
+from openlocalweather.code_call import ServedCall, served_call, verification_summary
 from openlocalweather.comparison import (
     comparison_for_prompt,
     compute_day_over_day,
@@ -97,10 +98,8 @@ from openlocalweather.tiles import (
 )
 from openlocalweather.llm.provider import (
     chain_links,
-    http_outcome,
     provider_identity,
     resolve_active,
-    resolve_served,
     served_identity,
 )
 from openlocalweather.phrasing import phrase_defect
@@ -157,6 +156,7 @@ from openlocalweather.defaults import (
     models_visible_to_the_forecaster,
     note_names_a_hidden_model,
     scored_models,
+    CODE_BLEND_MODEL_ID,
 )
 from openlocalweather.extract import (
     extract_window_predictions,
@@ -169,7 +169,6 @@ from openlocalweather.fetch import open_meteo
 from openlocalweather.fetch import waqi as waqi_fetch
 from openlocalweather.fetch.bulletin import BulletinFetcher, NullBulletinFetcher
 from openlocalweather.llm import forecast_call
-from openlocalweather.llm.forecast_call import generate_forecast
 from openlocalweather.llm.prompt_size import (
     blocks_that_grew,
     measure_prompt,
@@ -193,10 +192,11 @@ from openlocalweather.spend import (
     complete_attempt,
     record_attempt,
     record_poll,
+    SpendCapExceeded,
 )
 from openlocalweather.synoptic import summarize_synoptic
-from openlocalweather.llm.errors import LLMUnavailableError
-from openlocalweather.llm.provider import FallbackCalls, LLMProvider, ResponseMeta
+from openlocalweather.llm.errors import LLMResponseError
+from openlocalweather.llm.provider import LLMProvider, ResponseMeta, chain_links, served_identity
 from openlocalweather.llm.schema import (
     GeminiForecastResponse,
     GeminiJudgmentResponse,
@@ -278,7 +278,9 @@ class EmailSender(Protocol):
 class PipelineDeps:
     location: LocationConfig
     data_dir: Path
-    llm_provider: LLMProvider
+    # None when the deployment names no provider or holds no key — ROADMAP
+    # item 189. The forecast is code's; the model's call is optional.
+    llm_provider: LLMProvider | None
     public_webpage_url: str
     waqi_token: str = ""
     bulletin_fetcher: BulletinFetcher = field(default_factory=NullBulletinFetcher)
@@ -478,50 +480,6 @@ def _nullable_fields(holder: dict) -> list[str] | None:
     return list(reported)
 
 
-def _combined_meta(judgment: ResponseMeta, narrative: ResponseMeta) -> ResponseMeta:
-    """One record for a forecast that now takes two calls — ROADMAP item 59.3.
-
-    `nullable_fields` is the UNION of what either call was allowed to omit,
-    which keeps the field answering the question it was added for: which
-    values was the model permitted not to give. The two schemas share no
-    field names — one holds the scored call, the other only prose — so the
-    union loses nothing and needs no disambiguation.
-
-    `response_schema_sha256` hashes the two schema hashes together, in call
-    order, so a change to EITHER schema moves it. Hashing only the judgment
-    call's would leave the narrative schema unrecorded, and it is the one
-    that makes the seam structural.
-
-    Tokens are summed because they are spend and the run spent both.
-    `finish_reason` is the narrative call's: a judgment call that ended any
-    other way raises inside the provider (see gemini.py, where the stop
-    reason is checked before the content is read), so a stored entry cannot
-    carry an abnormal one from the first call — it would have no entry.
-    """
-    both = [f for f in (judgment.nullable_fields, narrative.nullable_fields) if f is not None]
-    nullable = tuple(sorted({path for fields in both for path in fields})) if both else None
-
-    hashes = [judgment.response_schema_sha256, narrative.response_schema_sha256]
-    if any(h is None for h in hashes):
-        combined_sha = None
-    else:
-        combined_sha = hashlib.sha256("\n".join(hashes).encode("utf-8")).hexdigest()
-
-    def _sum(a: int | None, b: int | None) -> int | None:
-        if a is None and b is None:
-            return None
-        return (a or 0) + (b or 0)
-
-    return ResponseMeta(
-        finish_reason=narrative.finish_reason,
-        input_tokens=_sum(judgment.input_tokens, narrative.input_tokens),
-        output_tokens=_sum(judgment.output_tokens, narrative.output_tokens),
-        thought_tokens=_sum(judgment.thought_tokens, narrative.thought_tokens),
-        response_schema_sha256=combined_sha,
-        nullable_fields=nullable,
-    )
-
-
 def _narrative_findings(llm_response, today: date) -> list[NarrativeFinding]:
     """What the published prose asserts that a machine could check and found
     false — see claims.py.
@@ -554,234 +512,118 @@ def _narrative_findings(llm_response, today: date) -> list[NarrativeFinding]:
     ]
 
 
-class NarrativeLinkRefused(LLMUnavailableError):
-    """A chain link the narrative may not use this run — ROADMAP item 180.
-
-    Raised from the before-attempt hook, before any request or ledger row, as
-    an LLMUnavailableError so the chain moves on exactly as it would past a
-    link that failed; with no link left the narrative degrades. Its message
-    carries what happened to the links before it, because the chain records
-    the LAST link's error and this is usually the last one — on 2026-09-25
-    the record said only that the fallback was not asked, and the four
-    Gemini 503s that caused it were on stderr alone.
-    """
-
-
-def _link_name(link) -> str:
-    return f"{type(link).__name__} ({getattr(link, 'model', 'unknown')})"
-
-
-def _attempt_summary(outcomes: list[str]) -> str:
-    """The attempts one link made in one call, in the ledger's own words."""
-    if not outcomes:
-        return "no request completed"
-
-    return ", ".join(
-        f"{outcome} x{count}" if count > 1 else outcome
-        for outcome, count in Counter(outcomes).items()
-    )
-
-
 # The one outcome that means the service took the request. Spec-derived.
-HTTP_OK = 200
 
 
-def _refused_by_the_service(link, outcomes: list[str]) -> bool:
-    """Whether a link that failed the scored call failed it at the SERVICE.
+# What a run says about the model's own call — ROADMAP item 189, stored as
+# `meta.llm_call_outcome`. Facts, not judgements: "served", "not configured",
+# or the refusal or the cap, in the provider's own words.
+LLM_CALL_SERVED = "served"
+LLM_CALL_NOT_CONFIGURED = "not configured"
+# `meta.llm_provider` on a day the served call was code's — item 189.
+CALL_BY_CODE = "code"
 
-    ROADMAP item 186. Item 180 bars such a link from the write-up because
-    Gemini's four 503s on 2026-09-25 were followed by four more on it. That
-    holds for a refusal -- any attempt that did not come back HTTP 200 -- and
-    for a queued job the service itself gave up on. It does not hold for a
-    link our own ceiling refused, which sent nothing, nor for a queued job
-    accepted and unfinished at the end of the scored call's wait: on
-    2026-09-28 15:01Z both were barred, and the write-up the queue waits an
-    hour for was never asked.
+# What a later issuance records for `yesterday_verification` — the same text
+# its prompt carries, because a later issuance verified nothing and the
+# composer keeps the first run's note regardless.
+NO_NEW_VERIFICATION_NOTE = "No new verification this run — same-day re-issue; see the first issuance."
+
+# THE PENDING MARKER'S WORDS — item 189. `DEGRADATION_NARRATIVE` used to mean
+# the rendering call failed after the judgment succeeded; it now means the
+# write-up has not been asked for yet, because the forecast is published
+# before any prose is. `olw write-up` keys on the code and removes it when
+# the prose lands. The reader-facing summary says what is true: the figures
+# are decided and the discussion follows. Not an apology.
+NARRATIVE_PENDING_SUMMARY = (
+    "Today's figures are decided and published. The written discussion "
+    "follows when a model answers; the numbers are the same ones this "
+    "forecast is scored on."
+)
+NARRATIVE_PENDING_DETAIL = (
+    "The write-up is asked for after the forecast is committed and "
+    "published (ROADMAP item 189), by `olw write-up`, from the archived "
+    "prompts and the stored call. Until it lands the entry carries the "
+    "placeholder."
+)
+
+
+@dataclass
+class _JudgmentCall:
+    """What the model's optional call produced — see `_optional_judgment`."""
+
+    judgment: GeminiJudgmentResponse | None
+    served: dict[str, tuple[str, str]]
+    outcome: str
+    last_response: dict
+
+
+@contextmanager
+def _one_attempt_per_link(provider):
+    """ONE REQUEST PER LINK for the model's optional judgment — item 189.
+
+    Each link carries its own retry schedule for the write-up, where minutes
+    of waiting buy something (item 186: a refusal cleared after 32 s once and
+    after 7 min once). Here nothing waits for the answer: the served call is
+    already decided and the entry is about to be written, so a refused link
+    hands over at once and the chain falls through link by link. The
+    schedules are put back afterwards because the provider objects are the
+    deployment's and this is one call's policy.
     """
-    accepted = http_outcome(HTTP_OK)
-    return any(o != accepted for o in outcomes) or bool(getattr(link, "service_gave_up", False))
-
-
-def _same_vendor(link, first) -> bool:
-    """Both links declare a vendor and it is the same one — item 186."""
-    family = getattr(link, "credential_family", None)
-    return family is not None and family == getattr(first, "credential_family", None)
-
-
-class _NarrativeRouting:
-    """Which chain links the narrative may use, decided when the judgment
-    returns. Two rules, both ROADMAP item 180:
-
-    - A link that FAILED the scored call is not retried for the narrative,
-      when the service refused it -- see `_refused_by_the_service`.
-      The chain only moves past a link that failed, so every link before the
-      one that served the judgment failed it. Measured 2026-09-25 15:01Z:
-      Gemini's four 503s on the scored call were followed three minutes later
-      by four more on the narrative — 8 of that day's 11 requests, and 8.5
-      minutes. A link that STRUGGLED and served is still asked: on 2026-09-25
-      03:01Z the scored call succeeded on its third attempt.
-    - Under `scored_call`, no link of ANOTHER VENDOR than the first is asked.
-      Keyed on vendor since item 186: the rule exists because the gateway
-      wrote a usable write-up 1 time in 5, and Gemini's queue link is the
-      first link's vendor reached another way. By position it could never
-      write one. A link that does not declare `credential_family` counts as
-      another vendor, which is what the rule meant before.
-
-    And one schedule change, item 186: a link with `write_up_poll_delays_s`
-    polls on it for the write-up, which nothing replaces if Gemini never
-    sends it, and gets its own schedule back when the run is done.
-
-    In the hooks rather than the chain, for the reason the per-link ceiling
-    is (item 170): the provider classes are shared with the app, and this is
-    one deployment's policy. Installed only on a chain; a lone provider that
-    failed the judgment has already ended the run.
-    """
-
-    def __init__(self, provider, fallback_calls: FallbackCalls):
-        self._provider = provider
-        self._fallback_calls = fallback_calls
-        self._links = chain_links(provider)
-        self._cap = getattr(provider, "before_attempt", None)
-        self._report = getattr(provider, "after_attempt", None)
-        # Per link, keyed by identity: the outcomes of the CURRENT call, and
-        # why a link may not serve the narrative.
-        self._outcomes: dict[int, list[str]] = {}
-        self._refused: dict[int, str] = {}
-        # Each switched link's own poll schedule, put back by restore().
-        self._schedules: dict[int, tuple] = {}
-        self.active = len(self._links) > 1
-
-    def install(self) -> None:
-        if self.active:
-            self._provider.after_attempt = self._observe
-
-    def restore(self) -> None:
-        if self.active:
-            self._provider.before_attempt = self._cap
-            self._provider.after_attempt = self._report
-        for link in self._links:
-            if id(link) in self._schedules:
-                link.poll_delays_s = self._schedules.pop(id(link))
-
-    def judgment_returned(self) -> None:
-        if not self.active:
-            return
-
-        served = resolve_served(self._provider)
-        failed = self._links[: self._links.index(served)] if served in self._links else ()
-        for link in failed:
-            outcomes = self._outcomes.get(id(link), [])
-            if not _refused_by_the_service(link, outcomes):
-                continue
-
-            self._refused[id(link)] = (
-                f"{_link_name(link)} failed the scored call this run "
-                f"({_attempt_summary(outcomes)})"
-            )
-
-        if self._fallback_calls == FallbackCalls.SCORED_CALL:
-            for link in self._links[1:]:
-                if _same_vendor(link, self._links[0]):
-                    continue
-                self._refused.setdefault(
-                    id(link),
-                    f"{_link_name(link)} not asked for the narrative "
-                    f"(llm_fallback_calls: {FallbackCalls.SCORED_CALL.value})",
-                )
-
-        for link in self._links:
-            write_up = getattr(link, "write_up_poll_delays_s", None)
-            if write_up is not None:
-                self._schedules[id(link)] = link.poll_delays_s
-                link.poll_delays_s = write_up
-
-        # The narrative's attempts are its own; the judgment's are spent.
-        self._outcomes = {}
-        if self._refused:
-            self._provider.before_attempt = self._gate
-
-    def _observe(self, outcome: str, elapsed_s: float) -> None:
-        link = resolve_active(self._provider)
-        self._outcomes.setdefault(id(link), []).append(outcome)
-        if self._report is not None:
-            self._report(outcome, elapsed_s)
-
-    def _gate(self) -> None:
-        link = resolve_active(self._provider)
-        reason = self._refused.get(id(link))
-        if reason is None:
-            if self._cap is not None:
-                self._cap()
-            return
-
-        earlier = [self._account(prior) for prior in self._links[: self._links.index(link)]]
-        raise NarrativeLinkRefused(
-            reason + (f"; before it, {'; '.join(earlier)}" if earlier else "")
-        )
-
-    def _account(self, link) -> str:
-        """What happened to one earlier link during the narrative."""
-        if id(link) in self._refused:
-            return self._refused[id(link)]
-
-        outcomes = _attempt_summary(self._outcomes.get(id(link), []))
-        return f"{_link_name(link)} failed the narrative ({outcomes})"
-
-
-def _generate_forecast(
-    provider,
-    judgment_prompt: str,
-    narrative_prompt: str,
-    user_prompt: str,
-    holder: dict,
-    *,
-    fallback_calls: FallbackCalls = FallbackCalls.BOTH_CALLS,
-    write_up_delay_s: int = 0,
-) -> tuple[forecast_call.ForecastCall, ResponseMeta, dict[str, tuple[str, str]]]:
-    """The two-call forecast, plus one meta describing both calls.
-
-    The call ORDER lives in llm/forecast_call.py, shared with replay. What
-    this adds is the snapshot: `holder` holds only the LAST response, so each
-    call's report has to be taken before the next one overwrites it.
-
-    The snapshot after the judgment is also where `_NarrativeRouting`
-    decides the narrative's links: `on_call` fires after one call returns and
-    before the next begins, which is exactly the seam between them.
-    """
-    metas: dict[str, ResponseMeta] = {}
-    # WHO SERVED EACH CALL — item 171. Taken here, per call, because a chain
-    # clears `active_provider` when `generate` returns and the two calls can
-    # be served by different vendors: on 2026-09-23 Gemini took the judgment
-    # call and an OpenRouter model wrote the narrative. A single identity read
-    # after both calls could not have said that, and the one read before this
-    # change said neither — it read the chain's first entry.
-    served: dict[str, tuple[str, str]] = {}
-    routing = _NarrativeRouting(provider, fallback_calls)
-
-    def _snapshot(name: str) -> None:
-        metas[name] = _response_meta(holder)
-        served[name] = served_identity(provider)
-        if name == forecast_call.JUDGMENT:
-            routing.judgment_returned()
-            # See LocationConfig.llm_write_up_delay_s.
-            if write_up_delay_s:
-                time.sleep(write_up_delay_s)
-
-    routing.install()
+    saved = []
+    for link in chain_links(provider):
+        if hasattr(link, "max_attempts"):
+            saved.append((link, link.max_attempts))
+            link.max_attempts = 1
     try:
-        call = generate_forecast(
-            provider, judgment_prompt, narrative_prompt, user_prompt, on_call=_snapshot
-        )
+        yield
     finally:
-        routing.restore()
+        for link, attempts in saved:
+            link.max_attempts = attempts
 
-    return (
-        call,
-        _combined_meta(
-            metas.get(forecast_call.JUDGMENT, ResponseMeta()),
-            metas.get(forecast_call.NARRATIVE, ResponseMeta()),
-        ),
-        served,
+
+def _optional_judgment(deps: PipelineDeps, judgment_prompt: str, user_prompt: str) -> _JudgmentCall:
+    """The model's own call, if a route is configured and answers — item 189.
+
+    NEVER LOAD-BEARING. The served numbers are code's (see `served_call`)
+    and were decided before this runs; what the model is asked for is its
+    OWN judgment, stored as the hidden `olw_blend` row so item 173's
+    question — does it beat arithmetic — keeps being answered on every day
+    it answers. A refusal, a timeout, a cap refusal or a schema failure adds
+    no row and changes nothing else about the day.
+
+    Counted like every other call, through the same cap, and asked for with
+    the write-up's headroom too (`LLM_CALLS_PER_FORECAST`): the write-up is
+    another process's spend, and the one thing the model does that code
+    cannot, so when the budget holds one call the hidden row yields it.
+    """
+    provider = deps.llm_provider
+    idle: dict = {"meta": None}
+    if provider is None:
+        return _JudgmentCall(None, {}, LLM_CALL_NOT_CONFIGURED, idle)
+
+    try:
+        verify_spend, last_response = attach_spend_cap(
+            provider,
+            deps.data_dir,
+            max_calls=deps.location.max_llm_calls_per_24h,
+            # ONE LABEL, BECAUSE EVERY RUN IS A FRESH FORECAST — item 137.
+            purpose="forecast",
+            calls_needed=LLM_CALLS_PER_FORECAST,
+        )
+    except SpendCapExceeded as e:
+        print(f"The model's own call was not made ({e}); the forecast is code's alone.", file=sys.stderr)
+        return _JudgmentCall(None, {}, f"cap: {e}", idle)
+
+    with _one_attempt_per_link(provider):
+        try:
+            judgment = provider.generate(judgment_prompt, user_prompt, GeminiJudgmentResponse)
+        except (LLMResponseError, SpendCapExceeded) as e:
+            print(f"The model's own call was not served ({e}); the forecast is code's alone.", file=sys.stderr)
+            return _JudgmentCall(None, {}, f"refused: {e}", last_response)
+    verify_spend()
+
+    return _JudgmentCall(
+        judgment, {forecast_call.JUDGMENT: served_identity(provider)}, LLM_CALL_SERVED, last_response
     )
 
 
@@ -2852,6 +2694,9 @@ def _compose_log_entry(
     # Empty on a path that made no call, where the provider's own idle answer
     # is the honest one.
     served: dict[str, tuple[str, str]] | None = None,
+    # THE CALL AS BUILT AND WHO BUILT IT — item 189; see DailyLogEntry.
+    served_call: ServedCall | None = None,
+    llm_call_outcome: str | None = None,
 ) -> DailyLogEntry:
     """The day's entry, built in the one place it is built.
 
@@ -2886,6 +2731,11 @@ def _compose_log_entry(
     location = deps.location
     tp = llm_response.today_properties
     response_meta = _response_meta(last_response)
+    judgment_identity = (served or {}).get(forecast_call.JUDGMENT) or (
+        (CALL_BY_CODE, CODE_BLEND_MODEL_ID)
+        if served_call is not None
+        else (type(deps.llm_provider).__name__, getattr(deps.llm_provider, "model", "unknown"))
+    )
 
     # THE HORIZON DECIDES WHICH DAY — item 161, and it is the rule every
     # other part of the forecast already follows. `_horizon_for` drops today
@@ -2907,6 +2757,8 @@ def _compose_log_entry(
         temp_high_c=tp.temp_high_c,
         temp_low_c=tp.temp_low_c,
         temp_high_low_display=format_temp_high_low(tp.temp_high_c, tp.temp_low_c),
+        served_call=served_call.judgment.model_dump() if served_call is not None else None,
+        call_source=served_call.source if served_call is not None else None,
         # THE WHOLE DAY, not the forward window — the same block and the same
         # anchors the wind shift takes, so the two tiles describe the same
         # three moments. See the wind shift's call site for why that
@@ -3018,14 +2870,14 @@ def _compose_log_entry(
             # forecast under a model that did not make it answers "is this
             # model better" from the wrong pile. The narrative's server is
             # recorded separately below, because the two can differ.
-            llm_provider=(served or {}).get(
-                forecast_call.JUDGMENT, (type(deps.llm_provider).__name__, "")
-            )[0],
-            llm_model=(served or {}).get(
-                forecast_call.JUDGMENT,
-                ("", getattr(deps.llm_provider, "model", "unknown")),
-            )[1],
+            # Since item 189 these name the model's OWN call only when it
+            # answered; on every other day the served call is code's and
+            # they say so, so replay's partition of `olw_blend` by model
+            # still names the model that made each row.
+            llm_provider=judgment_identity[0],
+            llm_model=judgment_identity[1],
             narrative_llm_model=(served or {}).get(forecast_call.NARRATIVE, (None, None))[1],
+            llm_call_outcome=llm_call_outcome,
             pipeline_version=deps.pipeline_version,
             system_prompt_sha256=prompt_archive.combined_prompt_sha256(
                 judgment_prompt, narrative_prompt
@@ -3857,7 +3709,51 @@ def _issue_forecast(
             dry_run=dry_run,
         )
 
-    # --- Step 6: call the LLM ---
+    # --- Step 6: the served call, from code — ROADMAP item 189 ---
+    #
+    # Decided before any model is asked, so a morning every route refuses
+    # still has a forecast, and decided from the record: the code blend
+    # where it calls (26/29 on Day+0 rain to the LLM's 23/29 over the days
+    # they share, item 173), the models' equal-weight consensus where the
+    # record is too thin for it to. Built from THIS issuance's extraction,
+    # like everything it stores. The yardsticks have joined the lists it
+    # reads by here; the blend votes by weight and the consensus by
+    # `blend_inputs`, so neither can move the result.
+    #
+    # ONE GUST FOR THE ROW AND THE PAGE: the record's calibrated consensus
+    # (item 126) where it has one, else the models' mean, handed to the
+    # blend so the number tomorrow scores is the number the reader saw.
+    served_gust = (
+        calibrated_wind_kmh
+        if calibrated_wind_kmh is not None
+        else _mean_of([p.wind_kmh for p in day0_models])
+    )
+    code_blend = code_blend_predictions(
+        ModelPredictionsByLead(day0=day0_predictions, day3=day3_predictions, day7=day7_predictions),
+        today,
+        log_lookup,
+        actuals_primary,
+        blend_inputs(location.local_bulletin_model_id),
+        day0_wind_kmh=served_gust,
+    )
+    thunder = _convective_timing(guidance, today)
+    call = served_call(
+        day0_models=day0_models,
+        day3_models=day3_predictions,
+        day7_models=day7_predictions,
+        code_blend=code_blend,
+        secondary_day0=_secondary_day0(guidance, location),
+        calibrated_gust_kmh=calibrated_wind_kmh,
+        synoptic=guidance.synoptic,
+        air_quality=guidance.air_quality,
+        convective=bool(guidance.instability is not None and guidance.instability.convective),
+        thunder_when=thunder.peak if thunder is not None else None,
+        onset_word_for=_onset_word_for(guidance, today),
+        issued_hour=_issued_hour(guidance.issuance),
+        inputs=blend_inputs(location.local_bulletin_model_id),
+    )
+
+    # --- Step 6b: the prompts, and the model's own call ---
     # A location with no WAQI stations gets a prompt with no ground-station
     # guidance and no GROUND AQI blocks at all, rather than a daily note that
     # no station reported — nothing reported because nothing was configured.
@@ -3995,90 +3891,36 @@ def _issue_forecast(
         calibrated_wind_kmh=calibrated_wind_kmh,
         extended_days=extended_days,
     )
-    # Route EVERY request the provider makes through the cap — retries
-    # included. Raises SpendCapExceeded, deliberately NOT caught here: the
-    # run must fail loudly rather than quietly produce no forecast.
-    _verify_spend, _last_response = attach_spend_cap(
-        deps.llm_provider,
-        deps.data_dir,
-        max_calls=location.max_llm_calls_per_24h,
-        # ONE LABEL, BECAUSE EVERY RUN IS A FRESH FORECAST — ROADMAP item 137,
-        # the operator's decision 2026-09-16.
-        #
-        # This field held three spellings for one activity. "refresh" came
-        # from the twice-a-day tool item 104 removed and read as something
-        # lesser — it was actively misleading on 2026-09-15, where four HTTP
-        # 500s were filed under "refresh" for a run that had new guidance and
-        # was doing the full job. It was renamed to "forecast-reissue" earlier
-        # the same day, which was no better: it kept asserting a distinction
-        # the system had stopped drawing.
-        #
-        # THE ARGUMENT FOR KEEPING IT DOES NOT SURVIVE INSPECTION. It was that
-        # an operator reading the ledger wants to see which issuance of the
-        # day a call belonged to — but every row carries `at`, so the ledger
-        # already answers that, by counting rows within a date. The label was
-        # a second, weaker copy of information the timestamp holds exactly.
-        #
-        # Other purposes stay distinct because they are different ACTIVITIES,
-        # not different runs of the same one: "health-check" and "replay" buy
-        # something that is not a forecast. Rows before this date still say
-        # "refresh" and "forecast-reissue"; all three mean the same thing and
-        # nothing re-writes history.
-        purpose="forecast",
-        calls_needed=LLM_CALLS_PER_FORECAST,
-    )
-    _call, _call_meta, _served = _generate_forecast(
-        deps.llm_provider,
-        judgment_prompt,
-        narrative_prompt,
-        user_prompt,
-        _last_response,
-        fallback_calls=deps.location.llm_fallback_calls,
-        write_up_delay_s=deps.location.llm_write_up_delay_s,
-    )
-    _verify_spend()
-    llm_response = _call.response
+    # THE MODEL'S OWN CALL — optional, one attempt per link, hidden. See
+    # `_optional_judgment`. The write-up is NOT asked for here: it is asked
+    # by `olw write-up` after the forecast is committed and published, from
+    # the archived prompts and the stored call (item 189).
+    llm = _optional_judgment(deps, judgment_prompt, user_prompt)
 
-    # The write-up failed and the scored call did not — ROADMAP item 59 step
-    # 3. Recorded rather than raised: the numbers below are real, and losing
-    # them to publish nothing would put a hole in the accuracy record.
-    if _call.narrative_error is not None:
-        print(
-            f"Narrative call failed ({_call.narrative_error}); publishing the "
-            "scored forecast without its write-up.",
-            file=sys.stderr,
+    forecast_response = GeminiForecastResponse(
+        # Code's, from the table the run just scored — item 147 found the
+        # review does the learning better than the model's note did. A
+        # later issuance verified nothing, and says so.
+        yesterday_verification=(
+            verification_summary(verification_result.lead_time_results, visible_models=forecaster_models)
+            if first_issuance
+            else NO_NEW_VERIFICATION_NOTE
+        ),
+        skill_profile_summaries=[],
+        today_properties=call.judgment.today_properties,
+        extended_properties=call.judgment.extended_properties,
+        today_narrative=forecast_call.NARRATIVE_UNAVAILABLE_MARKDOWN,
+    )
+    # THE PENDING MARKER — see NARRATIVE_PENDING_SUMMARY.
+    guidance.degradations.append(
+        RunDegradation(
+            code=DEGRADATION_NARRATIVE,
+            summary=NARRATIVE_PENDING_SUMMARY,
+            detail=NARRATIVE_PENDING_DETAIL,
         )
-        guidance.degradations.append(
-            RunDegradation(
-                code=DEGRADATION_NARRATIVE,
-                summary=(
-                    "Today's figures are here, but the write-up that normally "
-                    "explains them could not be produced this time. The numbers "
-                    "are the same ones this forecast is scored on."
-                ),
-                detail=(
-                    "The rendering call failed after its retries while the "
-                    "judgment call had already succeeded, so the scored "
-                    "prediction was published without a narrative: "
-                    f"{_call.narrative_error}"
-                ),
-            )
-        )
+    )
 
     # --- Step 7: build today's log entry ---
-    tp = llm_response.today_properties
-    # ROADMAP item 173. Built HERE, beside the LLM's own call, and not where
-    # the baselines join `day0_predictions`: the day-over-day consensus, the
-    # extended trend and the calibrated gust average `day0_models`, and a
-    # blend of the models must not be averaged back in with them. From THIS
-    # issuance's extraction, like everything it stores.
-    code_blend = code_blend_predictions(
-        ModelPredictionsByLead(day0=day0_predictions, day3=day3_predictions, day7=day7_predictions),
-        today,
-        log_lookup,
-        actuals_primary,
-        blend_inputs(location.local_bulletin_model_id),
-    )
     # EVERY DAY+0 SOURCE'S CLAIM ABOUT THIS ISSUANCE'S 24 HOURS — item 139,
     # stage 3b. The yardsticks say the same of any 24 hours. The code blend
     # votes the models' window claims by their window record, and not the
@@ -4090,12 +3932,18 @@ def _issue_forecast(
             window_predictions, today, log_lookup, log_dates_for_retention, blend_inputs()
         )
         window_claims = [*window_predictions, *baselines, *([window_blend] if window_blend else [])]
+    # THE MODEL'S ROWS, on the days it answered — item 189. Hidden from the
+    # forecaster as before, scored beside the code blend's; absent otherwise,
+    # which the record reads as no call, never as a wrong one.
+    llm_day0 = [_blend_prediction(llm.judgment.today_properties)] if llm.judgment is not None else []
+    llm_day3 = _extended_blend_predictions(llm.judgment.extended_properties, 3) if llm.judgment is not None else []
+    llm_day7 = _extended_blend_predictions(llm.judgment.extended_properties, 7) if llm.judgment is not None else []
     log_entry = _compose_log_entry(
         deps,
         guidance,
         existing_entry,
         today,
-        llm_response,
+        forecast_response,
         observed_so_far=observed_so_far,
         information_moved=information_moved,
         window_predictions=window_claims,
@@ -4106,46 +3954,24 @@ def _issue_forecast(
         # date holds none. Built even on a re-issue and discarded there, as
         # it always was — the day's numbers belong to the run that made them
         # first.
+        #
+        # STAMPED WITH WHAT THEY TARGET — ROADMAP item 104, C1. Done here
+        # at assembly rather than inside `extract`, deliberately: the
+        # extractors are pinned byte-for-byte by spec/vectors, and the
+        # target is a property of the ISSUANCE that collected them rather
+        # than of the extraction.
         fresh_predictions=ModelPredictionsByLead(
-            # The blend joins Day+0 as a peer of the models it synthesizes, so
-            # tomorrow scores the forecast this run actually published and not
-            # only the guidance that fed it. Day+3 and Day+7 carry the blend's
-            # own rain call too since ROADMAP item 72's minimal shape — rain
-            # and its probability, which is what Brier scores; the rest of the
-            # extended schema waits for real data to design against.
-            #
-            # STAMPED WITH WHAT THEY TARGET — ROADMAP item 104, C1. Done here
-            # at assembly rather than inside `extract`, deliberately: the
-            # extractors are pinned byte-for-byte by spec/vectors, and the
-            # target is a property of the ISSUANCE that collected them rather
-            # than of the extraction. Stamping here keeps the vectors and
-            # their Dart mirror untouched by a change that is about the
-            # record's shape.
-            day0=_targeting([*day0_predictions, _blend_prediction(tp), *code_blend.day0], today, 0),
-            day3=_targeting(
-                [
-                    *day3_predictions,
-                    *_extended_blend_predictions(llm_response.extended_properties, 3),
-                    *code_blend.day3,
-                ],
-                today,
-                3,
-            ),
-            day7=_targeting(
-                [
-                    *day7_predictions,
-                    *_extended_blend_predictions(llm_response.extended_properties, 7),
-                    *code_blend.day7,
-                ],
-                today,
-                7,
-            ),
+            day0=_targeting([*day0_predictions, *llm_day0, *code_blend.day0], today, 0),
+            day3=_targeting([*day3_predictions, *llm_day3, *code_blend.day3], today, 3),
+            day7=_targeting([*day7_predictions, *llm_day7, *code_blend.day7], today, 7),
         ),
         judgment_prompt=judgment_prompt,
         narrative_prompt=narrative_prompt,
         user_prompt=user_prompt,
-        last_response=_last_response,
-        served=_served,
+        last_response=llm.last_response,
+        served=llm.served,
+        served_call=call,
+        llm_call_outcome=llm.outcome,
     )
 
     published = False
@@ -4188,7 +4014,7 @@ def _issue_forecast(
         # This used to be a `notes_by_lead` that emptied itself on a re-issue
         # while the write-back ran anyway. One gate says it once.
         if first_issuance:
-            _write_back_verification(deps, verification_result, llm_response, log_lookup)
+            _write_back_verification(deps, verification_result, forecast_response, log_lookup)
 
         # --- Step 9: publish (optional hooks) ---
         if deps.publisher is not None:

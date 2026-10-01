@@ -58,7 +58,16 @@ def _blend_row(entry, lead_time_days: int):
 
 def rebuild_judgment(entry) -> dict:
     """`GeminiJudgmentResponse` as the narrative call receives it: two keys,
-    `today_properties` and `extended_properties`, never a flat dict."""
+    `today_properties` and `extended_properties`, never a flat dict.
+
+    THE STORED CALL FIRST — ROADMAP item 189. Since 2026-10-01 the entry
+    carries the call exactly as it was served (`served_call`), so nothing
+    has to be rebuilt from the published fields and the blend's row. The
+    rebuild below is kept for the entries written before that, whose call
+    survives only in those two places."""
+    if entry.served_call is not None:
+        return entry.served_call
+
     today = {f: getattr(entry, f, None) for f in CALL_FIELDS_ON_ENTRY}
     day0 = _blend_row(entry, 0)
     if day0 is None:

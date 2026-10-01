@@ -20,11 +20,15 @@ and also the reference example for forking to a new location.
    predictions against actual observed conditions, independently at Day+0,
    Day+3, and Day+7 lead times, and recompute each model's rolling 10/30-check
    accuracy stats per lead time per variable.
-3. **Synthesize** — hand an LLM the raw, disagreeing per-model data side by
-   side along with the pre-computed verification results and track record,
-   and have it reason explicitly about disagreement, write qualitative
-   verification notes and skill summaries, and produce the forecast
-   narrative. The LLM is never asked to do arithmetic.
+3. **Synthesize** — the served call is code's: the record-weighted blend of
+   the models (item 173), the models' consensus where the record is thin,
+   with the calibrated gust and the labels composed from the same numbers.
+   An LLM, where a key is configured, is handed the raw, disagreeing
+   per-model data and the pre-computed scores and asked for its own call,
+   kept as a hidden scored row beside code's; after the forecast is
+   published it is asked to write the narrative. The LLM is never asked to
+   do arithmetic, and the forecast is published whether or not it answers
+   (item 189).
 4. **Publish** — commit the day's result as JSON back to this repo (git is the
    database — free, versioned, fully auditable), regenerate a static site on
    GitHub Pages, and email subscribers (see [Status](#status) for the current
@@ -42,9 +46,10 @@ reasons its header comment and [ops/README.md](ops/README.md) record.
 ## Set it up for your own town
 
 **→ [QUICKSTART.md](QUICKSTART.md)** — fork to working daily emails in
-about an hour, with no local setup and no server. Free on Google Gemini's
-free tier; Anthropic Claude, OpenAI, OpenRouter, Groq and local models via
-Ollama are all supported alternatives.
+about an hour, with no local setup and no server. The forecast needs no
+LLM key at all; the written discussion does, free on Google Gemini's free
+tier, with Anthropic Claude, OpenAI, OpenRouter, Groq and local models via
+Ollama as supported alternatives.
 
 ## Documentation
 

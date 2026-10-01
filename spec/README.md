@@ -138,6 +138,11 @@ absent values are `null`, never omitted keys.
 | `notable_disagreements.json` | `notable_disagreements` | 9 |
 | `notable_disagreement_notes.json` | `describe_notable_disagreements` | 5 |
 | `low_divergence.json` | `low_divergence` | 14 |
+| `code_call.json` | `served_call` | The served call built from code (item 189): the blend row as is, the inputs' consensus when the record is thin, the fallbacks for temperature and gust, the labels, the pattern, the AQI, the extended leads, and the one refusal. |
+| `rain_label.json` | `rain_label` | 12 |
+| `onset_window_label.json` | `onset_window_label` | 6 |
+| `cams_peak_aqi.json` | `cams_peak_aqi` | 5 |
+| `verification_summary.json` | `verification_summary` | 4 |
 | `sustained_wind_gap.json` | `sustained_wind_gap` | 7 |
 | `cell_key.json` | `cell_key` | 12 |
 | `convective_timing.json` | `convective_timing` | 14 |

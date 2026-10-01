@@ -1,0 +1,2144 @@
+{
+  "vector_format_version": 1,
+  "function": "served_call",
+  "description": "The served call in the judgment call's shape: the code blend's row where it calls, else the inputs' equal-weight consensus with a dry tie; temperatures from the blend's corrected means or the inputs' plain mean, to one decimal; the gust from the row, else the calibrated consensus, else the inputs' mean; the labels from the amount band, the thunder and the onset's word; the pattern from the ring; the AQI as the CAMS day's peak; extended leads from the blend's rows or the inputs' majority. The onset-word function is given as a mapping.",
+  "cases": [
+    {
+      "name": "the blend row is served as is; Day+7 falls to the inputs' majority",
+      "input": {
+        "day0_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": true,
+            "onset": "14:00",
+            "precip_mm": 3.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 30.0,
+            "sustained_wind_kmh": null,
+            "high_c": 29.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -1.0
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": "16:00",
+            "precip_mm": 5.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 34.0,
+            "sustained_wind_kmh": null,
+            "high_c": 30.0,
+            "low_c": 19.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -2.0
+          },
+          {
+            "model": "icon_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.2,
+            "rain_probability_pct": null,
+            "wind_kmh": 26.0,
+            "sustained_wind_kmh": null,
+            "high_c": 31.0,
+            "low_c": 20.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -1.5
+          },
+          {
+            "model": "persistence",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 35.0,
+            "low_c": 10.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "olw_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 99,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 35.0,
+            "low_c": 10.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day3_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "persistence",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day7_models": [
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "code_blend": {
+          "day0": [
+            {
+              "model": "olw_code_blend",
+              "target_date": null,
+              "rain": true,
+              "onset": "16:00",
+              "precip_mm": 4.1,
+              "rain_probability_pct": 64,
+              "wind_kmh": 36.0,
+              "sustained_wind_kmh": null,
+              "high_c": 29.4,
+              "low_c": 18.6,
+              "cloud_cover_pct": null,
+              "peak_cape_jkg": null,
+              "wind_direction_deg": null,
+              "mslp_trend": null
+            }
+          ],
+          "day3": [
+            {
+              "model": "olw_code_blend",
+              "target_date": null,
+              "rain": false,
+              "onset": null,
+              "precip_mm": null,
+              "rain_probability_pct": 40,
+              "wind_kmh": null,
+              "sustained_wind_kmh": null,
+              "high_c": null,
+              "low_c": null,
+              "cloud_cover_pct": null,
+              "peak_cape_jkg": null,
+              "wind_direction_deg": null,
+              "mslp_trend": null
+            }
+          ],
+          "day7": []
+        },
+        "secondary_day0": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 40.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 44.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "calibrated_gust_kmh": null,
+        "synoptic": {
+          "centre_mslp_hpa": 1012.0,
+          "lowest_label": "NE",
+          "lowest_mslp_hpa": 1006.0,
+          "highest_label": "S",
+          "highest_mslp_hpa": 1020.0,
+          "gradient_hpa": 14.0,
+          "gradient_strength": "strong",
+          "tendencies": {},
+          "statements": []
+        },
+        "air_quality": {
+          "hourly": {
+            "time": [
+              "a",
+              "b",
+              "c"
+            ],
+            "us_aqi": [
+              61,
+              null,
+              84.4
+            ]
+          }
+        },
+        "convective": false,
+        "thunder_when": null,
+        "onset_words": {
+          "14:00": "afternoon",
+          "16:00": "evening",
+          "18:00": "evening"
+        },
+        "issued_hour": 6,
+        "inputs": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ]
+      },
+      "expected": {
+        "source": "code_blend",
+        "judgment": {
+          "today_properties": {
+            "rain_expected": "Isolated Evening Showers",
+            "onset_window": "14:00 \u2013 16:00",
+            "peak_wind_primary_kmh": 36.0,
+            "peak_wind_secondary_kmh": 42.0,
+            "temp_high_c": 29.4,
+            "temp_low_c": 18.6,
+            "rain": true,
+            "onset_hour": "16:00",
+            "precip_mm": 4.1,
+            "rain_probability_pct": 64,
+            "mslp_trend_24h": "-1.5 hPa",
+            "synoptic_pattern": "Strong large-scale gradient, lowest pressure toward the northeast",
+            "air_quality_aqi": 84
+          },
+          "extended_properties": [
+            {
+              "lead_time_days": 3,
+              "rain": false,
+              "rain_probability_pct": 40
+            },
+            {
+              "lead_time_days": 7,
+              "rain": true,
+              "rain_probability_pct": 100
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "a thin record serves the inputs' equal-weight consensus",
+      "input": {
+        "day0_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": true,
+            "onset": "14:00",
+            "precip_mm": 3.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 30.0,
+            "sustained_wind_kmh": null,
+            "high_c": 29.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -1.0
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": "16:00",
+            "precip_mm": 5.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 34.0,
+            "sustained_wind_kmh": null,
+            "high_c": 30.0,
+            "low_c": 19.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -2.0
+          },
+          {
+            "model": "icon_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.2,
+            "rain_probability_pct": null,
+            "wind_kmh": 26.0,
+            "sustained_wind_kmh": null,
+            "high_c": 31.0,
+            "low_c": 20.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -1.5
+          },
+          {
+            "model": "persistence",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 35.0,
+            "low_c": 10.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "olw_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 99,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 35.0,
+            "low_c": 10.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day3_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "persistence",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day7_models": [
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "code_blend": {
+          "day0": [],
+          "day3": [],
+          "day7": []
+        },
+        "secondary_day0": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 40.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 44.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "calibrated_gust_kmh": null,
+        "synoptic": null,
+        "air_quality": null,
+        "convective": false,
+        "thunder_when": null,
+        "onset_words": {
+          "14:00": "afternoon",
+          "16:00": "evening",
+          "18:00": "evening"
+        },
+        "issued_hour": 6,
+        "inputs": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ]
+      },
+      "expected": {
+        "source": "consensus",
+        "judgment": {
+          "today_properties": {
+            "rain_expected": "Isolated Evening Showers",
+            "onset_window": "14:00 \u2013 16:00",
+            "peak_wind_primary_kmh": 30.0,
+            "peak_wind_secondary_kmh": 42.0,
+            "temp_high_c": 30.0,
+            "temp_low_c": 19.0,
+            "rain": true,
+            "onset_hour": "16:00",
+            "precip_mm": 2.7,
+            "rain_probability_pct": 67,
+            "mslp_trend_24h": "-1.5 hPa",
+            "synoptic_pattern": null,
+            "air_quality_aqi": null
+          },
+          "extended_properties": [
+            {
+              "lead_time_days": 3,
+              "rain": false,
+              "rain_probability_pct": 50
+            },
+            {
+              "lead_time_days": 7,
+              "rain": true,
+              "rain_probability_pct": 100
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "the blend's uncorrected temperatures fall back to the inputs' mean",
+      "input": {
+        "day0_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": true,
+            "onset": "14:00",
+            "precip_mm": 3.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 30.0,
+            "sustained_wind_kmh": null,
+            "high_c": 29.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -1.0
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": "16:00",
+            "precip_mm": 5.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 34.0,
+            "sustained_wind_kmh": null,
+            "high_c": 30.0,
+            "low_c": 19.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -2.0
+          },
+          {
+            "model": "icon_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.2,
+            "rain_probability_pct": null,
+            "wind_kmh": 26.0,
+            "sustained_wind_kmh": null,
+            "high_c": 31.0,
+            "low_c": 20.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -1.5
+          },
+          {
+            "model": "persistence",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 35.0,
+            "low_c": 10.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "olw_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 99,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 35.0,
+            "low_c": 10.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day3_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "persistence",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day7_models": [
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "code_blend": {
+          "day0": [
+            {
+              "model": "olw_code_blend",
+              "target_date": null,
+              "rain": false,
+              "onset": null,
+              "precip_mm": null,
+              "rain_probability_pct": 20,
+              "wind_kmh": null,
+              "sustained_wind_kmh": null,
+              "high_c": null,
+              "low_c": null,
+              "cloud_cover_pct": null,
+              "peak_cape_jkg": null,
+              "wind_direction_deg": null,
+              "mslp_trend": null
+            }
+          ],
+          "day3": [],
+          "day7": []
+        },
+        "secondary_day0": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 40.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 44.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "calibrated_gust_kmh": null,
+        "synoptic": null,
+        "air_quality": null,
+        "convective": false,
+        "thunder_when": null,
+        "onset_words": {
+          "14:00": "afternoon",
+          "16:00": "evening",
+          "18:00": "evening"
+        },
+        "issued_hour": 6,
+        "inputs": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ]
+      },
+      "expected": {
+        "source": "code_blend",
+        "judgment": {
+          "today_properties": {
+            "rain_expected": "Dry / No Rain",
+            "onset_window": null,
+            "peak_wind_primary_kmh": 30.0,
+            "peak_wind_secondary_kmh": 42.0,
+            "temp_high_c": 30.0,
+            "temp_low_c": 19.0,
+            "rain": false,
+            "onset_hour": null,
+            "precip_mm": null,
+            "rain_probability_pct": 20,
+            "mslp_trend_24h": "-1.5 hPa",
+            "synoptic_pattern": null,
+            "air_quality_aqi": null
+          },
+          "extended_properties": [
+            {
+              "lead_time_days": 3,
+              "rain": false,
+              "rain_probability_pct": 50
+            },
+            {
+              "lead_time_days": 7,
+              "rain": true,
+              "rain_probability_pct": 100
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "the calibrated gust is the primary wind when the row carries none",
+      "input": {
+        "day0_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": true,
+            "onset": "14:00",
+            "precip_mm": 3.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 30.0,
+            "sustained_wind_kmh": null,
+            "high_c": 29.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -1.0
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": "16:00",
+            "precip_mm": 5.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 34.0,
+            "sustained_wind_kmh": null,
+            "high_c": 30.0,
+            "low_c": 19.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -2.0
+          },
+          {
+            "model": "icon_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.2,
+            "rain_probability_pct": null,
+            "wind_kmh": 26.0,
+            "sustained_wind_kmh": null,
+            "high_c": 31.0,
+            "low_c": 20.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -1.5
+          },
+          {
+            "model": "persistence",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 35.0,
+            "low_c": 10.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "olw_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 99,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 35.0,
+            "low_c": 10.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day3_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "persistence",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day7_models": [
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "code_blend": {
+          "day0": [],
+          "day3": [],
+          "day7": []
+        },
+        "secondary_day0": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 40.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 44.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "calibrated_gust_kmh": 41.37,
+        "synoptic": null,
+        "air_quality": null,
+        "convective": false,
+        "thunder_when": null,
+        "onset_words": {
+          "14:00": "afternoon",
+          "16:00": "evening",
+          "18:00": "evening"
+        },
+        "issued_hour": 6,
+        "inputs": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ]
+      },
+      "expected": {
+        "source": "consensus",
+        "judgment": {
+          "today_properties": {
+            "rain_expected": "Isolated Evening Showers",
+            "onset_window": "14:00 \u2013 16:00",
+            "peak_wind_primary_kmh": 41.4,
+            "peak_wind_secondary_kmh": 42.0,
+            "temp_high_c": 30.0,
+            "temp_low_c": 19.0,
+            "rain": true,
+            "onset_hour": "16:00",
+            "precip_mm": 2.7,
+            "rain_probability_pct": 67,
+            "mslp_trend_24h": "-1.5 hPa",
+            "synoptic_pattern": null,
+            "air_quality_aqi": null
+          },
+          "extended_properties": [
+            {
+              "lead_time_days": 3,
+              "rain": false,
+              "rain_probability_pct": 50
+            },
+            {
+              "lead_time_days": 7,
+              "rain": true,
+              "rain_probability_pct": 100
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "a dry day with thunder names the thunder's phase",
+      "input": {
+        "day0_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": true,
+            "onset": "14:00",
+            "precip_mm": 3.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 30.0,
+            "sustained_wind_kmh": null,
+            "high_c": 29.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -1.0
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": "16:00",
+            "precip_mm": 5.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 34.0,
+            "sustained_wind_kmh": null,
+            "high_c": 30.0,
+            "low_c": 19.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -2.0
+          },
+          {
+            "model": "icon_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.2,
+            "rain_probability_pct": null,
+            "wind_kmh": 26.0,
+            "sustained_wind_kmh": null,
+            "high_c": 31.0,
+            "low_c": 20.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -1.5
+          },
+          {
+            "model": "persistence",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 35.0,
+            "low_c": 10.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "olw_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 99,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 35.0,
+            "low_c": 10.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day3_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "persistence",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day7_models": [
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "code_blend": {
+          "day0": [
+            {
+              "model": "olw_code_blend",
+              "target_date": null,
+              "rain": false,
+              "onset": null,
+              "precip_mm": null,
+              "rain_probability_pct": 20,
+              "wind_kmh": null,
+              "sustained_wind_kmh": null,
+              "high_c": null,
+              "low_c": null,
+              "cloud_cover_pct": null,
+              "peak_cape_jkg": null,
+              "wind_direction_deg": null,
+              "mslp_trend": null
+            }
+          ],
+          "day3": [],
+          "day7": []
+        },
+        "secondary_day0": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 40.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 44.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "calibrated_gust_kmh": null,
+        "synoptic": null,
+        "air_quality": null,
+        "convective": true,
+        "thunder_when": "this evening",
+        "onset_words": {
+          "14:00": "afternoon",
+          "16:00": "evening",
+          "18:00": "evening"
+        },
+        "issued_hour": 6,
+        "inputs": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ]
+      },
+      "expected": {
+        "source": "code_blend",
+        "judgment": {
+          "today_properties": {
+            "rain_expected": "Dry / Evening Thunder Possible",
+            "onset_window": null,
+            "peak_wind_primary_kmh": 30.0,
+            "peak_wind_secondary_kmh": 42.0,
+            "temp_high_c": 30.0,
+            "temp_low_c": 19.0,
+            "rain": false,
+            "onset_hour": null,
+            "precip_mm": null,
+            "rain_probability_pct": 20,
+            "mslp_trend_24h": "-1.5 hPa",
+            "synoptic_pattern": null,
+            "air_quality_aqi": null
+          },
+          "extended_properties": [
+            {
+              "lead_time_days": 3,
+              "rain": false,
+              "rain_probability_pct": 50
+            },
+            {
+              "lead_time_days": 7,
+              "rain": true,
+              "rain_probability_pct": 100
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "a wet consensus names the band and the served onset's word",
+      "input": {
+        "day0_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": true,
+            "onset": "14:00",
+            "precip_mm": 3.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 30.0,
+            "sustained_wind_kmh": null,
+            "high_c": 29.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -1.0
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": "16:00",
+            "precip_mm": 5.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 34.0,
+            "sustained_wind_kmh": null,
+            "high_c": 30.0,
+            "low_c": 19.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -2.0
+          },
+          {
+            "model": "icon_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.2,
+            "rain_probability_pct": null,
+            "wind_kmh": 26.0,
+            "sustained_wind_kmh": null,
+            "high_c": 31.0,
+            "low_c": 20.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -1.5
+          },
+          {
+            "model": "persistence",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 35.0,
+            "low_c": 10.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "olw_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 99,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 35.0,
+            "low_c": 10.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day3_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "persistence",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day7_models": [
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "code_blend": {
+          "day0": [],
+          "day3": [],
+          "day7": []
+        },
+        "secondary_day0": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 40.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 44.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "calibrated_gust_kmh": null,
+        "synoptic": null,
+        "air_quality": null,
+        "convective": true,
+        "thunder_when": null,
+        "onset_words": {
+          "14:00": "afternoon",
+          "16:00": "evening",
+          "18:00": "evening"
+        },
+        "issued_hour": 6,
+        "inputs": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ]
+      },
+      "expected": {
+        "source": "consensus",
+        "judgment": {
+          "today_properties": {
+            "rain_expected": "Isolated Evening Showers & Thunderstorms",
+            "onset_window": "14:00 \u2013 16:00",
+            "peak_wind_primary_kmh": 30.0,
+            "peak_wind_secondary_kmh": 42.0,
+            "temp_high_c": 30.0,
+            "temp_low_c": 19.0,
+            "rain": true,
+            "onset_hour": "16:00",
+            "precip_mm": 2.7,
+            "rain_probability_pct": 67,
+            "mslp_trend_24h": "-1.5 hPa",
+            "synoptic_pattern": null,
+            "air_quality_aqi": null
+          },
+          "extended_properties": [
+            {
+              "lead_time_days": 3,
+              "rain": false,
+              "rain_probability_pct": 50
+            },
+            {
+              "lead_time_days": 7,
+              "rain": true,
+              "rain_probability_pct": 100
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "an onset behind the issuance is not a window ahead",
+      "input": {
+        "day0_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": true,
+            "onset": "14:00",
+            "precip_mm": 3.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 30.0,
+            "sustained_wind_kmh": null,
+            "high_c": 29.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -1.0
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": "16:00",
+            "precip_mm": 5.0,
+            "rain_probability_pct": null,
+            "wind_kmh": 34.0,
+            "sustained_wind_kmh": null,
+            "high_c": 30.0,
+            "low_c": 19.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -2.0
+          },
+          {
+            "model": "icon_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.2,
+            "rain_probability_pct": null,
+            "wind_kmh": 26.0,
+            "sustained_wind_kmh": null,
+            "high_c": 31.0,
+            "low_c": 20.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": -1.5
+          },
+          {
+            "model": "persistence",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 35.0,
+            "low_c": 10.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "olw_blend",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 99,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 35.0,
+            "low_c": 10.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day3_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "persistence",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day7_models": [
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "code_blend": {
+          "day0": [],
+          "day3": [],
+          "day7": []
+        },
+        "secondary_day0": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 40.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 44.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "calibrated_gust_kmh": null,
+        "synoptic": null,
+        "air_quality": null,
+        "convective": false,
+        "thunder_when": null,
+        "onset_words": {
+          "14:00": "afternoon",
+          "16:00": "evening",
+          "18:00": "evening"
+        },
+        "issued_hour": 15,
+        "inputs": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ]
+      },
+      "expected": {
+        "source": "consensus",
+        "judgment": {
+          "today_properties": {
+            "rain_expected": "Isolated Evening Showers",
+            "onset_window": "From 16:00",
+            "peak_wind_primary_kmh": 30.0,
+            "peak_wind_secondary_kmh": 42.0,
+            "temp_high_c": 30.0,
+            "temp_low_c": 19.0,
+            "rain": true,
+            "onset_hour": "16:00",
+            "precip_mm": 2.7,
+            "rain_probability_pct": 67,
+            "mslp_trend_24h": "-1.5 hPa",
+            "synoptic_pattern": null,
+            "air_quality_aqi": null
+          },
+          "extended_properties": [
+            {
+              "lead_time_days": 3,
+              "rain": false,
+              "rain_probability_pct": 50
+            },
+            {
+              "lead_time_days": 7,
+              "rain": true,
+              "rain_probability_pct": 100
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "a consensus tie breaks dry",
+      "input": {
+        "day0_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 28.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": 28.0,
+            "low_c": 18.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day3_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "persistence",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day7_models": [
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "code_blend": {
+          "day0": [],
+          "day3": [],
+          "day7": []
+        },
+        "secondary_day0": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 40.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 44.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "calibrated_gust_kmh": null,
+        "synoptic": null,
+        "air_quality": null,
+        "convective": false,
+        "thunder_when": null,
+        "onset_words": {
+          "14:00": "afternoon",
+          "16:00": "evening",
+          "18:00": "evening"
+        },
+        "issued_hour": 6,
+        "inputs": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ]
+      },
+      "expected": {
+        "source": "consensus",
+        "judgment": {
+          "today_properties": {
+            "rain_expected": "Dry / No Rain",
+            "onset_window": null,
+            "peak_wind_primary_kmh": null,
+            "peak_wind_secondary_kmh": 42.0,
+            "temp_high_c": 28.0,
+            "temp_low_c": 18.0,
+            "rain": false,
+            "onset_hour": null,
+            "precip_mm": null,
+            "rain_probability_pct": 50,
+            "mslp_trend_24h": null,
+            "synoptic_pattern": null,
+            "air_quality_aqi": null
+          },
+          "extended_properties": [
+            {
+              "lead_time_days": 3,
+              "rain": false,
+              "rain_probability_pct": 50
+            },
+            {
+              "lead_time_days": 7,
+              "rain": true,
+              "rain_probability_pct": 100
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "no temperature anywhere cannot be served",
+      "input": {
+        "day0_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day3_models": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": false,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "persistence",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day7_models": [
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "code_blend": {
+          "day0": [],
+          "day3": [],
+          "day7": []
+        },
+        "secondary_day0": [
+          {
+            "model": "gfs_seamless",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 40.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": null,
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": 44.0,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "calibrated_gust_kmh": null,
+        "synoptic": null,
+        "air_quality": null,
+        "convective": false,
+        "thunder_when": null,
+        "onset_words": {
+          "14:00": "afternoon",
+          "16:00": "evening",
+          "18:00": "evening"
+        },
+        "issued_hour": 6,
+        "inputs": [
+          "gfs_seamless",
+          "ecmwf_ifs025",
+          "icon_seamless",
+          "ukmo_seamless"
+        ]
+      },
+      "expected": {
+        "error": "NoTemperatureToServe"
+      }
+    }
+  ]
+}

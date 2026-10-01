@@ -1,0 +1,70 @@
+{
+  "vector_format_version": 1,
+  "function": "onset_window_label",
+  "description": "The onset tile's label: the spread of the wet models' onsets still ahead of the issuance, 'From HH:MM' when they agree, and nothing when none is ahead.",
+  "cases": [
+    {
+      "name": "a spread",
+      "input": {
+        "onsets": [
+          "16:00",
+          "14:00",
+          "19:00"
+        ],
+        "issued_hour": 6
+      },
+      "expected": "14:00 \u2013 19:00"
+    },
+    {
+      "name": "agreement",
+      "input": {
+        "onsets": [
+          "16:00",
+          "16:00"
+        ],
+        "issued_hour": 6
+      },
+      "expected": "From 16:00"
+    },
+    {
+      "name": "nothing to say",
+      "input": {
+        "onsets": [],
+        "issued_hour": 6
+      },
+      "expected": null
+    },
+    {
+      "name": "one behind the issuance",
+      "input": {
+        "onsets": [
+          "14:00",
+          "16:00"
+        ],
+        "issued_hour": 15
+      },
+      "expected": "From 16:00"
+    },
+    {
+      "name": "all behind the issuance",
+      "input": {
+        "onsets": [
+          "14:00"
+        ],
+        "issued_hour": 15
+      },
+      "expected": null
+    },
+    {
+      "name": "no issuance hour",
+      "input": {
+        "onsets": [
+          "09:00",
+          "11:00"
+        ],
+        "issued_hour": null
+      },
+      "expected": "09:00 \u2013 11:00"
+    }
+  ]
+}
