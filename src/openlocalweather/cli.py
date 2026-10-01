@@ -1917,6 +1917,52 @@ def _run_write_up(args) -> int:
     return 0
 
 
+def _run_floor(args) -> int:
+    """Render the floor for stored days — ROADMAP item 190's reading gate.
+
+    No fetch and no model call: the floor is a function of the stored entry,
+    so what this prints for a day is what the run would have published.
+    `--pending` takes every stored day whose write-up never landed.
+    """
+    from openlocalweather.floor import compose_floor
+    from openlocalweather.write_up import needs_write_up
+
+    location = load_location_config(args.config)
+    data_dir = Path(args.data_dir)
+    days = {date.fromisoformat(d) for d in (args.date or [])}
+    if args.pending:
+        for d in list_log_dates(data_dir):
+            entry = read_log_entry(data_dir, d)
+            if entry is not None and needs_write_up(entry):
+                days.add(d)
+    if not days:
+        days = {today_in_tz(location.timezone)}
+
+    secondary = location.secondary_point
+    rendered = []
+    for d in sorted(days):
+        entry = read_log_entry(data_dir, d)
+        if entry is None:
+            print(f"No entry for {d}.", file=sys.stderr)
+            continue
+        rendered.append(
+            f"<!-- {d} -->\n"
+            + compose_floor(
+                entry,
+                secondary_name=secondary.name if secondary.enabled and secondary.name else None,
+                model_configured=bool(location.llm_providers),
+            )
+        )
+
+    text = "\n".join(rendered)
+    if args.out:
+        Path(args.out).write_text(text)
+        print(f"Wrote {len(rendered)} day(s) to {args.out}.")
+    else:
+        print(text, end="")
+    return 0
+
+
 def _run_backfill_window_claims(args) -> int:
     """Add the yardsticks' and the code blend's window claims to rows stored
     before they were made, then rescore those rows — item 139, stage 3b.
@@ -2237,6 +2283,16 @@ def main(argv: list[str] | None = None) -> int:
         "--wait-s", type=int, default=0, help="Seconds to wait first, when a write-up is missing."
     )
 
+    floor = sub.add_parser(
+        "floor",
+        help="Render code's write-up (the floor) for stored days, for reading — item 190.",
+    )
+    floor.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
+    floor.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
+    floor.add_argument("--date", action="append", help="A day to render, YYYY-MM-DD; repeatable. Default: today.")
+    floor.add_argument("--pending", action="store_true", help="Every stored day whose write-up never landed.")
+    floor.add_argument("--out", default="", help="Write the renders to this file instead of stdout.")
+
     window_claims = sub.add_parser(
         "backfill-window-claims",
         help="Add the yardsticks' and code blend's window claims (item 139) to stored rows, and rescore them.",
@@ -2350,6 +2406,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "write-up":
         return _run_write_up(args)
+
+    if args.command == "floor":
+        return _run_floor(args)
 
     if args.command == "backfill-window-claims":
         return _run_backfill_window_claims(args)

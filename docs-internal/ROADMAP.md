@@ -27075,11 +27075,27 @@ Related: items 17a, 132, 180, 182, 191, 192; options document section 4 C.
 
 ---
 
-## 192. Writer routes: a chain per job, one attempt per link, the floor last · **Planned — after item 191; raised 2026-10-01**
+## 192. Writer routes: a chain per job, attempts per link, the floor last · **Planned — after item 191; raised 2026-10-01; revised 2026-10-01**
 
 Item 81's chain exists: `FallbackProvider` with `env_prefix`, per-link
 ceilings (170), a credential family map, and the workflow's allowlist that
 forwards any `*_API_KEY`. What it lacks is written here.
+
+**The operator's decisions, 2026-10-01**, which revise the bullets below:
+- A link is how, where, when, how many times, at what interval and with
+  what credential one job reaches a model. A job has one or many links,
+  tried in order; each link decides for itself whether it retries or
+  hands over. "One attempt per link" is item 189's rule for the model's
+  OWN call only; for the write-up, attempts and backoff stay per link and
+  configurable, as today's `max_attempts` and `retry_delays_s` are.
+- The project default is one production example, slightly involved and
+  no more: Gemini direct, three tries at 180 and 420 s, then a gateway
+  link that is inert until keyed. Groq joins the example once item 191's
+  brief fits its 8K-token-per-minute ceiling; the 56K-token call does not.
+- The queue (`gemini-interactions`) stays a link kind for this pipeline,
+  not a default: it read 1 of its 6 jobs (item 186), and it needs more
+  testing before it is anything else. It is not ported to the app.
+- Per-link jobs replace `llm_fallback_calls`.
 
 **Changes to the chain.**
 - A link is chosen per job: `calls: [write_up]`, `[judgment]`,
@@ -27181,7 +27197,20 @@ Related: items 112, 174, 176, 180, 182, 164, 147, 158, 186; Ensemble item 1.
 
 ---
 
-## 190. The floor: a code-written write-up replaces the placeholder · **Next after item 189; raised 2026-10-01**
+## 190. The floor: a code-written write-up replaces the placeholder · **Building — composer and `olw floor` landed 2026-10-01; the reading gate is open**
+
+**Step 1, 2026-10-01.** `floor.compose_floor(entry)` renders the floor
+from the stored entry alone, so `olw floor --date D` and `--pending` print
+for a stored day exactly what the run would publish; the app will render
+the same text from the same fields. Options A and P1 of
+`FLOOR_OPTIONS_2026-10-01.md`, the operator's choice. Rendered for the
+eight placeholder days and five served days, zero `phrase_defect`
+findings, 850 to 870 characters on a day that stores every field; days
+before the anchors and the comparison were stored render thin. Not yet
+wired into the run, the page or the app: that is step 2, after the read.
+The three-day trend sentence is not in v1 because the entry does not store
+it; the run can store it when step 2 lands.
+
 
 Since 09-24 the page has shown a 385-character "Write-up unavailable"
 notice under tiles that already say most of what a bulletin would. Of the
