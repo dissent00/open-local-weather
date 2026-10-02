@@ -7,6 +7,8 @@
   "temp_high_c": 30.0,
   "temp_low_c": 19.0,
   "temp_high_low_display": "30°C / 86°F high, 19°C / 66°F low",
+  "served_call": null,
+  "call_source": null,
   "cloud_anchors": [],
   "wind_anchors": [],
   "mslp_trend_24h": "-0.9",
@@ -2471,7 +2473,7 @@
       "note_sign_corrected_on": null
     },
     "day7": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     }
@@ -2571,7 +2573,9 @@
           "sustained_kmh": 10.8,
           "when": "evening"
         }
-      ]
+      ],
+      "served_call": null,
+      "call_source": null
     },
     {
       "rain_expected": "Afternoon & Evening Thunderstorms",
@@ -2659,7 +2663,9 @@
           "sustained_kmh": 11.7,
           "when": "evening"
         }
-      ]
+      ],
+      "served_call": null,
+      "call_source": null
     }
   ],
   "morning_issuance": null,
@@ -2679,6 +2685,7 @@
     "llm_provider": "OpenAICompatProvider",
     "llm_model": "nex-agi/nex-n2.5-pro:free",
     "narrative_llm_model": null,
+    "llm_call_outcome": null,
     "pipeline_version": "0.1.0",
     "system_prompt_sha256": "aaed19a3b9d3037b09eec025e0551907deed2aed09ca452b5fedd989c70558c8",
     "finish_reason": "stop",

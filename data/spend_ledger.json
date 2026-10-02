@@ -2,206 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-09-24T05:50:58.732257+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 339.311
-    },
-    {
-      "at": "2026-09-24T05:56:38.047831+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "forecast",
-      "outcome": "deadline",
-      "elapsed_s": 1701.52
-    },
-    {
-      "at": "2026-09-24T06:25:29.570232+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "forecast",
-      "outcome": "deadline",
-      "elapsed_s": 1701.503
-    },
-    {
-      "at": "2026-09-24T15:01:38.781181+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 1.698
-    },
-    {
-      "at": "2026-09-24T15:02:10.481407+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 1.913
-    },
-    {
-      "at": "2026-09-24T15:03:12.396942+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 1.039
-    },
-    {
-      "at": "2026-09-24T15:10:13.438098+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 1.116
-    },
-    {
-      "at": "2026-09-24T15:10:14.558418+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "forecast",
-      "outcome": "deadline",
-      "elapsed_s": 1701.606
-    },
-    {
-      "at": "2026-09-24T15:39:06.167082+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 319.993
-    },
-    {
-      "at": "2026-09-24T15:44:26.164658+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 0.903
-    },
-    {
-      "at": "2026-09-24T15:44:57.069559+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 0.989
-    },
-    {
-      "at": "2026-09-24T15:45:58.060937+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 1.14
-    },
-    {
-      "at": "2026-09-24T15:52:59.203103+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_429",
-      "elapsed_s": 0.847
-    },
-    {
-      "at": "2026-09-24T15:53:00.054858+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "forecast",
-      "outcome": "deadline",
-      "elapsed_s": 1701.597
-    },
-    {
-      "at": "2026-09-24T16:21:51.654334+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "forecast",
-      "outcome": "error",
-      "elapsed_s": 1591.891
-    },
-    {
-      "at": "2026-09-24T16:49:23.548639+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "forecast",
-      "outcome": "deadline",
-      "elapsed_s": 1701.64
-    },
-    {
-      "at": "2026-09-25T03:01:34.713902+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_429",
-      "elapsed_s": 0.669
-    },
-    {
-      "at": "2026-09-25T03:02:05.389566+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_429",
-      "elapsed_s": 1.126
-    },
-    {
-      "at": "2026-09-25T03:03:06.518345+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 20.729
-    },
-    {
-      "at": "2026-09-25T03:03:27.252441+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_429",
-      "elapsed_s": 0.368
-    },
-    {
-      "at": "2026-09-25T03:03:57.623765+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_429",
-      "elapsed_s": 4.337
-    },
-    {
-      "at": "2026-09-25T03:05:01.963672+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_429",
-      "elapsed_s": 0.389
-    },
-    {
-      "at": "2026-09-25T03:12:02.356022+00:00",
-      "provider": "GeminiInteractionsProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_429",
-      "elapsed_s": 0.306
-    },
-    {
-      "at": "2026-09-25T03:12:02.665955+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "forecast",
-      "outcome": "deadline",
-      "elapsed_s": 1701.536
-    },
-    {
-      "at": "2026-09-25T03:40:54.204777+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "forecast",
-      "outcome": "deadline",
-      "elapsed_s": 1701.528
-    },
-    {
       "at": "2026-09-25T15:05:00.374780+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -655,6 +455,23 @@
       "purpose": "forecast",
       "outcome": "http_200",
       "elapsed_s": 80.097
+    },
+    {
+      "at": "2026-10-02T04:01:44.030258+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 18.845
+    },
+    {
+      "at": "2026-10-02T04:02:02.879087+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 236.478,
+      "served_model": "dots-studio/dots-3-note-preview:free"
     }
   ]
 }

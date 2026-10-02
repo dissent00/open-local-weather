@@ -7,6 +7,8 @@
   "temp_high_c": 29.8,
   "temp_low_c": 18.8,
   "temp_high_low_display": "30°C / 86°F high, 19°C / 66°F low",
+  "served_call": null,
+  "call_source": null,
   "cloud_anchors": [
     {
       "when": "early",
@@ -891,7 +893,7 @@
   "model_predictions": null,
   "verification": {
     "day0": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     },
@@ -932,6 +934,7 @@
     "llm_provider": "GeminiProvider",
     "llm_model": "gemini-3.6-flash",
     "narrative_llm_model": "gemini-3.6-flash",
+    "llm_call_outcome": null,
     "pipeline_version": "0.1.0",
     "system_prompt_sha256": "cb57f8dbbe0fe44ba844f62ba359caa3b423a911c9c7fbc2962489dff5a77bcd",
     "finish_reason": "STOP",

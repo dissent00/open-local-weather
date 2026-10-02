@@ -7,6 +7,8 @@
   "temp_high_c": 32.0,
   "temp_low_c": 20.0,
   "temp_high_low_display": "32°C / 90°F high, 20°C / 68°F low",
+  "served_call": null,
+  "call_source": null,
   "cloud_anchors": [],
   "wind_anchors": [],
   "mslp_trend_24h": "-0.9",
@@ -1863,7 +1865,7 @@
       "note_sign_corrected_on": null
     },
     "day3": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     },
@@ -1972,7 +1974,9 @@
           "sustained_kmh": 10.4,
           "gust_kmh": 19.9
         }
-      ]
+      ],
+      "served_call": null,
+      "call_source": null
     }
   ],
   "morning_issuance": null,
@@ -1992,6 +1996,7 @@
     "llm_provider": "OpenAICompatProvider",
     "llm_model": "dots-studio/dots-3-note-preview:free",
     "narrative_llm_model": null,
+    "llm_call_outcome": null,
     "pipeline_version": "0.1.0",
     "system_prompt_sha256": "d04cfe148503761ad8c2f7ca13d2f234411bf7d731ea2afe866f5cb4c165e2aa",
     "finish_reason": "stop",
