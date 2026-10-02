@@ -335,9 +335,17 @@ jobs:
             echo "No write-up to commit."
             exit 0
           fi
+          # A landed write-up rewrites the day's entry and republishes the
+          # page; a refused one moves only the ledger. The subject says
+          # which, because "write-up" over a commit holding three 503 rows
+          # read as prose that landed (2026-10-02).
+          SUBJECT="write-up"
+          if git diff --cached --quiet -- data/log docs; then
+            SUBJECT="write-up refused"
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "write-up: $(date -u +%Y-%m-%d)"
+          git commit -m "${SUBJECT}: $(date -u +%Y-%m-%d)"
           for attempt in 1 2 3; do
             if git push; then
               exit 0
@@ -369,9 +377,17 @@ jobs:
             echo "No write-up to commit."
             exit 0
           fi
+          # A landed write-up rewrites the day's entry and republishes the
+          # page; a refused one moves only the ledger. The subject says
+          # which, because "write-up" over a commit holding three 503 rows
+          # read as prose that landed (2026-10-02).
+          SUBJECT="write-up"
+          if git diff --cached --quiet -- data/log docs; then
+            SUBJECT="write-up refused"
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "write-up: $(date -u +%Y-%m-%d)"
+          git commit -m "${SUBJECT}: $(date -u +%Y-%m-%d)"
           for attempt in 1 2 3; do
             if git push; then
               exit 0

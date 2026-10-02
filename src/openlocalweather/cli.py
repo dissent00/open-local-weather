@@ -1880,8 +1880,9 @@ def _run_write_up(args) -> int:
         print(f"The write-up for {day} is missing; asking again in {args.wait_s} s.")
         time.sleep(args.wait_s)
 
-    # The links that may write, as the forecast's own routing allows: item
-    # 180 keeps the free gateway off the write-up.
+    # The links that may write: every link under `both_calls` (the live
+    # config since 2026-10-02), the first alone under `scored_call` (item
+    # 180's rule, kept for a deployment whose gateway cannot write).
     links = location.llm_providers
     if location.llm_fallback_calls == FallbackCalls.SCORED_CALL:
         links = links[:1]

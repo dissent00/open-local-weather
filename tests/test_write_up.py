@@ -139,9 +139,27 @@ def test_a_missing_write_up_is_written_after_the_wait_and_republished(tmp_path, 
     assert user_prompt.startswith("THE ARCHIVED USER PROMPT"), "the archived prompt, with the call appended"
 
 
-def test_only_the_links_that_may_write_are_asked(tmp_path, wired):
-    """`llm_fallback_calls: scored_call` keeps the gateway off the write-up
-    (item 180: the free model finished 1 narrative in 5)."""
+def test_every_link_may_write_under_the_live_config(tmp_path, wired):
+    """`llm_fallback_calls: both_calls` since 2026-10-02: the gateway writes
+    when Gemini refuses, because the forecast is already published and on
+    the first live day seven 503s left the day without prose."""
+    _store(tmp_path, missing=True)
+
+    _run(tmp_path)
+
+    [providers] = wired["providers"]
+    assert [getattr(p, "kind", p) for p in providers] == ["gemini", "openai"]
+
+
+def test_scored_call_keeps_the_write_up_on_the_first_link(tmp_path, wired, monkeypatch):
+    """Item 180's rule, kept for a deployment whose gateway cannot write."""
+    from openlocalweather.llm.provider import FallbackCalls
+
+    real = cli.load_location_config
+    monkeypatch.setattr(
+        cli, "load_location_config",
+        lambda path: real(path).model_copy(update={"llm_fallback_calls": FallbackCalls.SCORED_CALL}),
+    )
     _store(tmp_path, missing=True)
 
     _run(tmp_path)

@@ -28710,7 +28710,18 @@ forecasts." Audited both spenders — the pipeline (operator's keys) and the app
 - **Health check and probe spend committed**, or counted against a separate
   budget that is.
 
-## 180. The free fallback can make the call and cannot write it · **Measured 2026-09-24**
+## 180. The free fallback can make the call and cannot write it · **Measured 2026-09-24; its rule reversed 2026-10-02**
+
+**Reversed 2026-10-02, the operator's decision.** `llm_fallback_calls` is
+`both_calls`: the gateway writes when Gemini refuses, one try per chance
+(`max_attempts: 1` on its entry; its 1700 s deadline times the default
+four tries would hold the runner for two hours). Why: since item 189 the
+forecast is published before any prose is asked for, so a poor write-up
+risks nothing but itself, and on the first live day of that path
+(2026-10-02, the run approved at 04:01Z) Gemini returned 503 on all seven
+requests across the run and both write-up chances while the gateway sat
+unasked. The measurement below stands; what changed is what a failed
+write-up costs.
 
 A forced re-issue on the OpenRouter link alone (`llm_provider=openai`,
 `force=true`, 05:50Z) was the first live run of item 178's deadline and retry.

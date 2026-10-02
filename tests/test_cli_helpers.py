@@ -435,7 +435,9 @@ def test_the_live_config_is_what_we_think_it_is():
     # rolling 24 hours, and a run refused for yesterday's spending is the
     # failure the guard exists to prevent.
     assert direct.max_calls_per_24h >= 2 * direct.max_calls_per_run
-    assert gateway == "openai"
+    # THE GATEWAY WRITES, ONE TRY PER CHANCE — 2026-10-02. Its 1700 s
+    # deadline times four tries would hold the runner for two hours.
+    assert (gateway.kind, gateway.max_attempts) == ("openai", 1)
     # The three the operator chose on 2026-09-21, from OpenRouter's live free
     # list. Pinned by NAME because a typo in a model id is a run that fails at
     # the gateway, on the day the primary was already down.
@@ -446,13 +448,18 @@ def test_the_live_config_is_what_we_think_it_is():
     # and `response_format` on OpenRouter's list, which is what
     # `require_parameters` restricts routing to; `gemma-4-31b` was dropped
     # 2026-09-22 for advertising only the second.
-    assert live.llm_fallback_models == ["dots-studio/dots-3-note-preview:free"]
+    # ON THE ENTRY since 2026-10-02: a mapping entry names its own models,
+    # and the top-level list serves bare-string entries only.
+    assert gateway.fallback_models == ["dots-studio/dots-3-note-preview:free"]
     # FREE TIERS ONLY — the operator's constraint, so that anyone can run
     # this configuration without an account that bills. A paid id landing
     # here should be a deliberate decision, not a drift.
-    assert all(m.endswith(":free") for m in live.llm_fallback_models)
-    # The fallback serves the scored call only — operator, 2026-09-25.
-    assert live.llm_fallback_calls == "scored_call"
+    assert all(m.endswith(":free") for m in gateway.fallback_models)
+    # The gateway may write — operator, 2026-10-02, reversing 2026-09-25
+    # (item 180): the forecast is published first since item 189, and on
+    # the first live day Gemini refused all seven requests while the
+    # gateway sat unasked.
+    assert live.llm_fallback_calls == "both_calls"
 
 
 # ---------------------------------------------------------------------------

@@ -201,8 +201,11 @@ def test_the_live_config_can_carry_one(tmp_path):
     from openlocalweather.config import load_location_config
 
     src = (Path(__file__).resolve().parents[1] / "config/location.yaml").read_text()
+    # The live entry is a mapping since 2026-10-02 (one try per write-up
+    # chance); this adds the name, the credential namespace and the cap.
+    assert "    - kind: openai\n" in src
     src = src.replace(
-        "    - openai\n",
+        "    - kind: openai\n",
         "    - kind: openai\n"
         "      name: openrouter\n"
         "      env_prefix: OPENROUTER\n"

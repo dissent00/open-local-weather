@@ -203,11 +203,21 @@ location:
     # the run says so on stderr, which is the intended reading: a fallback
     # that is configured and not yet reachable. Set LLM_API_KEY as a secret
     # and LLM_BASE_URL and LLM_MODEL as repository variables to arm it.
-    - openai
+    - kind: openai
+      # ONE TRY PER CHANCE for the write-up — 2026-10-02, the day the
+      # gateway was first allowed to write. Its deadline is 1700 s and item
+      # 180 measured a narrative hitting it twice, so the default four tries
+      # would hold the runner for two hours; the next chance is the retry.
+      max_attempts: 1
+      # What the gateway itself tries, in order, inside ONE request —
+      # OpenRouter's `models` field. Different from the chain above, which
+      # is the order this project walks between VENDORS; this order never
+      # leaves the gateway. A mapping entry names its own list: the
+      # top-level `llm_fallback_models` serves bare-string entries only.
+      fallback_models:
+        - "dots-studio/dots-3-note-preview:free"
 
-  # What the gateway itself tries, in order, inside ONE request — OpenRouter's
-  # `models` field. Different from the list above, which is the order this
-  # project walks between VENDORS; this order never leaves the gateway.
+  # ABOUT THAT LIST. Kept here, with the entry it belongs to above.
   #
   # ALL THREE ARE FREE TIERS and none is Gemini 3.6 Flash's equal; that was
   # understood when they were chosen. Checked against OpenRouter's live model
@@ -251,17 +261,18 @@ location:
   # thinner; `nex-n2.5-pro` now does the same job without the caveat.
   # `qwen/qwen3.8-27b:free` is strict but does not advertise
   # `response_format` at all, which is the field this project actually sends.
-  llm_fallback_models:
-    - "dots-studio/dots-3-note-preview:free"
 
-  # THE FALLBACK MAKES THE SCORED CALL AND NOTHING ELSE — operator's decision
-  # 2026-09-25, ROADMAP item 180. It made the scored call 2 of 2 times and
-  # wrote the narrative 1 of 5, and each narrative it failed spent up to two
-  # 1700s deadlines before the issuance degraded anyway. Since item 189 the
-  # scored call is code's and the model's own call is a hidden row, so what
-  # this governs is `olw write-up`: under `scored_call` only the first link
-  # is asked to write.
-  llm_fallback_calls: scored_call
+  # THE GATEWAY MAY WRITE — the operator's decision 2026-10-02, reversing
+  # the one of 2026-09-25 (ROADMAP item 180), which kept the fallback to the
+  # scored call: it had made that call 2 of 2 times and written the
+  # narrative 1 of 5, and each narrative it failed spent up to two 1700s
+  # deadlines before the issuance degraded anyway. Since item 189 the
+  # forecast is published before any prose is asked for, so a poor write-up
+  # risks nothing but itself, and on the first live day (2026-10-02) Gemini
+  # refused all seven requests while the gateway sat unasked. What this
+  # governs is `olw write-up`: under `both_calls` every link may write, in
+  # chain order; `scored_call` keeps the write-up on the first link.
+  llm_fallback_calls: both_calls
 
 
   local_bulletin_url: "https://meteo.go.ke/our-products/daily-forecast/"

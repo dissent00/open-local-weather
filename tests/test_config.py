@@ -275,6 +275,17 @@ def test_a_queue_link_is_accepted():
     assert entry.max_calls_per_run == 5
 
 
+def test_the_gateway_may_be_given_its_own_attempts():
+    """Every provider honours an instance `max_attempts` since ROADMAP item
+    189, and the live config gives the gateway one try per write-up chance
+    (2026-10-02): a setting that used to be refused as ignored now does
+    something, so it loads."""
+    from openlocalweather.config import LLMProviderEntry
+
+    assert LLMProviderEntry(kind="openai", max_attempts=1).max_attempts == 1
+    assert LLMProviderEntry(kind="anthropic", max_attempts=2).max_attempts == 2
+
+
 @pytest.mark.parametrize("fields, why", [
     # A schedule nothing would use: without `background` the endpoint answers
     # directly and no poll is ever sent.
@@ -284,11 +295,11 @@ def test_a_queue_link_is_accepted():
     # Only the Interactions endpoint queues.
     ({"kind": "gemini", "background": True}, "gemini-interactions"),
     ({"kind": "openai", "poll_delays_s": [480]}, "gemini-interactions"),
-    # Gemini's schedule is four attempts long; more would outrun its delays and
-    # the budget guard that assumes them. OpenRouter retries on its own terms.
+    # Each kind's schedule is four attempts long; more would outrun its
+    # delays and the budget guard that assumes them.
     ({"kind": "gemini", "max_attempts": 0}, "max_attempts"),
     ({"kind": "gemini", "max_attempts": 5}, "max_attempts"),
-    ({"kind": "openai", "max_attempts": 1}, "max_attempts"),
+    ({"kind": "openai", "max_attempts": 5}, "max_attempts"),
     ({"kind": "gemini-interactions", "background": True, "poll_delays_s": []}, "poll"),
     ({"kind": "gemini-interactions", "background": True, "poll_delays_s": [0]}, "poll"),
     ({"kind": "gemini", "max_calls_per_run": 0}, "max_calls_per_run"),

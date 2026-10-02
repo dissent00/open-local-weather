@@ -18,6 +18,8 @@ import yaml
 from openlocalweather.reasoning import LLMRefreshPolicy
 from openlocalweather.llm.provider import DEFAULT_LLM_PROVIDER, VALID_LLM_PROVIDERS, FallbackCalls
 from openlocalweather.llm.gemini import MAX_ATTEMPTS as GEMINI_MAX_ATTEMPTS
+from openlocalweather.llm.anthropic import MAX_ATTEMPTS as ANTHROPIC_MAX_ATTEMPTS
+from openlocalweather.llm.openai_compat import MAX_ATTEMPTS as OPENAI_MAX_ATTEMPTS
 from openlocalweather.spend import DEFAULT_MAX_LLM_CALLS_PER_24H
 from openlocalweather.models import DeviationBands
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -107,6 +109,16 @@ class AcknowledgedGap(BaseModel):
 
 # The kinds that share Gemini's retry schedule, and the one that can queue.
 GEMINI_KINDS = frozenset({"gemini", "gemini-interactions"})
+# How many requests one call may send, per kind: the length of each
+# provider's own retry schedule. Every provider class honours an instance
+# `max_attempts` since ROADMAP item 189, which is what lets the live config
+# give the gateway one try per write-up chance (2026-10-02).
+MAX_ATTEMPTS_BY_KIND = {
+    "gemini": GEMINI_MAX_ATTEMPTS,
+    "gemini-interactions": GEMINI_MAX_ATTEMPTS,
+    "openai": OPENAI_MAX_ATTEMPTS,
+    "anthropic": ANTHROPIC_MAX_ATTEMPTS,
+}
 QUEUE_KIND = "gemini-interactions"
 
 
@@ -168,6 +180,8 @@ class LLMProviderEntry(BaseModel):
     # write-up's longer wait: nothing replaces a write-up Gemini never sends.
     # `health_check_poll_delays_s` is the weekly check's: no reader is waiting
     # on it, so it asks late and seldom (2026-09-29).
+    # On any kind since item 189: the gateway's one try per write-up chance
+    # (2026-10-02) is this knob. The gaps below stay Gemini's.
     max_attempts: int | None = None
     # The gaps before a Gemini link's retries, in seconds; `max_attempts` may
     # be at most one more than their count. One run a day (2026-09-30): at
@@ -198,15 +212,11 @@ class LLMProviderEntry(BaseModel):
             raise ValueError(f"max_calls_per_run must be at least 1; got {self.max_calls_per_run}.")
 
         if self.max_attempts is not None:
-            if self.kind not in GEMINI_KINDS:
+            most = MAX_ATTEMPTS_BY_KIND.get(self.kind)
+            if most is not None and not 1 <= self.max_attempts <= most:
                 raise ValueError(
-                    f"max_attempts is for {', '.join(sorted(GEMINI_KINDS))}; "
-                    f"{self.kind!r} retries on its own schedule."
-                )
-            if not 1 <= self.max_attempts <= GEMINI_MAX_ATTEMPTS:
-                raise ValueError(
-                    f"max_attempts must be 1..{GEMINI_MAX_ATTEMPTS}, the length of "
-                    f"Gemini's retry schedule; got {self.max_attempts}."
+                    f"max_attempts must be 1..{most}, the length of "
+                    f"{self.kind}'s retry schedule; got {self.max_attempts}."
                 )
 
         if self.retry_delays_s is not None:
