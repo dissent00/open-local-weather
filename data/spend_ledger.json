@@ -496,6 +496,30 @@
       "purpose": "write-up",
       "outcome": "http_503",
       "elapsed_s": 6.427
+    },
+    {
+      "at": "2026-10-02T05:16:17.304245+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 15.424
+    },
+    {
+      "at": "2026-10-02T05:19:32.730887+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 0.391
+    },
+    {
+      "at": "2026-10-02T05:26:33.124134+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 0.627
     }
   ]
 }
