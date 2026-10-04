@@ -1540,6 +1540,8 @@ class IssuanceSnapshot(BaseModel):
     air_quality_aqi: str | None = None
     ground_aqi: list[GroundAQIReading] = Field(default_factory=list)
     narrative_markdown: str
+    # Who wrote it — see DailyLogEntry.narrative_source (item 190).
+    narrative_source: str | None = None
     whatsapp_summary: str | None = None
     generated_at_utc: datetime
     # THE LOCAL CLOCK THIS ISSUANCE WENT OUT AT, as "HH:MM" — the same value
@@ -1857,6 +1859,17 @@ class DailyLogEntry(BaseModel):
 
     yesterday_verification_summary: str | None = None
     narrative_markdown: str
+    # WHO WROTE IT — ROADMAP item 190: "code" for the floor the run composes,
+    # "llm" once `olw write-up` lands a model's discussion. None on entries
+    # written before the field existed, when the narrative was the model's
+    # own or the placeholder; the record must never mistake code text for
+    # model text, which is what `narrative_llm_model` alone cannot say.
+    narrative_source: str | None = None
+    # The three-day clause the Extended Outlook opens with, composed once
+    # for the prompt and stored for the floor (item 190): it needs the
+    # daily arrays the entry does not keep, so a stored day cannot rebuild
+    # it. None before 2026-10-04 and on a day the data was too thin.
+    extended_trend: str | None = None
     whatsapp_summary: str | None = None
 
     # Every issuance BEFORE the current one, oldest first. The current
@@ -1956,6 +1969,7 @@ class DailyLogEntry(BaseModel):
             air_quality_aqi=self.air_quality_aqi,
             ground_aqi=self.ground_aqi,
             narrative_markdown=self.narrative_markdown,
+            narrative_source=self.narrative_source,
             whatsapp_summary=self.whatsapp_summary,
             served_call=self.served_call,
             call_source=self.call_source,

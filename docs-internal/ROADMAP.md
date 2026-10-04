@@ -27197,7 +27197,27 @@ Related: items 112, 174, 176, 180, 182, 164, 147, 158, 186; Ensemble item 1.
 
 ---
 
-## 190. The floor: a code-written write-up replaces the placeholder · **Building — composer and `olw floor` landed 2026-10-01; the reading gate is open**
+## 190. The floor: a code-written write-up replaces the placeholder · **Shipped 2026-10-04 on the Python, vector and Dart sides; the app's half owed in Ensemble**
+
+**Step 2, 2026-10-04, after the operator read the renders.** The floor is
+a pure function over `FloorInputs` (`compose_floor`), mirrored in
+`olw_core` and pinned by `spec/vectors/floor.json`; `FloorInputs.from_entry`
+reads a stored day, the Dart run builds the same inputs from its own
+pieces. The run composes it on the entry it just built and stores it as
+`narrative_markdown` with `narrative_source: code`; `olw write-up` replaces
+it and writes `llm`. The page's credit line says "write-up by code" until
+then. The three-day trend clause is composed once (`_extended_trend`) for
+the prompt and the floor and stored as `extended_trend`, so the Extended
+Outlook opens with it. The pending marker is added only where a provider
+may answer it: a keyless deployment is configured, not degraded, and its
+sign-off is "Written by code." alone. Two label rules from the reader-words
+list landed with it: an onset window wider than six hours shows the served
+onset alone, and a timing word is never given for an onset already behind
+the issue hour. Sweeps, 0 divergences: 2,500 random floors across the two
+languages (the UV and gust formats include exact halves), and the vector
+cases for both label rules. The Dart run has no day-over-day comparison
+yet, so the app's floor opens with the served call's rain character.
+
 
 **Step 1, 2026-10-01.** `floor.compose_floor(entry)` renders the floor
 from the stored entry alone, so `olw floor --date D` and `--pending` print

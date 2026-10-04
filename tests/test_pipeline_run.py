@@ -392,6 +392,10 @@ def make_deps(tmp_path, llm=None) -> PipelineDeps:
 # ROADMAP item 189. Every in-run narrative is this; the prose is another
 # process's since 2026-10-01.
 PLACEHOLDER = NARRATIVE_UNAVAILABLE_MARKDOWN
+# What stands where the placeholder stood since item 190: code's write-up,
+# which opens with the write-up's own heading and signs itself.
+FLOOR_HEADING = "## Today's Forecast"
+FLOOR_SIGN_OFF = "Written by code"
 
 
 def _gaps(degradations) -> list[str]:
@@ -1253,7 +1257,7 @@ def test_a_later_run_keeps_what_the_first_one_published(tmp_path):
     )
     assert snapshot.rain_expected == "Dry / No Rain"  # code's call on the fixture — item 189
     assert snapshot.temp_high_c == 25.7
-    assert snapshot.narrative_markdown.startswith(PLACEHOLDER)
+    assert snapshot.narrative_markdown.startswith(FLOOR_HEADING)
     assert snapshot.generated_at_utc == first_result.log_entry.meta.generated_at_utc
     # The model's prose never reaches the page from the run — item 189 —
     # and the later issuance carries its own served call at the top level.
@@ -1295,7 +1299,7 @@ def test_refresh_does_not_resnapshot_on_a_second_same_day_refresh(tmp_path):
     # issuance got silently replaced by an intermediate refreshed state.
     first = second_result.log_entry.issuance_log()[0]
     assert first.rain_expected == "Dry / No Rain"
-    assert first.narrative_markdown.startswith(PLACEHOLDER)
+    assert first.narrative_markdown.startswith(FLOOR_HEADING)
     # And every issuance is on the record, in order — the model's "Heavy
     # rain" is a hidden row in the third one, never the page (item 189).
     assert len(second_result.log_entry.issuance_log()) == 3
@@ -1922,7 +1926,7 @@ def test_a_second_run_still_serves_a_fresh_call(tmp_path):
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
     assert len(entry.issuance_log()) == 2
     assert entry.served_call is not None and entry.call_source is not None
-    assert entry.narrative_markdown.startswith(PLACEHOLDER)
+    assert entry.narrative_markdown.startswith(FLOOR_HEADING)
 
 
 def test_a_second_run_describes_the_numbers_the_record_holds(tmp_path, monkeypatch):
@@ -2000,7 +2004,7 @@ def test_a_forced_re_run_keeps_the_days_history(tmp_path):
     """
     entry, _ = _forced_rerun(tmp_path, "## Overview\nForced re-run.", after_refresh=True)
 
-    assert entry.issuance_log()[0].narrative_markdown.startswith(PLACEHOLDER), (
+    assert entry.issuance_log()[0].narrative_markdown.startswith(FLOOR_HEADING), (
         "the morning issuance must stay the MORNING's, not the last run's"
     )
     assert entry.meta.generated_at_utc == entry.issuance_log()[0].generated_at_utc, (
@@ -2009,7 +2013,7 @@ def test_a_forced_re_run_keeps_the_days_history(tmp_path):
     assert entry.meta.refreshed_at is not None, (
         "a later run IS a narrative refresh; clearing this re-opens the evening gate"
     )
-    assert entry.narrative_markdown.startswith(PLACEHOLDER), "the prose is olw write-up's — item 189"
+    assert entry.narrative_markdown.startswith(FLOOR_HEADING), "the prose is olw write-up's — item 189"
 
 
 def test_a_forced_re_run_snapshots_a_morning_that_was_never_refreshed(tmp_path):
@@ -2018,7 +2022,7 @@ def test_a_forced_re_run_snapshots_a_morning_that_was_never_refreshed(tmp_path):
     entry, _ = _forced_rerun(tmp_path, "## Overview\nSecond run.", after_refresh=False)
 
     assert len(entry.issuance_log()) == 2
-    assert entry.issuance_log()[0].narrative_markdown.startswith(PLACEHOLDER)
+    assert entry.issuance_log()[0].narrative_markdown.startswith(FLOOR_HEADING)
 
 
 
@@ -2297,7 +2301,7 @@ def test_forecast_re_issues_when_the_day_already_has_an_entry(tmp_path):
     assert result.first_issuance is False
     assert result.newly_verified is None, "a later issuance does not verify"
     entry = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
-    assert entry.narrative_markdown.startswith(PLACEHOLDER), "the prose is olw write-up's — item 189"
+    assert entry.narrative_markdown.startswith(FLOOR_HEADING), "the prose is olw write-up's — item 189"
     assert scored_predictions(entry) == scored_predictions(before)
     assert entry.meta.refreshed_at is not None
 
@@ -2341,7 +2345,7 @@ def test_forecast_force_overrides_the_skip_but_not_the_predictions(tmp_path):
 
     assert result.first_issuance is False
     after = log_store.read_log_entry(tmp_path, date(2026, 8, 11))
-    assert after.narrative_markdown.startswith(PLACEHOLDER)
+    assert after.narrative_markdown.startswith(FLOOR_HEADING)
     assert scored_predictions(after) == scored_predictions(entry)
 
 
@@ -3674,9 +3678,11 @@ def test_a_failed_write_up_still_publishes_the_scored_call(tmp_path):
     codes = {d.code for d in entry.meta.degradations or []}
     assert DEGRADATION_NARRATIVE in codes, codes
 
-    # The prose says what happened instead of pretending to be a forecast.
-    assert entry.narrative_markdown, "an empty narrative reads as a missing section"
-    assert "could not be written" in entry.narrative_markdown.lower()
+    # The prose is code's floor (item 190), which says who wrote it and
+    # that a discussion follows, instead of a notice pretending to be one.
+    assert entry.narrative_markdown.startswith(FLOOR_HEADING)
+    assert FLOOR_SIGN_OFF in entry.narrative_markdown
+    assert entry.narrative_source == "code"
     # Not under the Overview heading, retired on 09-22 — item 187 finding 3.
     assert not entry.narrative_markdown.startswith("## Overview"), entry.narrative_markdown
 
@@ -5567,7 +5573,12 @@ def test_no_provider_at_all_still_publishes(tmp_path):
     assert entry is not None and result.first_issuance
     assert entry.meta.llm_call_outcome == "not configured"
     assert entry.call_source == "consensus"
-    assert entry.narrative_markdown, "the placeholder stands until the write-up lands"
+    # Code's write-up stands (item 190), signed without a promise: nothing
+    # will answer, so the day is not degraded either.
+    assert entry.narrative_markdown.startswith(FLOOR_HEADING)
+    assert entry.narrative_markdown.rstrip().endswith("Written by code.")
+    assert entry.narrative_source == "code"
+    assert DEGRADATION_NARRATIVE not in {d.code for d in entry.meta.degradations or []}
     # The archive still holds the prompts a later write-up rebuilds from.
     assert (tmp_path / "prompts" / "2026-08-11.json").exists()
 

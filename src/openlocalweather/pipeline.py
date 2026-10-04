@@ -81,6 +81,7 @@ from openlocalweather.wind import consensus_direction, describe_wind_shift, desc
 from openlocalweather.calibration import calibrated_gust_consensus, gust_corrections
 from openlocalweather.code_blend import blend_inputs, code_blend_predictions, window_code_blend
 from openlocalweather.code_call import ServedCall, served_call, verification_summary
+from openlocalweather.floor import NARRATIVE_SOURCE_CODE, compose_floor_for_entry
 from openlocalweather.comparison import (
     comparison_for_prompt,
     compute_day_over_day,
@@ -1205,6 +1206,37 @@ def _sound_phrase(
     return None
 
 
+def _extended_trend(guidance: ForwardGuidance, day0_predictions: list, extended_days: list[list], today: date) -> str | None:
+    """The three-day clause — ROADMAP item 61 — composed ONCE for the prompt
+    and the floor (item 190), so the clause a reader acts on and the one the
+    floor prints cannot describe different weather. `day0_predictions` is
+    the models as extracted, with no baselines: a mean that included
+    climatology would band a different trend (item 183)."""
+    return describe_extended_trend(
+        today_high_c=_mean_of([p.high_c for p in day0_predictions]),
+        day_highs_c=[_mean_of([p.high_c for p in day]) for day in extended_days],
+        day_precip_mm=[_mean_of([p.precip_mm for p in day]) for day in extended_days],
+        day_names=[weekday_name(add_days(today, n)) for n in EXTENDED_SPAN_LEADS],
+        # ROADMAP item 158 step 2. The thunder tier per day from the four
+        # independent models' daily CAPE maxima — best_match is left out
+        # because the tier was measured without it — and the mean for the
+        # day past the span, which decides whether an arrival says "from".
+        day_thunder=[
+            convective_tier([p.peak_cape_jkg for p in day if p.model != BEST_MATCH_MODEL_ID])
+            for day in extended_days
+        ],
+        day_after_precip_mm=_mean_of([
+            p.precip_mm
+            for p in extract_day_n_predictions_from_daily(guidance.primary_daily, DAY_AFTER_SPAN_LEAD, MODELS)
+        ]),
+        # Wind is present at these leads and was being discarded, so a
+        # three-day build in gusts under a flat temperature read as "much
+        # the same". It is also what lets the clause say "conditions".
+        today_wind_kmh=_mean_of([p.wind_kmh for p in day0_predictions]),
+        day_winds_kmh=[_mean_of([p.wind_kmh for p in day]) for day in extended_days],
+    )
+
+
 def _locked_blocks(
     guidance: ForwardGuidance,
     day0_predictions: list,
@@ -1286,33 +1318,7 @@ def _locked_blocks(
         # attached. The model was deriving these and getting them wrong — see
         # dates.forward_calendar for the count.
         "forward_calendar": forward_calendar(today),
-        "extended_trend": describe_extended_trend(
-            today_high_c=_mean_of([p.high_c for p in day0_predictions]),
-            day_highs_c=[_mean_of([p.high_c for p in day]) for day in extended_days],
-            day_precip_mm=[_mean_of([p.precip_mm for p in day]) for day in extended_days],
-            day_names=[weekday_name(add_days(today, n)) for n in EXTENDED_SPAN_LEADS],
-            # ROADMAP item 158 step 2. The thunder tier per day from the four
-            # independent models' daily CAPE maxima — best_match is left out
-            # because the tier was measured without it — and the mean for the
-            # day past the span, which decides whether an arrival says "from".
-            day_thunder=[
-                convective_tier(
-                    [p.peak_cape_jkg for p in day if p.model != BEST_MATCH_MODEL_ID]
-                )
-                for day in extended_days
-            ],
-            day_after_precip_mm=_mean_of([
-                p.precip_mm
-                for p in extract_day_n_predictions_from_daily(
-                    guidance.primary_daily, DAY_AFTER_SPAN_LEAD, MODELS
-                )
-            ]),
-            # Wind is present at these leads and was being discarded, so a
-            # three-day build in gusts under a flat temperature read as "much
-            # the same". It is also what lets the clause say "conditions".
-            today_wind_kmh=_mean_of([p.wind_kmh for p in day0_predictions]),
-            day_winds_kmh=[_mean_of([p.wind_kmh for p in day]) for day in extended_days],
-        ),
+        "extended_trend": _extended_trend(guidance, day0_predictions, extended_days, today),
         # ROADMAP item 59. TWO WIND FACTS, and the second is the better one.
         # A bearing cannot be averaged — see wind.vector_mean — so the
         # direction is a gated vector consensus and is absent whenever the
@@ -2697,6 +2703,8 @@ def _compose_log_entry(
     # THE CALL AS BUILT AND WHO BUILT IT — item 189; see DailyLogEntry.
     served_call: ServedCall | None = None,
     llm_call_outcome: str | None = None,
+    # The three-day clause, stored for the floor — item 190.
+    extended_trend: str | None = None,
 ) -> DailyLogEntry:
     """The day's entry, built in the one place it is built.
 
@@ -2851,6 +2859,7 @@ def _compose_log_entry(
         else None,
         yesterday_verification_summary=llm_response.yesterday_verification,
         narrative_markdown=llm_response.today_narrative,
+        extended_trend=extended_trend,
         guidance_initialised_at=guidance.guidance_cycle.initialised_at,
         guidance_age_hours=guidance.guidance_cycle.age_hours,
         guidance_source=guidance.guidance_cycle.source,
@@ -3911,14 +3920,17 @@ def _issue_forecast(
         extended_properties=call.judgment.extended_properties,
         today_narrative=forecast_call.NARRATIVE_UNAVAILABLE_MARKDOWN,
     )
-    # THE PENDING MARKER — see NARRATIVE_PENDING_SUMMARY.
-    guidance.degradations.append(
-        RunDegradation(
-            code=DEGRADATION_NARRATIVE,
-            summary=NARRATIVE_PENDING_SUMMARY,
-            detail=NARRATIVE_PENDING_DETAIL,
+    # THE PENDING MARKER — see NARRATIVE_PENDING_SUMMARY. Only where a model
+    # may still answer it: a deployment with no provider is not degraded, it
+    # is configured that way, and the floor's sign-off says so (item 190).
+    if deps.llm_provider is not None:
+        guidance.degradations.append(
+            RunDegradation(
+                code=DEGRADATION_NARRATIVE,
+                summary=NARRATIVE_PENDING_SUMMARY,
+                detail=NARRATIVE_PENDING_DETAIL,
+            )
         )
-    )
 
     # --- Step 7: build today's log entry ---
     # EVERY DAY+0 SOURCE'S CLAIM ABOUT THIS ISSUANCE'S 24 HOURS — item 139,
@@ -3972,7 +3984,20 @@ def _issue_forecast(
         served=llm.served,
         served_call=call,
         llm_call_outcome=llm.outcome,
+        extended_trend=_extended_trend(guidance, day0_models, extended_days, today),
     )
+
+    # THE FLOOR — ROADMAP item 190. Code's write-up stands where the
+    # placeholder stood, composed from the entry just built so `olw floor`
+    # renders the same text from the stored day. `olw write-up` replaces it
+    # when a model answers, and says so in `narrative_source`.
+    secondary = deps.location.secondary_point
+    log_entry.narrative_markdown = compose_floor_for_entry(
+        log_entry,
+        secondary_name=secondary.name if secondary.enabled and secondary.name else None,
+        model_configured=deps.llm_provider is not None,
+    )
+    log_entry.narrative_source = NARRATIVE_SOURCE_CODE
 
     published = False
     emailed = False

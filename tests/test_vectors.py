@@ -1242,6 +1242,7 @@ def test_every_vector_file_is_exercised():
         "observation_disagreements.json",
         # ROADMAP item 189 — the served call built from code.
         "code_call.json",
+        "floor.json",
         "rain_label.json",
         "onset_window_label.json",
         "cams_peak_aqi.json",
@@ -1510,6 +1511,8 @@ NOT_KEYWORD_CALLS = frozenset({
     "prompt_rounding.json", "sky_by_day.json", "spend.json", "verification.json",
     "weekday_name.json", "weekly_review.json", "wind_anchors.json",
     "wind_describe_shift.json", "wind_timeline.json",
+    # Its input is a FloorInputs object, built before the call — item 190.
+    "floor.json",
 })
 
 # Input keys that are not arguments — the same exemption the Dart guard has.
@@ -1603,6 +1606,14 @@ def test_every_parameter_of_a_vectored_function_is_set_by_some_case():
     assert not stale, stale
 
 
+def test_vectors_floor():
+    """ROADMAP item 190 — the floor, code's write-up."""
+    from openlocalweather.floor import FloorInputs, compose_floor
+
+    for case in load("floor.json")["cases"]:
+        assert compose_floor(FloorInputs.from_json(case["input"])) == case["expected"], case["name"]
+
+
 def test_vectors_code_call():
     """ROADMAP item 189 — the served call, built from code."""
     from openlocalweather.code_call import NoTemperatureToServe, served_call
@@ -1651,7 +1662,9 @@ def test_vectors_onset_window_label():
 
     for case in load("onset_window_label.json")["cases"]:
         i = case["input"]
-        assert onset_window_label(i["onsets"], issued_hour=i["issued_hour"]) == case["expected"], case["name"]
+        assert onset_window_label(
+            i["onsets"], issued_hour=i["issued_hour"], served_onset=i["served_onset"]
+        ) == case["expected"], case["name"]
 
 
 def test_vectors_cams_peak_aqi():

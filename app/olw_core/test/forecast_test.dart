@@ -280,7 +280,9 @@ void main() {
     expect(run.response.todayProperties.rainExpected, contains('Showers'));
     expect(run.response.todayProperties.tempHighC,
         run.servedCall.judgment.todayProperties.tempHighC);
-    expect(run.response.todayNarrative, contains('Write-up unavailable'));
+    // Code's write-up stands where the placeholder stood — upstream 190.
+    expect(run.response.todayNarrative, startsWith("## Today's Forecast"));
+    expect(run.response.todayNarrative, contains('Written by code'));
     expect(run.llmCallOutcome, llmCallServed);
 
     // Predictions were extracted at every tracked lead time, one per model.
@@ -1189,7 +1191,11 @@ void main() {
     expect(run.llmCallOutcome, llmCallNotConfigured);
     expect(run.judgment, isNull);
     expect(run.response.todayProperties.rainExpected, isNotEmpty);
-    expect(run.response.todayNarrative, contains('Write-up unavailable'));
+    // Code's write-up, signed without a promise, and no pending marker:
+    // nothing will answer it (upstream item 190).
+    expect(run.response.todayNarrative, startsWith("## Today's Forecast"));
+    expect(run.response.todayNarrative.trimRight(), endsWith('Written by code.'));
+    expect(run.degradations.map((d) => d.code), isNot(contains(degradationNarrative)));
   });
 
   test('a refused write-up is the caller\'s to record; the run already stands', () async {

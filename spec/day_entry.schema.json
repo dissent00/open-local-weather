@@ -895,6 +895,18 @@
           "title": "Narrative Markdown",
           "type": "string"
         },
+        "narrative_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Narrative Source"
+        },
         "onset_window": {
           "anyOf": [
             {
@@ -2011,6 +2023,18 @@
       "title": "Earlier Issuances",
       "type": "array"
     },
+    "extended_trend": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extended Trend"
+    },
     "forecast_reach": {
       "anyOf": [
         {
@@ -2113,6 +2137,18 @@
     "narrative_markdown": {
       "title": "Narrative Markdown",
       "type": "string"
+    },
+    "narrative_source": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Narrative Source"
     },
     "observed_so_far": {
       "anyOf": [

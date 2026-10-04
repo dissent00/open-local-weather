@@ -49,6 +49,12 @@ CALL_SOURCE_CONSENSUS = "consensus"
 # "High / Low" has room for a phrase and none for prose.
 RAIN_LABEL_MAX_CHARS = 48
 
+# A window wider than this is not a window — 2026-10-04, from the reader-words
+# list: the wet models' onsets spanned 16 hours on 08-23 ("03:00 – 19:00")
+# where the model wrote a three-hour one. Past it the tile shows the served
+# onset alone, the number tomorrow scores.
+ONSET_WINDOW_MAX_SPREAD_H = 6
+
 # The amount bands that read as isolated rather than as showers, for the
 # label — `day_rain_band`'s own words at its lower edge (under 5 mm).
 _ISOLATED_BANDS = (DRY_DAY_LABEL, "largely dry")
@@ -112,12 +118,16 @@ def rain_label(*, rain: bool, precip_mm: float | None, convective: bool, when: s
     return f"{kind} Likely"
 
 
-def onset_window_label(onsets: list[str], *, issued_hour: int | None) -> str | None:
+def onset_window_label(
+    onsets: list[str], *, issued_hour: int | None, served_onset: str | None = None
+) -> str | None:
     """`onset_window`: the spread of the wet models' onsets still ahead.
 
     A range when they differ, "From HH:MM" when they agree, None when none
     is ahead — an onset behind the issuance is an hour already lived
-    through, and the prompt's own rule forbids narrating it.
+    through, and the prompt's own rule forbids narrating it. A spread past
+    ONSET_WINDOW_MAX_SPREAD_H reads "From" the served onset (the median the
+    record scores) instead, or from the earliest when none was served.
     """
     ahead = sorted(
         {o for o in onsets if o and (issued_hour is None or _hour_of(o) is None or _hour_of(o) >= issued_hour)}
@@ -126,6 +136,10 @@ def onset_window_label(onsets: list[str], *, issued_hour: int | None) -> str | N
         return None
     if len(ahead) == 1:
         return f"From {ahead[0]}"
+
+    first, last = _hour_of(ahead[0]), _hour_of(ahead[-1])
+    if first is not None and last is not None and last - first > ONSET_WINDOW_MAX_SPREAD_H:
+        return f"From {served_onset or ahead[0]}"
     return f"{ahead[0]} – {ahead[-1]}"
 
 
@@ -221,7 +235,14 @@ def served_call(
     secondary_gust = _round1(mean([p.wind_kmh for p in secondary_day0]))
 
     wet_onsets = [p.onset for p in voters if p.rain and p.onset]
-    when = label_word(onset_word_for(onset) if (rain and onset and onset_word_for) else None)
+    # NO TIMING WORD FOR AN HOUR ALREADY LIVED THROUGH — 2026-10-04, from the
+    # reader-words list: an 18:01 run with a 15:00 onset wrote "Afternoon
+    # Showers" for the hours ahead. The window below already drops such an
+    # onset; the label's word follows the same rule.
+    onset_ahead = bool(onset) and (
+        issued_hour is None or _hour_of(onset) is None or _hour_of(onset) >= issued_hour
+    )
+    when = label_word(onset_word_for(onset) if (rain and onset_ahead and onset_word_for) else None)
     if not rain and convective:
         when = label_word(thunder_when)
 
@@ -229,7 +250,7 @@ def served_call(
 
     today = TodayProperties(
         rain_expected=rain_label(rain=rain, precip_mm=precip_mm, convective=convective, when=when),
-        onset_window=onset_window_label(wet_onsets, issued_hour=issued_hour) if rain else None,
+        onset_window=onset_window_label(wet_onsets, issued_hour=issued_hour, served_onset=onset) if rain else None,
         peak_wind_primary_kmh=primary_gust,
         peak_wind_secondary_kmh=secondary_gust,
         temp_high_c=high,

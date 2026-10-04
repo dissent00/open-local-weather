@@ -1636,6 +1636,16 @@ void main() {
     });
   });
 
+  group('the floor', () {
+    // Upstream item 190: code's write-up, the same text from the same values.
+    test('floor', () {
+      for (final c in casesOf('floor.json')) {
+        final got = composeFloor(FloorInputs.fromJson(c['input'] as Map<String, Object?>));
+        expect(got, c['expected'], reason: c['name'] as String);
+      }
+    });
+  });
+
   group('the served call', () {
     // Upstream item 189: the call the reader is shown, built from code.
     List<ModelPrediction> preds(List raw) => [
@@ -1710,7 +1720,8 @@ void main() {
         final i = c['input'] as Map<String, Object?>;
         expect(
             onsetWindowLabel((i['onsets'] as List).cast<String>(),
-                issuedHour: (i['issued_hour'] as num?)?.toInt()),
+                issuedHour: (i['issued_hour'] as num?)?.toInt(),
+                servedOnset: i['served_onset'] as String?),
             c['expected'],
             reason: c['name'] as String);
       }
@@ -2320,6 +2331,7 @@ void main() {
       'code_blend.json',
       // Upstream item 189 — the served call built from code.
       'code_call.json',
+      'floor.json',
       'rain_label.json',
       'onset_window_label.json',
       'cams_peak_aqi.json',

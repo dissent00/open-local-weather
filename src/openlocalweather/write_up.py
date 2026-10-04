@@ -19,6 +19,7 @@ import itertools
 
 from openlocalweather.defaults import BLEND_MODEL_ID
 from openlocalweather.llm.prompt import build_narrative_prompt, build_narrative_user_prompt
+from openlocalweather.floor import NARRATIVE_SOURCE_LLM
 from openlocalweather.models import DEGRADATION_NARRATIVE
 from openlocalweather.verify.scoring import resolve_prediction_rows
 
@@ -125,6 +126,7 @@ def apply_write_up(entry, narrative, served_model: str) -> None:
     longer true. `verification_notes` and `skill_profile_summaries` belong
     to other days' rows and are not written back: see the tool's docstring."""
     entry.narrative_markdown = narrative.today_narrative
+    entry.narrative_source = NARRATIVE_SOURCE_LLM
     entry.yesterday_verification_summary = narrative.yesterday_verification
     entry.meta.narrative_llm_model = served_model
     entry.meta.degradations = [

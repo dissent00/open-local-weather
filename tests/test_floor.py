@@ -7,7 +7,9 @@ import pytest
 from openlocalweather.floor import (
     SIGN_OFF_WITH_MODEL,
     SIGN_OFF_WITHOUT_MODEL,
+    FloorInputs,
     compose_floor,
+    compose_floor_for_entry,
 )
 from openlocalweather.models import DailyLogEntry
 from openlocalweather.phrasing import phrase_defect
@@ -32,14 +34,14 @@ def _sentences(text: str) -> list[str]:
 
 @pytest.mark.parametrize("day", ["2026-09-30", "2026-09-23"])
 def test_every_sentence_passes_the_shape_check(day):
-    text = compose_floor(_entry(day), secondary_name="Winam Gulf")
+    text = compose_floor_for_entry(_entry(day), secondary_name="Winam Gulf")
 
     for sentence in _sentences(text):
         assert phrase_defect(sentence) is None, sentence
 
 
 def test_the_floor_is_the_write_up_shape_from_stored_fields():
-    text = compose_floor(_entry("2026-09-30"), secondary_name="Winam Gulf")
+    text = compose_floor_for_entry(_entry("2026-09-30"), secondary_name="Winam Gulf")
 
     assert text.startswith("## Today's Forecast\n\n")
     # The day-over-day comparison opens, as the run composed it.
@@ -59,14 +61,14 @@ def test_the_floor_is_the_write_up_shape_from_stored_fields():
 
 
 def test_no_secondary_point_means_no_boaters_section():
-    text = compose_floor(_entry("2026-09-30"), secondary_name=None)
+    text = compose_floor_for_entry(_entry("2026-09-30"), secondary_name=None)
 
     assert "Conditions for Boaters" not in text
     assert "Peak gust 30" not in text
 
 
 def test_a_deployment_with_no_model_promises_nothing():
-    text = compose_floor(_entry("2026-09-30"), model_configured=False)
+    text = compose_floor_for_entry(_entry("2026-09-30"), model_configured=False)
 
     assert text.endswith(f"Figures issued 06:01. {SIGN_OFF_WITHOUT_MODEL}\n")
     assert "a discussion follows" not in text
@@ -86,7 +88,7 @@ def test_without_a_comparison_the_opener_is_the_served_calls_rain_character():
         },
     })
 
-    text = compose_floor(entry)
+    text = compose_floor_for_entry(entry)
 
     assert "yesterday" not in text
     assert text.startswith("## Today's Forecast\n\nShowery from the afternoon.")
@@ -105,7 +107,7 @@ def test_a_stored_served_call_decides_the_extended_leads():
         },
     })
 
-    text = compose_floor(entry)
+    text = compose_floor_for_entry(entry)
 
     assert "Saturday (Day+3): rain likely, 55% chance; highs 31 to 34 °C." in text
     assert "Wednesday (Day+7): dry; highs 29 to 35 °C." in text
@@ -120,7 +122,7 @@ def test_a_thin_day_still_signs_off():
         "peak_wind_secondary_kmh": None,
     })
 
-    text = compose_floor(entry, secondary_name="Winam Gulf")
+    text = compose_floor_for_entry(entry, secondary_name="Winam Gulf")
 
     # No rows at all, so no extended leads either: the section is absent,
     # never a heading over nothing.
@@ -128,3 +130,28 @@ def test_a_thin_day_still_signs_off():
         "## Today's Forecast\n\n32°C / 90°F high, 19°C / 66°F low.\n\n"
         f"Figures issued 06:01. {SIGN_OFF_WITH_MODEL}\n"
     )
+
+
+def test_the_stored_trend_opens_the_extended_outlook():
+    """The run stores the three-day clause (item 190), and the floor puts it
+    before the leads; a day without one starts at Day+3."""
+    entry = _entry("2026-09-30").model_copy(
+        update={"extended_trend": "Warming through Saturday, with showers returning by Monday"}
+    )
+
+    text = compose_floor_for_entry(entry)
+
+    assert "## Extended Outlook\n\nWarming through Saturday, with showers returning by Monday. Saturday (Day+3)" in text
+
+
+def test_the_inputs_round_trip_as_json():
+    """The vector's input shape: what `from_entry` reads is what
+    `compose_floor` is handed, in both languages."""
+    inputs = FloorInputs.from_entry(_entry("2026-09-30"), secondary_name="Winam Gulf")
+
+    assert FloorInputs.from_json(inputs.to_json()) == inputs
+    assert compose_floor(inputs) == compose_floor_for_entry(_entry("2026-09-30"), secondary_name="Winam Gulf")
+    assert inputs.extended_calls == [
+        {"lead_time_days": 3, "rain": False, "rain_probability_pct": 28},
+        {"lead_time_days": 7, "rain": True, "rain_probability_pct": 82},
+    ]

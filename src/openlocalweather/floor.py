@@ -5,15 +5,15 @@ unavailable" notice under tiles that already said most of what a bulletin
 would, on every day the model refused. Of the 61 sentences in the best
 write-up on the record (2026-09-23), 25 restate a composed phrase or a
 stored field and 32 follow from stored fields by a rule. This writes those
-sentences from the stored entry, in fixed frames, so no day shows a notice
-where a forecast should be and a deployment with no model has prose.
+sentences in fixed frames, so no day shows a notice where a forecast
+should be and a deployment with no model has prose.
 
-FROM THE STORED ENTRY, AND NOTHING ELSE. Every input is a field the run
-already writes, so `olw floor --date` renders for a stored day exactly what
-the run would have published — which is what the reading gate reads — and
-the app can render the same text from the same fields. A phrase the run
-does not store is not in the floor: the three-day trend sentence waits for
-the run to store it.
+A PURE FUNCTION OVER NAMED INPUTS, mirrored in `olw_core` and held to this
+implementation by `spec/vectors/floor.json`. Every input is a value the run
+already holds and the entry already stores, so `FloorInputs.from_entry`
+renders for a stored day exactly what the run published — which is what
+`olw floor` prints for the reading gate — and the app composes the same
+text from the same values at the end of its own run.
 
 ONLY PHRASES THAT EXIST VERBATIM, joined by fixed frames, every sentence
 through `phrase_defect` (item 158). A sentence that fails the shape check
@@ -25,7 +25,8 @@ WHAT IT CANNOT SAY: why the models disagree. That is item 195's job.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from dataclasses import asdict, dataclass, field
+from datetime import date, datetime, timedelta
 
 from openlocalweather.code_blend import blend_inputs
 from openlocalweather.comparison import describe_day_rain
@@ -39,7 +40,8 @@ from openlocalweather.tiles import KMH_PER_KNOT
 from openlocalweather.verify.scoring import mean, scored_predictions
 
 # Who wrote `narrative_markdown` — stored as `narrative_source` so the record
-# never mistakes code text for model text.
+# never mistakes code text for model text. None on entries written before
+# the field existed, when the narrative was the model's or the placeholder.
 NARRATIVE_SOURCE_CODE = "code"
 NARRATIVE_SOURCE_LLM = "llm"
 
@@ -67,34 +69,113 @@ _STORM_GUSTS = (
 )
 
 
-def compose_floor(
-    entry: DailyLogEntry,
-    *,
-    secondary_name: str | None = None,
-    model_configured: bool = True,
-) -> str:
-    """The floor for one stored day, as Markdown with the write-up's headings.
+@dataclass
+class FloorInputs:
+    """Everything the floor says, as plain values — the vector's input shape.
 
-    `secondary_name` names the second point's section and withholds it when
-    None; `model_configured` picks the sign-off.
+    `extended_calls` are the served leads already resolved (the stored call,
+    else the code blend's row, else the model's, else the inputs' vote), so
+    the composer never reads a record; `highs_by_lead` and
+    `day0_peak_cape_jkg` are the inputs' own figures for the range and the
+    thunder tier.
     """
+
+    date: str
+    temp_high_low_display: str
+    issued_local_time: str | None = None
+    sunrise: str | None = None
+    sunset: str | None = None
+    overview_comparison: str | None = None
+    cloud_anchors: list[dict] = field(default_factory=list)
+    wind_anchors: list[dict] = field(default_factory=list)
+    peak_wind_primary_kmh: float | None = None
+    peak_wind_secondary_kmh: float | None = None
+    uv_index: float | None = None
+    air_quality_index: int | None = None
+    ground_aqi: list[dict] = field(default_factory=list)
+    served_today: dict = field(default_factory=dict)
+    extended_calls: list[dict] = field(default_factory=list)
+    highs_by_lead: dict[str, list[float]] = field(default_factory=dict)
+    day0_peak_cape_jkg: list[float | None] = field(default_factory=list)
+    extended_trend: str | None = None
+    secondary_name: str | None = None
+    model_configured: bool = True
+
+    def to_json(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_json(cls, raw: dict) -> "FloorInputs":
+        return cls(**raw)
+
+    @classmethod
+    def from_entry(
+        cls,
+        entry: DailyLogEntry,
+        *,
+        secondary_name: str | None = None,
+        model_configured: bool = True,
+    ) -> "FloorInputs":
+        """The inputs as a stored entry holds them."""
+        rows = entry.prediction_rows[0] if entry.prediction_rows else None
+        comparison = rows.day_over_day if rows is not None else None
+        scored = scored_predictions(entry)
+        served = (entry.served_call or {}).get("today_properties") or {}
+        return cls(
+            date=entry.date.isoformat(),
+            temp_high_low_display=entry.temp_high_low_display,
+            issued_local_time=entry.meta.issued_local_time,
+            sunrise=entry.sunrise,
+            sunset=entry.sunset,
+            overview_comparison=comparison.overview_comparison if comparison is not None else None,
+            cloud_anchors=list(entry.cloud_anchors or []),
+            wind_anchors=list(entry.wind_anchors or []),
+            peak_wind_primary_kmh=entry.peak_wind_primary_kmh,
+            peak_wind_secondary_kmh=entry.peak_wind_secondary_kmh,
+            uv_index=entry.uv_index,
+            air_quality_index=entry.air_quality_index,
+            ground_aqi=[{"name": r.name, "aqi": r.aqi} for r in (entry.ground_aqi or []) if r.aqi is not None],
+            served_today={k: served.get(k) for k in ("rain", "onset_hour", "precip_mm")},
+            extended_calls=[c for c in (_lead_call(entry, scored.for_lead(lead), lead) for lead in EXTENDED_LEADS) if c],
+            highs_by_lead={
+                str(lead): [p.high_c for p in scored.for_lead(lead) if p.model in blend_inputs() and p.high_c is not None]
+                for lead in EXTENDED_LEADS
+            },
+            day0_peak_cape_jkg=[p.peak_cape_jkg for p in scored.day0 if p.model in blend_inputs()],
+            extended_trend=entry.extended_trend,
+            secondary_name=secondary_name,
+            model_configured=model_configured,
+        )
+
+
+def compose_floor(inputs: FloorInputs) -> str:
+    """The floor as Markdown with the write-up's headings."""
     sections = []
 
-    today = _sentences(_today_parts(entry))
+    today = _sentences(_today_parts(inputs))
     if today:
         sections.append(f"{TODAY_HEADING}\n\n{today}")
 
-    extended = _sentences(_extended_parts(entry))
+    extended = _sentences(_extended_parts(inputs))
     if extended:
         sections.append(f"{EXTENDED_HEADING}\n\n{extended}")
 
-    boaters = _sentences(_boaters_parts(entry)) if secondary_name else ""
+    boaters = _sentences(_boaters_parts(inputs)) if inputs.secondary_name else ""
     if boaters:
-        sections.append(f"{BOATERS_HEADING.format(name=secondary_name)}\n\n{boaters}")
+        sections.append(f"{BOATERS_HEADING.format(name=inputs.secondary_name)}\n\n{boaters}")
 
-    sections.append(_sentences(_sign_off_parts(entry, model_configured)))
+    sections.append(_sentences(_sign_off_parts(inputs)))
 
     return "\n\n".join(sections) + "\n"
+
+
+def compose_floor_for_entry(
+    entry: DailyLogEntry, *, secondary_name: str | None = None, model_configured: bool = True
+) -> str:
+    """The floor for one stored day — `olw floor`, and the run itself."""
+    return compose_floor(
+        FloorInputs.from_entry(entry, secondary_name=secondary_name, model_configured=model_configured)
+    )
 
 
 def _sentences(parts: list[str | None]) -> str:
@@ -114,43 +195,40 @@ def _sentence(text: str | None) -> str | None:
 # --- Today's Forecast ---
 
 
-def _today_parts(entry: DailyLogEntry) -> list[str | None]:
+def _today_parts(i: FloorInputs) -> list[str | None]:
     return [
-        _opener(entry),
-        _sentence(entry.temp_high_low_display),
-        _sky(entry.cloud_anchors),
-        _wind(entry.wind_anchors, entry.peak_wind_primary_kmh),
-        _uv(entry.uv_index),
-        _air_quality(entry),
+        _opener(i),
+        _sentence(i.temp_high_low_display),
+        _sky(i.cloud_anchors),
+        _wind(i.wind_anchors, i.peak_wind_primary_kmh),
+        _uv(i.uv_index),
+        _air_quality(i),
     ]
 
 
-def _opener(entry: DailyLogEntry) -> str | None:
+def _opener(i: FloorInputs) -> str | None:
     """The day-over-day comparison, as the run composed it; or the rain
     character of the day from the served call when there was no yesterday
-    to compare against — a fork's first day, or a store that keeps no
-    actuals."""
-    rows = entry.prediction_rows[0] if entry.prediction_rows else None
-    comparison = rows.day_over_day if rows is not None else None
-    if comparison is not None and comparison.overview_comparison:
-        return _sentence(comparison.overview_comparison)
+    to compare against — a fork's first day, the app, or a store that keeps
+    no actuals."""
+    if i.overview_comparison:
+        return _sentence(i.overview_comparison)
 
-    served = _served_today(entry)
     return _sentence(
         describe_day_rain(
-            served.get("precip_mm"),
-            served.get("onset_hour"),
-            _thunder_tier(entry) is not None,
-            issued_hour=_issued_hour(entry),
-            onset_word=_onset_word(entry, served.get("onset_hour")),
+            i.served_today.get("precip_mm"),
+            i.served_today.get("onset_hour"),
+            _thunder_tier(i) is not None,
+            issued_hour=_issued_hour(i),
+            onset_word=_onset_word(i, i.served_today.get("onset_hour")),
         )
     )
 
 
-def _sky(anchors: list[dict] | None) -> str | None:
+def _sky(anchors: list[dict]) -> str | None:
     """"Sky mostly cloudy early, partly cloudy at midday and mostly cloudy in
     the evening." One word for the whole day when every anchor agrees."""
-    present = [(a.get("when"), a.get("cover")) for a in (anchors or []) if a.get("when") in _ANCHOR_WHEN and a.get("cover")]
+    present = [(a.get("when"), a.get("cover")) for a in anchors if a.get("when") in _ANCHOR_WHEN and a.get("cover")]
     if not present:
         return None
 
@@ -161,10 +239,10 @@ def _sky(anchors: list[dict] | None) -> str | None:
     return f"Sky {_join([f'{cover.lower()} {_ANCHOR_WHEN[when]}' for when, cover in present])}."
 
 
-def _wind(anchors: list[dict] | None, gust_kmh: float | None) -> str | None:
+def _wind(anchors: list[dict], gust_kmh: float | None) -> str | None:
     """"Wind NNE early, SSW at midday and WSW in the evening; gusts to 33 km/h
     (18 kt)." The turn from the anchors, the peak from the served call."""
-    present = [(a.get("when"), a.get("direction")) for a in (anchors or []) if a.get("when") in _ANCHOR_WHEN and a.get("direction")]
+    present = [(a.get("when"), a.get("direction")) for a in anchors if a.get("when") in _ANCHOR_WHEN and a.get("direction")]
     gusts = None if gust_kmh is None else f"gusts to {_kmh_and_kt(gust_kmh)}"
 
     if not present:
@@ -185,68 +263,64 @@ def _uv(index: float | None) -> str | None:
     return f"UV index {index:.1f} ({uv_band(index).lower()})."
 
 
-def _air_quality(entry: DailyLogEntry) -> str | None:
+def _air_quality(i: FloorInputs) -> str | None:
     """The ground stations' worst reading where there are stations, the CAMS
     estimate where there are none — the same precedence the prompt gave."""
-    readings = [r for r in (entry.ground_aqi or []) if r.aqi is not None]
+    readings = [r for r in i.ground_aqi if r.get("aqi") is not None]
     if readings:
-        worst = max(readings, key=lambda r: r.aqi)
-        where = f"at {worst.name}, the highest of {len(readings)} stations" if len(readings) > 1 else f"at {worst.name}"
-        return f"Air quality {worst.aqi} ({aqi_band(worst.aqi).lower()}) {where}."
+        worst = max(readings, key=lambda r: r["aqi"])
+        where = f"at {worst['name']}, the highest of {len(readings)} stations" if len(readings) > 1 else f"at {worst['name']}"
+        return f"Air quality {worst['aqi']} ({aqi_band(worst['aqi']).lower()}) {where}."
 
-    index = entry.air_quality_index
-    if index is None:
+    if i.air_quality_index is None:
         return None
-    return f"Air quality {index} ({aqi_band(index).lower()}), by the CAMS model."
+    return f"Air quality {i.air_quality_index} ({aqi_band(i.air_quality_index).lower()}), by the CAMS model."
 
 
 # --- Extended Outlook ---
 
 
-def _extended_parts(entry: DailyLogEntry) -> list[str | None]:
-    return [_lead_sentence(entry, lead) for lead in EXTENDED_LEADS]
+def _extended_parts(i: FloorInputs) -> list[str | None]:
+    return [_sentence(i.extended_trend), *(_lead_sentence(i, call) for call in i.extended_calls)]
 
 
-def _lead_sentence(entry: DailyLogEntry, lead: int) -> str | None:
+def _lead_sentence(i: FloorInputs, call: dict) -> str | None:
     """"Saturday (Day+3): dry, 30% chance of rain; highs around 29 °C.\""""
-    call = _lead_call(entry, lead)
-    if call is None:
-        return None
-    rain, probability = call
+    lead = int(call["lead_time_days"])
+    rain = bool(call["rain"])
+    probability = call.get("rain_probability_pct")
 
-    weekday = (entry.date + timedelta(days=lead)).strftime("%A")
+    weekday = (date.fromisoformat(i.date) + timedelta(days=lead)).strftime("%A")
     if rain:
         words = "rain likely" if probability is None else f"rain likely, {probability}% chance"
     else:
         words = "dry" if probability is None else f"dry, {probability}% chance of rain"
 
-    highs = _highs(scored_predictions(entry).for_lead(lead))
+    highs = _highs(i.highs_by_lead.get(str(lead)) or [])
     return f"{weekday} (Day+{lead}): {words}{'; ' + highs if highs else ''}."
 
 
-def _lead_call(entry: DailyLogEntry, lead: int) -> tuple[bool, int | None] | None:
-    """The served call at a lead: the stored call where the entry carries
-    one (item 189), else the code blend's row, else the model's own row,
-    else the inputs' equal-weight vote with a dry tie."""
+def _lead_call(entry: DailyLogEntry, rows: list[ModelPrediction], lead: int) -> dict | None:
+    """The served call at a lead, from a stored entry: the stored call where
+    the entry carries one (item 189), else the code blend's row, else the
+    model's own row, else the inputs' equal-weight vote with a dry tie."""
     for prop in (entry.served_call or {}).get("extended_properties") or []:
         if prop.get("lead_time_days") == lead and prop.get("rain") is not None:
-            return bool(prop["rain"]), prop.get("rain_probability_pct")
+            return {"lead_time_days": lead, "rain": bool(prop["rain"]), "rain_probability_pct": prop.get("rain_probability_pct")}
 
-    rows = scored_predictions(entry).for_lead(lead)
     for model in (CODE_BLEND_MODEL_ID, BLEND_MODEL_ID):
         row = next((p for p in rows if p.model == model and p.rain is not None), None)
         if row is not None:
-            return row.rain, row.rain_probability_pct
+            return {"lead_time_days": lead, "rain": row.rain, "rain_probability_pct": row.rain_probability_pct}
 
     votes = [p for p in rows if p.model in blend_inputs() and p.rain is not None]
     if not votes:
         return None
     wet = sum(1 for p in votes if p.rain)
-    return wet * 2 > len(votes), round(100 * wet / len(votes))
+    return {"lead_time_days": lead, "rain": wet * 2 > len(votes), "rain_probability_pct": round(100 * wet / len(votes))}
 
 
-def _highs(rows: list[ModelPrediction]) -> str | None:
-    highs = [p.high_c for p in rows if p.model in blend_inputs() and p.high_c is not None]
+def _highs(highs: list[float]) -> str | None:
     if not highs:
         return None
     if max(highs) - min(highs) > HIGH_RANGE_SPREAD_C:
@@ -257,66 +331,59 @@ def _highs(rows: list[ModelPrediction]) -> str | None:
 # --- Conditions for Boaters ---
 
 
-def _boaters_parts(entry: DailyLogEntry) -> list[str | None]:
-    gust = entry.peak_wind_secondary_kmh
-    if gust is None:
+def _boaters_parts(i: FloorInputs) -> list[str | None]:
+    if i.peak_wind_secondary_kmh is None:
         return []
     return [
-        f"Peak gust {_kmh_and_kt(gust)}.",
-        _STORM_GUSTS if _thunder_tier(entry) is not None else None,
+        f"Peak gust {_kmh_and_kt(i.peak_wind_secondary_kmh)}.",
+        _STORM_GUSTS if _thunder_tier(i) is not None else None,
     ]
 
 
 # --- The sign-off ---
 
 
-def _sign_off_parts(entry: DailyLogEntry, model_configured: bool) -> list[str | None]:
-    issued = entry.meta.issued_local_time
+def _sign_off_parts(i: FloorInputs) -> list[str | None]:
     return [
-        f"Figures issued {issued}." if issued else None,
-        SIGN_OFF_WITH_MODEL if model_configured else SIGN_OFF_WITHOUT_MODEL,
+        f"Figures issued {i.issued_local_time}." if i.issued_local_time else None,
+        SIGN_OFF_WITH_MODEL if i.model_configured else SIGN_OFF_WITHOUT_MODEL,
     ]
 
 
 # --- Shared ---
 
 
-def _served_today(entry: DailyLogEntry) -> dict:
-    return (entry.served_call or {}).get("today_properties") or {}
+def _thunder_tier(i: FloorInputs) -> str | None:
+    """The thunder word from the Day+0 inputs' CAPE maxima, the pipeline's
+    own rule (`convective_tier`)."""
+    return convective_tier(i.day0_peak_cape_jkg)
 
 
-def _thunder_tier(entry: DailyLogEntry) -> str | None:
-    """The thunder word from the Day+0 rows' CAPE maxima, the pipeline's own
-    rule (`convective_tier`) over the models it measured it on."""
-    rows = scored_predictions(entry).day0
-    return convective_tier([p.peak_cape_jkg for p in rows if p.model in blend_inputs()])
-
-
-def _issued_hour(entry: DailyLogEntry) -> int | None:
-    issued = entry.meta.issued_local_time
+def _issued_hour(i: FloorInputs) -> int | None:
     try:
-        return int(issued.split(":")[0]) if issued else None
+        return int(i.issued_local_time.split(":")[0]) if i.issued_local_time else None
     except ValueError:
         return None
 
 
-def _onset_word(entry: DailyLogEntry, onset: str | None) -> str | None:
+def _onset_word(i: FloorInputs, onset: str | None) -> str | None:
     """The onset placed by the sun, as `pipeline._onset_word_for` places it,
     from the sun times and the issue time the entry stores."""
-    now = _clock(entry, entry.meta.issued_local_time)
-    sunrise = _clock(entry, entry.sunrise)
-    sunset = _clock(entry, entry.sunset)
+    now = _clock(i, i.issued_local_time)
+    sunrise = _clock(i, i.sunrise)
+    sunset = _clock(i, i.sunset)
     if now is None or sunrise is None or sunset is None:
         return None
     return onset_word(onset, now=now, sunrise=sunrise, sunset=sunset)
 
 
-def _clock(entry: DailyLogEntry, hhmm: str | None) -> datetime | None:
+def _clock(i: FloorInputs, hhmm: str | None) -> datetime | None:
     try:
         hour, minute = (int(part) for part in hhmm.split(":")[:2])
+        day = date.fromisoformat(i.date)
     except (AttributeError, ValueError):
         return None
-    return datetime(entry.date.year, entry.date.month, entry.date.day, hour, minute)
+    return datetime(day.year, day.month, day.day, hour, minute)
 
 
 def _kmh_and_kt(kmh: float) -> str:

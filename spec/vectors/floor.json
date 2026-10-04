@@ -1,0 +1,1192 @@
+{
+  "vector_format_version": 1,
+  "function": "compose_floor",
+  "description": "Code's write-up from the day's stored values: the comparison opens, else the served call's rain character; the sky and wind from the anchors with the served gust; UV and the worst station, else the CAMS figure; the trend clause and the served leads with the inputs' highs; the boaters' section with its storm sentence where thunder is possible; a sign-off that promises a discussion only where a model is configured. Every sentence passes phrase_defect or is dropped.",
+  "cases": [
+    {
+      "name": "a stored day with every field",
+      "input": {
+        "date": "2026-09-30",
+        "temp_high_low_display": "32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low",
+        "issued_local_time": "06:01",
+        "sunrise": "06:27",
+        "sunset": "18:34",
+        "overview_comparison": "Slightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again.",
+        "cloud_anchors": [
+          {
+            "when": "early",
+            "cover": "Mostly cloudy"
+          },
+          {
+            "when": "midday",
+            "cover": "Partly cloudy"
+          },
+          {
+            "when": "evening",
+            "cover": "Mostly cloudy"
+          }
+        ],
+        "wind_anchors": [
+          {
+            "when": "early",
+            "direction": "NNE",
+            "sustained_kmh": 5.2,
+            "gust_kmh": 8.1
+          },
+          {
+            "when": "midday",
+            "direction": "SSW",
+            "sustained_kmh": 7.3,
+            "gust_kmh": 18.1
+          },
+          {
+            "when": "evening",
+            "direction": "WSW",
+            "sustained_kmh": 10.1,
+            "gust_kmh": 18.9
+          }
+        ],
+        "peak_wind_primary_kmh": 33.4,
+        "peak_wind_secondary_kmh": 30.3,
+        "uv_index": 9.15,
+        "air_quality_index": 103,
+        "ground_aqi": [
+          {
+            "name": "Kisumu Airport",
+            "aqi": 103
+          },
+          {
+            "name": "Ochieng' Avenue, Kisumu Central",
+            "aqi": 59
+          },
+          {
+            "name": "Dunga Beach",
+            "aqi": 40
+          }
+        ],
+        "served_today": {
+          "rain": false,
+          "onset_hour": null,
+          "precip_mm": 0.2
+        },
+        "extended_calls": [
+          {
+            "lead_time_days": 3,
+            "rain": false,
+            "rain_probability_pct": 28
+          },
+          {
+            "lead_time_days": 7,
+            "rain": true,
+            "rain_probability_pct": 82
+          }
+        ],
+        "highs_by_lead": {
+          "3": [
+            31.0,
+            32.5,
+            34.0
+          ],
+          "7": [
+            29.0,
+            35.0
+          ]
+        },
+        "day0_peak_cape_jkg": [
+          1200.0,
+          800.0,
+          1100.0,
+          null
+        ],
+        "extended_trend": "Warming through Saturday, with showers returning by Monday",
+        "secondary_name": "Winam Gulf",
+        "model_configured": true
+      },
+      "expected": "## Today's Forecast\n\nSlightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again. 32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low. Sky mostly cloudy early, partly cloudy at midday and mostly cloudy in the evening. Wind NNE early, SSW at midday and WSW in the evening; gusts to 33 km/h (18 kt). UV index 9.2 (very high). Air quality 103 (unhealthy for sensitive groups) at Kisumu Airport, the highest of 3 stations.\n\n## Extended Outlook\n\nWarming through Saturday, with showers returning by Monday. Saturday (Day+3): dry, 28% chance of rain; highs 31 to 34 \u00b0C. Wednesday (Day+7): rain likely, 82% chance; highs 29 to 35 \u00b0C.\n\n## Winam Gulf \u2014 Conditions for Boaters\n\nPeak gust 30 km/h (16 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.\n\nFigures issued 06:01. Written by code; a discussion follows when a model answers.\n"
+    },
+    {
+      "name": "no comparison: the served call's rain character opens",
+      "input": {
+        "date": "2026-09-30",
+        "temp_high_low_display": "32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low",
+        "issued_local_time": "06:01",
+        "sunrise": "06:27",
+        "sunset": "18:34",
+        "overview_comparison": null,
+        "cloud_anchors": [
+          {
+            "when": "early",
+            "cover": "Mostly cloudy"
+          },
+          {
+            "when": "midday",
+            "cover": "Partly cloudy"
+          },
+          {
+            "when": "evening",
+            "cover": "Mostly cloudy"
+          }
+        ],
+        "wind_anchors": [
+          {
+            "when": "early",
+            "direction": "NNE",
+            "sustained_kmh": 5.2,
+            "gust_kmh": 8.1
+          },
+          {
+            "when": "midday",
+            "direction": "SSW",
+            "sustained_kmh": 7.3,
+            "gust_kmh": 18.1
+          },
+          {
+            "when": "evening",
+            "direction": "WSW",
+            "sustained_kmh": 10.1,
+            "gust_kmh": 18.9
+          }
+        ],
+        "peak_wind_primary_kmh": 33.4,
+        "peak_wind_secondary_kmh": 30.3,
+        "uv_index": 9.15,
+        "air_quality_index": 103,
+        "ground_aqi": [
+          {
+            "name": "Kisumu Airport",
+            "aqi": 103
+          },
+          {
+            "name": "Ochieng' Avenue, Kisumu Central",
+            "aqi": 59
+          },
+          {
+            "name": "Dunga Beach",
+            "aqi": 40
+          }
+        ],
+        "served_today": {
+          "rain": true,
+          "onset_hour": "15:00",
+          "precip_mm": 8.0
+        },
+        "extended_calls": [
+          {
+            "lead_time_days": 3,
+            "rain": false,
+            "rain_probability_pct": 28
+          },
+          {
+            "lead_time_days": 7,
+            "rain": true,
+            "rain_probability_pct": 82
+          }
+        ],
+        "highs_by_lead": {
+          "3": [
+            31.0,
+            32.5,
+            34.0
+          ],
+          "7": [
+            29.0,
+            35.0
+          ]
+        },
+        "day0_peak_cape_jkg": [
+          1200.0,
+          800.0,
+          1100.0,
+          null
+        ],
+        "extended_trend": "Warming through Saturday, with showers returning by Monday",
+        "secondary_name": "Winam Gulf",
+        "model_configured": true
+      },
+      "expected": "## Today's Forecast\n\nShowery with afternoon thunderstorms. 32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low. Sky mostly cloudy early, partly cloudy at midday and mostly cloudy in the evening. Wind NNE early, SSW at midday and WSW in the evening; gusts to 33 km/h (18 kt). UV index 9.2 (very high). Air quality 103 (unhealthy for sensitive groups) at Kisumu Airport, the highest of 3 stations.\n\n## Extended Outlook\n\nWarming through Saturday, with showers returning by Monday. Saturday (Day+3): dry, 28% chance of rain; highs 31 to 34 \u00b0C. Wednesday (Day+7): rain likely, 82% chance; highs 29 to 35 \u00b0C.\n\n## Winam Gulf \u2014 Conditions for Boaters\n\nPeak gust 30 km/h (16 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.\n\nFigures issued 06:01. Written by code; a discussion follows when a model answers.\n"
+    },
+    {
+      "name": "no comparison and a dry call",
+      "input": {
+        "date": "2026-09-30",
+        "temp_high_low_display": "32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low",
+        "issued_local_time": "06:01",
+        "sunrise": "06:27",
+        "sunset": "18:34",
+        "overview_comparison": null,
+        "cloud_anchors": [
+          {
+            "when": "early",
+            "cover": "Mostly cloudy"
+          },
+          {
+            "when": "midday",
+            "cover": "Partly cloudy"
+          },
+          {
+            "when": "evening",
+            "cover": "Mostly cloudy"
+          }
+        ],
+        "wind_anchors": [
+          {
+            "when": "early",
+            "direction": "NNE",
+            "sustained_kmh": 5.2,
+            "gust_kmh": 8.1
+          },
+          {
+            "when": "midday",
+            "direction": "SSW",
+            "sustained_kmh": 7.3,
+            "gust_kmh": 18.1
+          },
+          {
+            "when": "evening",
+            "direction": "WSW",
+            "sustained_kmh": 10.1,
+            "gust_kmh": 18.9
+          }
+        ],
+        "peak_wind_primary_kmh": 33.4,
+        "peak_wind_secondary_kmh": 30.3,
+        "uv_index": 9.15,
+        "air_quality_index": 103,
+        "ground_aqi": [
+          {
+            "name": "Kisumu Airport",
+            "aqi": 103
+          },
+          {
+            "name": "Ochieng' Avenue, Kisumu Central",
+            "aqi": 59
+          },
+          {
+            "name": "Dunga Beach",
+            "aqi": 40
+          }
+        ],
+        "served_today": {
+          "rain": false,
+          "onset_hour": null,
+          "precip_mm": 0.4
+        },
+        "extended_calls": [
+          {
+            "lead_time_days": 3,
+            "rain": false,
+            "rain_probability_pct": 28
+          },
+          {
+            "lead_time_days": 7,
+            "rain": true,
+            "rain_probability_pct": 82
+          }
+        ],
+        "highs_by_lead": {
+          "3": [
+            31.0,
+            32.5,
+            34.0
+          ],
+          "7": [
+            29.0,
+            35.0
+          ]
+        },
+        "day0_peak_cape_jkg": [
+          1200.0,
+          800.0,
+          1100.0,
+          null
+        ],
+        "extended_trend": "Warming through Saturday, with showers returning by Monday",
+        "secondary_name": "Winam Gulf",
+        "model_configured": true
+      },
+      "expected": "## Today's Forecast\n\nDry but thundery. 32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low. Sky mostly cloudy early, partly cloudy at midday and mostly cloudy in the evening. Wind NNE early, SSW at midday and WSW in the evening; gusts to 33 km/h (18 kt). UV index 9.2 (very high). Air quality 103 (unhealthy for sensitive groups) at Kisumu Airport, the highest of 3 stations.\n\n## Extended Outlook\n\nWarming through Saturday, with showers returning by Monday. Saturday (Day+3): dry, 28% chance of rain; highs 31 to 34 \u00b0C. Wednesday (Day+7): rain likely, 82% chance; highs 29 to 35 \u00b0C.\n\n## Winam Gulf \u2014 Conditions for Boaters\n\nPeak gust 30 km/h (16 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.\n\nFigures issued 06:01. Written by code; a discussion follows when a model answers.\n"
+    },
+    {
+      "name": "a thin day: temperatures and the stamp alone",
+      "input": {
+        "date": "2026-09-30",
+        "temp_high_low_display": "32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low",
+        "issued_local_time": "06:01",
+        "sunrise": "06:27",
+        "sunset": "18:34",
+        "overview_comparison": null,
+        "cloud_anchors": [],
+        "wind_anchors": [],
+        "peak_wind_primary_kmh": null,
+        "peak_wind_secondary_kmh": null,
+        "uv_index": null,
+        "air_quality_index": null,
+        "ground_aqi": [],
+        "served_today": {},
+        "extended_calls": [],
+        "highs_by_lead": {},
+        "day0_peak_cape_jkg": [],
+        "extended_trend": null,
+        "secondary_name": "Winam Gulf",
+        "model_configured": true
+      },
+      "expected": "## Today's Forecast\n\n32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low.\n\nFigures issued 06:01. Written by code; a discussion follows when a model answers.\n"
+    },
+    {
+      "name": "no model configured promises nothing",
+      "input": {
+        "date": "2026-09-30",
+        "temp_high_low_display": "32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low",
+        "issued_local_time": "06:01",
+        "sunrise": "06:27",
+        "sunset": "18:34",
+        "overview_comparison": "Slightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again.",
+        "cloud_anchors": [
+          {
+            "when": "early",
+            "cover": "Mostly cloudy"
+          },
+          {
+            "when": "midday",
+            "cover": "Partly cloudy"
+          },
+          {
+            "when": "evening",
+            "cover": "Mostly cloudy"
+          }
+        ],
+        "wind_anchors": [
+          {
+            "when": "early",
+            "direction": "NNE",
+            "sustained_kmh": 5.2,
+            "gust_kmh": 8.1
+          },
+          {
+            "when": "midday",
+            "direction": "SSW",
+            "sustained_kmh": 7.3,
+            "gust_kmh": 18.1
+          },
+          {
+            "when": "evening",
+            "direction": "WSW",
+            "sustained_kmh": 10.1,
+            "gust_kmh": 18.9
+          }
+        ],
+        "peak_wind_primary_kmh": 33.4,
+        "peak_wind_secondary_kmh": 30.3,
+        "uv_index": 9.15,
+        "air_quality_index": 103,
+        "ground_aqi": [
+          {
+            "name": "Kisumu Airport",
+            "aqi": 103
+          },
+          {
+            "name": "Ochieng' Avenue, Kisumu Central",
+            "aqi": 59
+          },
+          {
+            "name": "Dunga Beach",
+            "aqi": 40
+          }
+        ],
+        "served_today": {
+          "rain": false,
+          "onset_hour": null,
+          "precip_mm": 0.2
+        },
+        "extended_calls": [
+          {
+            "lead_time_days": 3,
+            "rain": false,
+            "rain_probability_pct": 28
+          },
+          {
+            "lead_time_days": 7,
+            "rain": true,
+            "rain_probability_pct": 82
+          }
+        ],
+        "highs_by_lead": {
+          "3": [
+            31.0,
+            32.5,
+            34.0
+          ],
+          "7": [
+            29.0,
+            35.0
+          ]
+        },
+        "day0_peak_cape_jkg": [
+          1200.0,
+          800.0,
+          1100.0,
+          null
+        ],
+        "extended_trend": "Warming through Saturday, with showers returning by Monday",
+        "secondary_name": "Winam Gulf",
+        "model_configured": false
+      },
+      "expected": "## Today's Forecast\n\nSlightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again. 32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low. Sky mostly cloudy early, partly cloudy at midday and mostly cloudy in the evening. Wind NNE early, SSW at midday and WSW in the evening; gusts to 33 km/h (18 kt). UV index 9.2 (very high). Air quality 103 (unhealthy for sensitive groups) at Kisumu Airport, the highest of 3 stations.\n\n## Extended Outlook\n\nWarming through Saturday, with showers returning by Monday. Saturday (Day+3): dry, 28% chance of rain; highs 31 to 34 \u00b0C. Wednesday (Day+7): rain likely, 82% chance; highs 29 to 35 \u00b0C.\n\n## Winam Gulf \u2014 Conditions for Boaters\n\nPeak gust 30 km/h (16 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.\n\nFigures issued 06:01. Written by code.\n"
+    },
+    {
+      "name": "no secondary point, no boaters",
+      "input": {
+        "date": "2026-09-30",
+        "temp_high_low_display": "32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low",
+        "issued_local_time": "06:01",
+        "sunrise": "06:27",
+        "sunset": "18:34",
+        "overview_comparison": "Slightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again.",
+        "cloud_anchors": [
+          {
+            "when": "early",
+            "cover": "Mostly cloudy"
+          },
+          {
+            "when": "midday",
+            "cover": "Partly cloudy"
+          },
+          {
+            "when": "evening",
+            "cover": "Mostly cloudy"
+          }
+        ],
+        "wind_anchors": [
+          {
+            "when": "early",
+            "direction": "NNE",
+            "sustained_kmh": 5.2,
+            "gust_kmh": 8.1
+          },
+          {
+            "when": "midday",
+            "direction": "SSW",
+            "sustained_kmh": 7.3,
+            "gust_kmh": 18.1
+          },
+          {
+            "when": "evening",
+            "direction": "WSW",
+            "sustained_kmh": 10.1,
+            "gust_kmh": 18.9
+          }
+        ],
+        "peak_wind_primary_kmh": 33.4,
+        "peak_wind_secondary_kmh": 30.3,
+        "uv_index": 9.15,
+        "air_quality_index": 103,
+        "ground_aqi": [
+          {
+            "name": "Kisumu Airport",
+            "aqi": 103
+          },
+          {
+            "name": "Ochieng' Avenue, Kisumu Central",
+            "aqi": 59
+          },
+          {
+            "name": "Dunga Beach",
+            "aqi": 40
+          }
+        ],
+        "served_today": {
+          "rain": false,
+          "onset_hour": null,
+          "precip_mm": 0.2
+        },
+        "extended_calls": [
+          {
+            "lead_time_days": 3,
+            "rain": false,
+            "rain_probability_pct": 28
+          },
+          {
+            "lead_time_days": 7,
+            "rain": true,
+            "rain_probability_pct": 82
+          }
+        ],
+        "highs_by_lead": {
+          "3": [
+            31.0,
+            32.5,
+            34.0
+          ],
+          "7": [
+            29.0,
+            35.0
+          ]
+        },
+        "day0_peak_cape_jkg": [
+          1200.0,
+          800.0,
+          1100.0,
+          null
+        ],
+        "extended_trend": "Warming through Saturday, with showers returning by Monday",
+        "secondary_name": null,
+        "model_configured": true
+      },
+      "expected": "## Today's Forecast\n\nSlightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again. 32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low. Sky mostly cloudy early, partly cloudy at midday and mostly cloudy in the evening. Wind NNE early, SSW at midday and WSW in the evening; gusts to 33 km/h (18 kt). UV index 9.2 (very high). Air quality 103 (unhealthy for sensitive groups) at Kisumu Airport, the highest of 3 stations.\n\n## Extended Outlook\n\nWarming through Saturday, with showers returning by Monday. Saturday (Day+3): dry, 28% chance of rain; highs 31 to 34 \u00b0C. Wednesday (Day+7): rain likely, 82% chance; highs 29 to 35 \u00b0C.\n\nFigures issued 06:01. Written by code; a discussion follows when a model answers.\n"
+    },
+    {
+      "name": "anchors that agree read as the whole day",
+      "input": {
+        "date": "2026-09-30",
+        "temp_high_low_display": "32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low",
+        "issued_local_time": "06:01",
+        "sunrise": "06:27",
+        "sunset": "18:34",
+        "overview_comparison": "Slightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again.",
+        "cloud_anchors": [
+          {
+            "when": "early",
+            "cover": "Overcast"
+          },
+          {
+            "when": "midday",
+            "cover": "Overcast"
+          },
+          {
+            "when": "evening",
+            "cover": "Overcast"
+          }
+        ],
+        "wind_anchors": [
+          {
+            "when": "early",
+            "direction": "SW"
+          },
+          {
+            "when": "midday",
+            "direction": "SW"
+          },
+          {
+            "when": "evening",
+            "direction": "SW"
+          }
+        ],
+        "peak_wind_primary_kmh": 33.4,
+        "peak_wind_secondary_kmh": 30.3,
+        "uv_index": 9.15,
+        "air_quality_index": 103,
+        "ground_aqi": [
+          {
+            "name": "Kisumu Airport",
+            "aqi": 103
+          },
+          {
+            "name": "Ochieng' Avenue, Kisumu Central",
+            "aqi": 59
+          },
+          {
+            "name": "Dunga Beach",
+            "aqi": 40
+          }
+        ],
+        "served_today": {
+          "rain": false,
+          "onset_hour": null,
+          "precip_mm": 0.2
+        },
+        "extended_calls": [
+          {
+            "lead_time_days": 3,
+            "rain": false,
+            "rain_probability_pct": 28
+          },
+          {
+            "lead_time_days": 7,
+            "rain": true,
+            "rain_probability_pct": 82
+          }
+        ],
+        "highs_by_lead": {
+          "3": [
+            31.0,
+            32.5,
+            34.0
+          ],
+          "7": [
+            29.0,
+            35.0
+          ]
+        },
+        "day0_peak_cape_jkg": [
+          1200.0,
+          800.0,
+          1100.0,
+          null
+        ],
+        "extended_trend": "Warming through Saturday, with showers returning by Monday",
+        "secondary_name": "Winam Gulf",
+        "model_configured": true
+      },
+      "expected": "## Today's Forecast\n\nSlightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again. 32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low. Sky overcast through the day. Wind SW through the day; gusts to 33 km/h (18 kt). UV index 9.2 (very high). Air quality 103 (unhealthy for sensitive groups) at Kisumu Airport, the highest of 3 stations.\n\n## Extended Outlook\n\nWarming through Saturday, with showers returning by Monday. Saturday (Day+3): dry, 28% chance of rain; highs 31 to 34 \u00b0C. Wednesday (Day+7): rain likely, 82% chance; highs 29 to 35 \u00b0C.\n\n## Winam Gulf \u2014 Conditions for Boaters\n\nPeak gust 30 km/h (16 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.\n\nFigures issued 06:01. Written by code; a discussion follows when a model answers.\n"
+    },
+    {
+      "name": "an evening issuance has one anchor left",
+      "input": {
+        "date": "2026-09-30",
+        "temp_high_low_display": "32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low",
+        "issued_local_time": "18:01",
+        "sunrise": "06:27",
+        "sunset": "18:34",
+        "overview_comparison": "Slightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again.",
+        "cloud_anchors": [
+          {
+            "when": "evening",
+            "cover": "Mostly cloudy"
+          }
+        ],
+        "wind_anchors": [
+          {
+            "when": "evening",
+            "direction": "WSW"
+          }
+        ],
+        "peak_wind_primary_kmh": 33.4,
+        "peak_wind_secondary_kmh": 30.3,
+        "uv_index": 9.15,
+        "air_quality_index": 103,
+        "ground_aqi": [
+          {
+            "name": "Kisumu Airport",
+            "aqi": 103
+          },
+          {
+            "name": "Ochieng' Avenue, Kisumu Central",
+            "aqi": 59
+          },
+          {
+            "name": "Dunga Beach",
+            "aqi": 40
+          }
+        ],
+        "served_today": {
+          "rain": false,
+          "onset_hour": null,
+          "precip_mm": 0.2
+        },
+        "extended_calls": [
+          {
+            "lead_time_days": 3,
+            "rain": false,
+            "rain_probability_pct": 28
+          },
+          {
+            "lead_time_days": 7,
+            "rain": true,
+            "rain_probability_pct": 82
+          }
+        ],
+        "highs_by_lead": {
+          "3": [
+            31.0,
+            32.5,
+            34.0
+          ],
+          "7": [
+            29.0,
+            35.0
+          ]
+        },
+        "day0_peak_cape_jkg": [
+          1200.0,
+          800.0,
+          1100.0,
+          null
+        ],
+        "extended_trend": "Warming through Saturday, with showers returning by Monday",
+        "secondary_name": "Winam Gulf",
+        "model_configured": true
+      },
+      "expected": "## Today's Forecast\n\nSlightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again. 32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low. Sky mostly cloudy in the evening. Wind WSW in the evening; gusts to 33 km/h (18 kt). UV index 9.2 (very high). Air quality 103 (unhealthy for sensitive groups) at Kisumu Airport, the highest of 3 stations.\n\n## Extended Outlook\n\nWarming through Saturday, with showers returning by Monday. Saturday (Day+3): dry, 28% chance of rain; highs 31 to 34 \u00b0C. Wednesday (Day+7): rain likely, 82% chance; highs 29 to 35 \u00b0C.\n\n## Winam Gulf \u2014 Conditions for Boaters\n\nPeak gust 30 km/h (16 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.\n\nFigures issued 18:01. Written by code; a discussion follows when a model answers.\n"
+    },
+    {
+      "name": "one station names itself alone",
+      "input": {
+        "date": "2026-09-30",
+        "temp_high_low_display": "32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low",
+        "issued_local_time": "06:01",
+        "sunrise": "06:27",
+        "sunset": "18:34",
+        "overview_comparison": "Slightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again.",
+        "cloud_anchors": [
+          {
+            "when": "early",
+            "cover": "Mostly cloudy"
+          },
+          {
+            "when": "midday",
+            "cover": "Partly cloudy"
+          },
+          {
+            "when": "evening",
+            "cover": "Mostly cloudy"
+          }
+        ],
+        "wind_anchors": [
+          {
+            "when": "early",
+            "direction": "NNE",
+            "sustained_kmh": 5.2,
+            "gust_kmh": 8.1
+          },
+          {
+            "when": "midday",
+            "direction": "SSW",
+            "sustained_kmh": 7.3,
+            "gust_kmh": 18.1
+          },
+          {
+            "when": "evening",
+            "direction": "WSW",
+            "sustained_kmh": 10.1,
+            "gust_kmh": 18.9
+          }
+        ],
+        "peak_wind_primary_kmh": 33.4,
+        "peak_wind_secondary_kmh": 30.3,
+        "uv_index": 9.15,
+        "air_quality_index": 103,
+        "ground_aqi": [
+          {
+            "name": "Kisumu Airport",
+            "aqi": 66
+          }
+        ],
+        "served_today": {
+          "rain": false,
+          "onset_hour": null,
+          "precip_mm": 0.2
+        },
+        "extended_calls": [
+          {
+            "lead_time_days": 3,
+            "rain": false,
+            "rain_probability_pct": 28
+          },
+          {
+            "lead_time_days": 7,
+            "rain": true,
+            "rain_probability_pct": 82
+          }
+        ],
+        "highs_by_lead": {
+          "3": [
+            31.0,
+            32.5,
+            34.0
+          ],
+          "7": [
+            29.0,
+            35.0
+          ]
+        },
+        "day0_peak_cape_jkg": [
+          1200.0,
+          800.0,
+          1100.0,
+          null
+        ],
+        "extended_trend": "Warming through Saturday, with showers returning by Monday",
+        "secondary_name": "Winam Gulf",
+        "model_configured": true
+      },
+      "expected": "## Today's Forecast\n\nSlightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again. 32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low. Sky mostly cloudy early, partly cloudy at midday and mostly cloudy in the evening. Wind NNE early, SSW at midday and WSW in the evening; gusts to 33 km/h (18 kt). UV index 9.2 (very high). Air quality 66 (moderate) at Kisumu Airport.\n\n## Extended Outlook\n\nWarming through Saturday, with showers returning by Monday. Saturday (Day+3): dry, 28% chance of rain; highs 31 to 34 \u00b0C. Wednesday (Day+7): rain likely, 82% chance; highs 29 to 35 \u00b0C.\n\n## Winam Gulf \u2014 Conditions for Boaters\n\nPeak gust 30 km/h (16 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.\n\nFigures issued 06:01. Written by code; a discussion follows when a model answers.\n"
+    },
+    {
+      "name": "no station: the CAMS figure, by name",
+      "input": {
+        "date": "2026-09-30",
+        "temp_high_low_display": "32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low",
+        "issued_local_time": "06:01",
+        "sunrise": "06:27",
+        "sunset": "18:34",
+        "overview_comparison": "Slightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again.",
+        "cloud_anchors": [
+          {
+            "when": "early",
+            "cover": "Mostly cloudy"
+          },
+          {
+            "when": "midday",
+            "cover": "Partly cloudy"
+          },
+          {
+            "when": "evening",
+            "cover": "Mostly cloudy"
+          }
+        ],
+        "wind_anchors": [
+          {
+            "when": "early",
+            "direction": "NNE",
+            "sustained_kmh": 5.2,
+            "gust_kmh": 8.1
+          },
+          {
+            "when": "midday",
+            "direction": "SSW",
+            "sustained_kmh": 7.3,
+            "gust_kmh": 18.1
+          },
+          {
+            "when": "evening",
+            "direction": "WSW",
+            "sustained_kmh": 10.1,
+            "gust_kmh": 18.9
+          }
+        ],
+        "peak_wind_primary_kmh": 33.4,
+        "peak_wind_secondary_kmh": 30.3,
+        "uv_index": 9.15,
+        "air_quality_index": 58,
+        "ground_aqi": [],
+        "served_today": {
+          "rain": false,
+          "onset_hour": null,
+          "precip_mm": 0.2
+        },
+        "extended_calls": [
+          {
+            "lead_time_days": 3,
+            "rain": false,
+            "rain_probability_pct": 28
+          },
+          {
+            "lead_time_days": 7,
+            "rain": true,
+            "rain_probability_pct": 82
+          }
+        ],
+        "highs_by_lead": {
+          "3": [
+            31.0,
+            32.5,
+            34.0
+          ],
+          "7": [
+            29.0,
+            35.0
+          ]
+        },
+        "day0_peak_cape_jkg": [
+          1200.0,
+          800.0,
+          1100.0,
+          null
+        ],
+        "extended_trend": "Warming through Saturday, with showers returning by Monday",
+        "secondary_name": "Winam Gulf",
+        "model_configured": true
+      },
+      "expected": "## Today's Forecast\n\nSlightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again. 32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low. Sky mostly cloudy early, partly cloudy at midday and mostly cloudy in the evening. Wind NNE early, SSW at midday and WSW in the evening; gusts to 33 km/h (18 kt). UV index 9.2 (very high). Air quality 58 (moderate), by the CAMS model.\n\n## Extended Outlook\n\nWarming through Saturday, with showers returning by Monday. Saturday (Day+3): dry, 28% chance of rain; highs 31 to 34 \u00b0C. Wednesday (Day+7): rain likely, 82% chance; highs 29 to 35 \u00b0C.\n\n## Winam Gulf \u2014 Conditions for Boaters\n\nPeak gust 30 km/h (16 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.\n\nFigures issued 06:01. Written by code; a discussion follows when a model answers.\n"
+    },
+    {
+      "name": "no thunder, no storm sentence",
+      "input": {
+        "date": "2026-09-30",
+        "temp_high_low_display": "32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low",
+        "issued_local_time": "06:01",
+        "sunrise": "06:27",
+        "sunset": "18:34",
+        "overview_comparison": "Slightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again.",
+        "cloud_anchors": [
+          {
+            "when": "early",
+            "cover": "Mostly cloudy"
+          },
+          {
+            "when": "midday",
+            "cover": "Partly cloudy"
+          },
+          {
+            "when": "evening",
+            "cover": "Mostly cloudy"
+          }
+        ],
+        "wind_anchors": [
+          {
+            "when": "early",
+            "direction": "NNE",
+            "sustained_kmh": 5.2,
+            "gust_kmh": 8.1
+          },
+          {
+            "when": "midday",
+            "direction": "SSW",
+            "sustained_kmh": 7.3,
+            "gust_kmh": 18.1
+          },
+          {
+            "when": "evening",
+            "direction": "WSW",
+            "sustained_kmh": 10.1,
+            "gust_kmh": 18.9
+          }
+        ],
+        "peak_wind_primary_kmh": 33.4,
+        "peak_wind_secondary_kmh": 30.3,
+        "uv_index": 9.15,
+        "air_quality_index": 103,
+        "ground_aqi": [
+          {
+            "name": "Kisumu Airport",
+            "aqi": 103
+          },
+          {
+            "name": "Ochieng' Avenue, Kisumu Central",
+            "aqi": 59
+          },
+          {
+            "name": "Dunga Beach",
+            "aqi": 40
+          }
+        ],
+        "served_today": {
+          "rain": false,
+          "onset_hour": null,
+          "precip_mm": 0.2
+        },
+        "extended_calls": [
+          {
+            "lead_time_days": 3,
+            "rain": false,
+            "rain_probability_pct": 28
+          },
+          {
+            "lead_time_days": 7,
+            "rain": true,
+            "rain_probability_pct": 82
+          }
+        ],
+        "highs_by_lead": {
+          "3": [
+            31.0,
+            32.5,
+            34.0
+          ],
+          "7": [
+            29.0,
+            35.0
+          ]
+        },
+        "day0_peak_cape_jkg": [
+          300.0,
+          450.0,
+          null
+        ],
+        "extended_trend": "Warming through Saturday, with showers returning by Monday",
+        "secondary_name": "Winam Gulf",
+        "model_configured": true
+      },
+      "expected": "## Today's Forecast\n\nSlightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again. 32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low. Sky mostly cloudy early, partly cloudy at midday and mostly cloudy in the evening. Wind NNE early, SSW at midday and WSW in the evening; gusts to 33 km/h (18 kt). UV index 9.2 (very high). Air quality 103 (unhealthy for sensitive groups) at Kisumu Airport, the highest of 3 stations.\n\n## Extended Outlook\n\nWarming through Saturday, with showers returning by Monday. Saturday (Day+3): dry, 28% chance of rain; highs 31 to 34 \u00b0C. Wednesday (Day+7): rain likely, 82% chance; highs 29 to 35 \u00b0C.\n\n## Winam Gulf \u2014 Conditions for Boaters\n\nPeak gust 30 km/h (16 kt).\n\nFigures issued 06:01. Written by code; a discussion follows when a model answers.\n"
+    },
+    {
+      "name": "highs within two degrees read as around",
+      "input": {
+        "date": "2026-09-30",
+        "temp_high_low_display": "32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low",
+        "issued_local_time": "06:01",
+        "sunrise": "06:27",
+        "sunset": "18:34",
+        "overview_comparison": "Slightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again.",
+        "cloud_anchors": [
+          {
+            "when": "early",
+            "cover": "Mostly cloudy"
+          },
+          {
+            "when": "midday",
+            "cover": "Partly cloudy"
+          },
+          {
+            "when": "evening",
+            "cover": "Mostly cloudy"
+          }
+        ],
+        "wind_anchors": [
+          {
+            "when": "early",
+            "direction": "NNE",
+            "sustained_kmh": 5.2,
+            "gust_kmh": 8.1
+          },
+          {
+            "when": "midday",
+            "direction": "SSW",
+            "sustained_kmh": 7.3,
+            "gust_kmh": 18.1
+          },
+          {
+            "when": "evening",
+            "direction": "WSW",
+            "sustained_kmh": 10.1,
+            "gust_kmh": 18.9
+          }
+        ],
+        "peak_wind_primary_kmh": 33.4,
+        "peak_wind_secondary_kmh": 30.3,
+        "uv_index": 9.15,
+        "air_quality_index": 103,
+        "ground_aqi": [
+          {
+            "name": "Kisumu Airport",
+            "aqi": 103
+          },
+          {
+            "name": "Ochieng' Avenue, Kisumu Central",
+            "aqi": 59
+          },
+          {
+            "name": "Dunga Beach",
+            "aqi": 40
+          }
+        ],
+        "served_today": {
+          "rain": false,
+          "onset_hour": null,
+          "precip_mm": 0.2
+        },
+        "extended_calls": [
+          {
+            "lead_time_days": 3,
+            "rain": true,
+            "rain_probability_pct": null
+          },
+          {
+            "lead_time_days": 7,
+            "rain": false,
+            "rain_probability_pct": null
+          }
+        ],
+        "highs_by_lead": {
+          "3": [
+            30.0,
+            31.0,
+            31.5
+          ],
+          "7": []
+        },
+        "day0_peak_cape_jkg": [
+          1200.0,
+          800.0,
+          1100.0,
+          null
+        ],
+        "extended_trend": "Warming through Saturday, with showers returning by Monday",
+        "secondary_name": "Winam Gulf",
+        "model_configured": true
+      },
+      "expected": "## Today's Forecast\n\nSlightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again. 32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low. Sky mostly cloudy early, partly cloudy at midday and mostly cloudy in the evening. Wind NNE early, SSW at midday and WSW in the evening; gusts to 33 km/h (18 kt). UV index 9.2 (very high). Air quality 103 (unhealthy for sensitive groups) at Kisumu Airport, the highest of 3 stations.\n\n## Extended Outlook\n\nWarming through Saturday, with showers returning by Monday. Saturday (Day+3): rain likely; highs around 31 \u00b0C. Wednesday (Day+7): dry.\n\n## Winam Gulf \u2014 Conditions for Boaters\n\nPeak gust 30 km/h (16 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.\n\nFigures issued 06:01. Written by code; a discussion follows when a model answers.\n"
+    },
+    {
+      "name": "no issue time, no stamp",
+      "input": {
+        "date": "2026-09-30",
+        "temp_high_low_display": "32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low",
+        "issued_local_time": null,
+        "sunrise": "06:27",
+        "sunset": "18:34",
+        "overview_comparison": "Slightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again.",
+        "cloud_anchors": [
+          {
+            "when": "early",
+            "cover": "Mostly cloudy"
+          },
+          {
+            "when": "midday",
+            "cover": "Partly cloudy"
+          },
+          {
+            "when": "evening",
+            "cover": "Mostly cloudy"
+          }
+        ],
+        "wind_anchors": [
+          {
+            "when": "early",
+            "direction": "NNE",
+            "sustained_kmh": 5.2,
+            "gust_kmh": 8.1
+          },
+          {
+            "when": "midday",
+            "direction": "SSW",
+            "sustained_kmh": 7.3,
+            "gust_kmh": 18.1
+          },
+          {
+            "when": "evening",
+            "direction": "WSW",
+            "sustained_kmh": 10.1,
+            "gust_kmh": 18.9
+          }
+        ],
+        "peak_wind_primary_kmh": 33.4,
+        "peak_wind_secondary_kmh": 30.3,
+        "uv_index": 9.15,
+        "air_quality_index": 103,
+        "ground_aqi": [
+          {
+            "name": "Kisumu Airport",
+            "aqi": 103
+          },
+          {
+            "name": "Ochieng' Avenue, Kisumu Central",
+            "aqi": 59
+          },
+          {
+            "name": "Dunga Beach",
+            "aqi": 40
+          }
+        ],
+        "served_today": {
+          "rain": false,
+          "onset_hour": null,
+          "precip_mm": 0.2
+        },
+        "extended_calls": [
+          {
+            "lead_time_days": 3,
+            "rain": false,
+            "rain_probability_pct": 28
+          },
+          {
+            "lead_time_days": 7,
+            "rain": true,
+            "rain_probability_pct": 82
+          }
+        ],
+        "highs_by_lead": {
+          "3": [
+            31.0,
+            32.5,
+            34.0
+          ],
+          "7": [
+            29.0,
+            35.0
+          ]
+        },
+        "day0_peak_cape_jkg": [
+          1200.0,
+          800.0,
+          1100.0,
+          null
+        ],
+        "extended_trend": "Warming through Saturday, with showers returning by Monday",
+        "secondary_name": "Winam Gulf",
+        "model_configured": true
+      },
+      "expected": "## Today's Forecast\n\nSlightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again. 32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low. Sky mostly cloudy early, partly cloudy at midday and mostly cloudy in the evening. Wind NNE early, SSW at midday and WSW in the evening; gusts to 33 km/h (18 kt). UV index 9.2 (very high). Air quality 103 (unhealthy for sensitive groups) at Kisumu Airport, the highest of 3 stations.\n\n## Extended Outlook\n\nWarming through Saturday, with showers returning by Monday. Saturday (Day+3): dry, 28% chance of rain; highs 31 to 34 \u00b0C. Wednesday (Day+7): rain likely, 82% chance; highs 29 to 35 \u00b0C.\n\n## Winam Gulf \u2014 Conditions for Boaters\n\nPeak gust 30 km/h (16 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.\n\nWritten by code; a discussion follows when a model answers.\n"
+    }
+  ]
+}

@@ -1925,7 +1925,7 @@ def _run_floor(args) -> int:
     so what this prints for a day is what the run would have published.
     `--pending` takes every stored day whose write-up never landed.
     """
-    from openlocalweather.floor import compose_floor
+    from openlocalweather.floor import compose_floor_for_entry
     from openlocalweather.write_up import needs_write_up
 
     location = load_location_config(args.config)
@@ -1948,7 +1948,7 @@ def _run_floor(args) -> int:
             continue
         rendered.append(
             f"<!-- {d} -->\n"
-            + compose_floor(
+            + compose_floor_for_entry(
                 entry,
                 secondary_name=secondary.name if secondary.enabled and secondary.name else None,
                 model_configured=bool(location.llm_providers),

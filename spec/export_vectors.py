@@ -6178,7 +6178,7 @@ def export_code_call() -> None:
         highest_mslp_hpa=1020.0, gradient_hpa=14.0, gradient_strength="strong",
     )
     air = {"hourly": {"time": ["a", "b", "c"], "us_aqi": [61, None, 84.4]}}
-    onset_words = {"14:00": "afternoon", "16:00": "evening", "18:00": "evening"}
+    onset_words = {"14:00": "afternoon", "15:00": "afternoon", "16:00": "evening", "18:00": "evening"}
 
     def case(name, *, code_blend=None, calibrated=None, synoptic=None, air_quality=None,
              convective=False, thunder_when=None, issued_hour=6, models0=day0, models3=day3, models7=day7):
@@ -6243,6 +6243,17 @@ def export_code_call() -> None:
             case("a consensus tie breaks dry", models0=[
                 pred("gfs_seamless", rain=True, high=28.0, low=18.0), pred("ecmwf_ifs025", rain=False, high=28.0, low=18.0),
             ]),
+            # 2026-10-04, from the reader-words list.
+            case("a spread of onsets past six hours shows the served onset alone", models0=[
+                pred("gfs_seamless", rain=True, onset="05:00", high=28.0, low=18.0),
+                pred("ecmwf_ifs025", rain=True, onset="14:00", high=29.0, low=18.0),
+                pred("icon_seamless", rain=True, onset="19:00", high=30.0, low=19.0),
+            ]),
+            case("an onset behind an evening issuance carries no timing word", issued_hour=18, models0=[
+                pred("gfs_seamless", rain=True, onset="15:00", high=28.0, low=18.0),
+                pred("ecmwf_ifs025", rain=True, onset="16:00", high=29.0, low=18.0),
+                pred("icon_seamless", rain=False, high=30.0, low=19.0),
+            ]),
             case("no temperature anywhere cannot be served", models0=[pred("gfs_seamless", rain=False)]),
         ],
     )
@@ -6271,15 +6282,19 @@ def export_code_call() -> None:
         "The onset tile's label: the spread of the wet models' onsets still ahead of the "
         "issuance, 'From HH:MM' when they agree, and nothing when none is ahead.",
         [
-            {"name": name, "input": {"onsets": onsets, "issued_hour": hour},
-             "expected": onset_window_label(onsets, issued_hour=hour)}
-            for name, onsets, hour in [
-                ("a spread", ["16:00", "14:00", "19:00"], 6),
-                ("agreement", ["16:00", "16:00"], 6),
-                ("nothing to say", [], 6),
-                ("one behind the issuance", ["14:00", "16:00"], 15),
-                ("all behind the issuance", ["14:00"], 15),
-                ("no issuance hour", ["09:00", "11:00"], None),
+            {"name": name, "input": {"onsets": onsets, "issued_hour": hour, "served_onset": served},
+             "expected": onset_window_label(onsets, issued_hour=hour, served_onset=served)}
+            for name, onsets, hour, served in [
+                ("a spread", ["16:00", "14:00", "19:00"], 6, "16:00"),
+                ("agreement", ["16:00", "16:00"], 6, "16:00"),
+                ("nothing to say", [], 6, None),
+                ("one behind the issuance", ["14:00", "16:00"], 15, "14:00"),
+                ("all behind the issuance", ["14:00"], 15, "14:00"),
+                ("no issuance hour", ["09:00", "11:00"], None, "09:00"),
+                # 2026-10-04: a spread past six hours is not a window.
+                ("a spread past six hours shows the served onset", ["03:00", "14:00", "19:00"], 2, "14:00"),
+                ("the same spread with nothing served starts at the earliest", ["03:00", "14:00", "19:00"], 2, None),
+                ("a spread of exactly six hours is still a window", ["13:00", "19:00"], 6, "16:00"),
             ]
         ],
     )
@@ -6332,6 +6347,97 @@ def export_code_call() -> None:
              "expected": verification_summary([_Lead(l, t, {m: _Score(ok) for m, ok in scores.items()}) for l, t, scores in results],
                                               visible_models=visible)}
             for name, results, visible in leads
+        ],
+    )
+
+
+def export_floor() -> None:
+    """The floor, code's write-up — ROADMAP item 190.
+
+    Pins `compose_floor` over `FloorInputs`: the comparison as the opener
+    and the served call's rain character where there is none; the sky and
+    wind from the anchors, the gust from the served call; UV and the worst
+    station; the stored trend clause and the served leads with the inputs'
+    highs as a range or a mean; the boaters' section and its storm
+    sentence; the two sign-offs. The values are a stored day's
+    (2026-09-30) with hand-set variations.
+    """
+    from openlocalweather.floor import FloorInputs, compose_floor
+
+    base = dict(
+        date="2026-09-30",
+        temp_high_low_display="32°C / 90°F high, 19°C / 66°F low",
+        issued_local_time="06:01", sunrise="06:27", sunset="18:34",
+        overview_comparison=(
+            "Slightly warmer than yesterday; winds and cloud little changed. "
+            "Dry by day, with thunder possible, peaking this evening again."
+        ),
+        cloud_anchors=[
+            {"when": "early", "cover": "Mostly cloudy"}, {"when": "midday", "cover": "Partly cloudy"},
+            {"when": "evening", "cover": "Mostly cloudy"},
+        ],
+        wind_anchors=[
+            {"when": "early", "direction": "NNE", "sustained_kmh": 5.2, "gust_kmh": 8.1},
+            {"when": "midday", "direction": "SSW", "sustained_kmh": 7.3, "gust_kmh": 18.1},
+            {"when": "evening", "direction": "WSW", "sustained_kmh": 10.1, "gust_kmh": 18.9},
+        ],
+        peak_wind_primary_kmh=33.4, peak_wind_secondary_kmh=30.3, uv_index=9.15, air_quality_index=103,
+        ground_aqi=[
+            {"name": "Kisumu Airport", "aqi": 103}, {"name": "Ochieng' Avenue, Kisumu Central", "aqi": 59},
+            {"name": "Dunga Beach", "aqi": 40},
+        ],
+        served_today={"rain": False, "onset_hour": None, "precip_mm": 0.2},
+        extended_calls=[
+            {"lead_time_days": 3, "rain": False, "rain_probability_pct": 28},
+            {"lead_time_days": 7, "rain": True, "rain_probability_pct": 82},
+        ],
+        highs_by_lead={"3": [31.0, 32.5, 34.0], "7": [29.0, 35.0]},
+        day0_peak_cape_jkg=[1200.0, 800.0, 1100.0, None],
+        extended_trend="Warming through Saturday, with showers returning by Monday",
+        secondary_name="Winam Gulf",
+        model_configured=True,
+    )
+
+    def case(name, **changes):
+        inputs = FloorInputs(**{**base, **changes})
+        return {"name": name, "input": inputs.to_json(), "expected": compose_floor(inputs)}
+
+    write(
+        "floor.json",
+        "compose_floor",
+        "Code's write-up from the day's stored values: the comparison opens, else the served "
+        "call's rain character; the sky and wind from the anchors with the served gust; UV and "
+        "the worst station, else the CAMS figure; the trend clause and the served leads with the "
+        "inputs' highs; the boaters' section with its storm sentence where thunder is possible; "
+        "a sign-off that promises a discussion only where a model is configured. Every sentence "
+        "passes phrase_defect or is dropped.",
+        [
+            case("a stored day with every field"),
+            case("no comparison: the served call's rain character opens",
+                 overview_comparison=None, served_today={"rain": True, "onset_hour": "15:00", "precip_mm": 8.0}),
+            case("no comparison and a dry call",
+                 overview_comparison=None, served_today={"rain": False, "onset_hour": None, "precip_mm": 0.4}),
+            case("a thin day: temperatures and the stamp alone",
+                 overview_comparison=None, served_today={}, cloud_anchors=[], wind_anchors=[],
+                 peak_wind_primary_kmh=None, peak_wind_secondary_kmh=None, uv_index=None, air_quality_index=None,
+                 ground_aqi=[], extended_calls=[], highs_by_lead={}, day0_peak_cape_jkg=[], extended_trend=None),
+            case("no model configured promises nothing", model_configured=False),
+            case("no secondary point, no boaters", secondary_name=None),
+            case("anchors that agree read as the whole day",
+                 cloud_anchors=[{"when": w, "cover": "Overcast"} for w in ("early", "midday", "evening")],
+                 wind_anchors=[{"when": w, "direction": "SW"} for w in ("early", "midday", "evening")]),
+            case("an evening issuance has one anchor left",
+                 issued_local_time="18:01",
+                 cloud_anchors=[{"when": "evening", "cover": "Mostly cloudy"}],
+                 wind_anchors=[{"when": "evening", "direction": "WSW"}]),
+            case("one station names itself alone", ground_aqi=[{"name": "Kisumu Airport", "aqi": 66}]),
+            case("no station: the CAMS figure, by name", ground_aqi=[], air_quality_index=58),
+            case("no thunder, no storm sentence", day0_peak_cape_jkg=[300.0, 450.0, None]),
+            case("highs within two degrees read as around",
+                 highs_by_lead={"3": [30.0, 31.0, 31.5], "7": []}, extended_calls=[
+                     {"lead_time_days": 3, "rain": True, "rain_probability_pct": None},
+                     {"lead_time_days": 7, "rain": False, "rain_probability_pct": None}]),
+            case("no issue time, no stamp", issued_local_time=None),
         ],
     )
 
@@ -6886,6 +6992,7 @@ def main() -> None:
     export_extended_blend_predictions()
     export_code_blend()
     export_code_call()
+    export_floor()
     print("\nDone. Commit the result — the vectors are the contract.")
 
 

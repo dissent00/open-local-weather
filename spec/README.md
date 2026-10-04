@@ -140,9 +140,10 @@ absent values are `null`, never omitted keys.
 | `low_divergence.json` | `low_divergence` | 14 |
 | `code_call.json` | `served_call` | The served call built from code (item 189): the blend row as is, the inputs' consensus when the record is thin, the fallbacks for temperature and gust, the labels, the pattern, the AQI, the extended leads, and the one refusal. |
 | `rain_label.json` | `rain_label` | 12 |
-| `onset_window_label.json` | `onset_window_label` | 6 |
+| `onset_window_label.json` | `onset_window_label` | 9 |
 | `cams_peak_aqi.json` | `cams_peak_aqi` | 5 |
 | `verification_summary.json` | `verification_summary` | 4 |
+| `floor.json` | `compose_floor` | Code's write-up from the day's stored values (item 190): the comparison or the served call's rain character, the sky and wind from the anchors, UV and the worst station, the trend and the served leads, the boaters' section, the two sign-offs. |
 | `sustained_wind_gap.json` | `sustained_wind_gap` | 7 |
 | `cell_key.json` | `cell_key` | 12 |
 | `convective_timing.json` | `convective_timing` | 14 |

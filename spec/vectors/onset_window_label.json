@@ -11,7 +11,8 @@
           "14:00",
           "19:00"
         ],
-        "issued_hour": 6
+        "issued_hour": 6,
+        "served_onset": "16:00"
       },
       "expected": "14:00 \u2013 19:00"
     },
@@ -22,7 +23,8 @@
           "16:00",
           "16:00"
         ],
-        "issued_hour": 6
+        "issued_hour": 6,
+        "served_onset": "16:00"
       },
       "expected": "From 16:00"
     },
@@ -30,7 +32,8 @@
       "name": "nothing to say",
       "input": {
         "onsets": [],
-        "issued_hour": 6
+        "issued_hour": 6,
+        "served_onset": null
       },
       "expected": null
     },
@@ -41,7 +44,8 @@
           "14:00",
           "16:00"
         ],
-        "issued_hour": 15
+        "issued_hour": 15,
+        "served_onset": "14:00"
       },
       "expected": "From 16:00"
     },
@@ -51,7 +55,8 @@
         "onsets": [
           "14:00"
         ],
-        "issued_hour": 15
+        "issued_hour": 15,
+        "served_onset": "14:00"
       },
       "expected": null
     },
@@ -62,9 +67,48 @@
           "09:00",
           "11:00"
         ],
-        "issued_hour": null
+        "issued_hour": null,
+        "served_onset": "09:00"
       },
       "expected": "09:00 \u2013 11:00"
+    },
+    {
+      "name": "a spread past six hours shows the served onset",
+      "input": {
+        "onsets": [
+          "03:00",
+          "14:00",
+          "19:00"
+        ],
+        "issued_hour": 2,
+        "served_onset": "14:00"
+      },
+      "expected": "From 14:00"
+    },
+    {
+      "name": "the same spread with nothing served starts at the earliest",
+      "input": {
+        "onsets": [
+          "03:00",
+          "14:00",
+          "19:00"
+        ],
+        "issued_hour": 2,
+        "served_onset": null
+      },
+      "expected": "From 03:00"
+    },
+    {
+      "name": "a spread of exactly six hours is still a window",
+      "input": {
+        "onsets": [
+          "13:00",
+          "19:00"
+        ],
+        "issued_hour": 6,
+        "served_onset": "16:00"
+      },
+      "expected": "13:00 \u2013 19:00"
     }
   ]
 }

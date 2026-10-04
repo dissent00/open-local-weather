@@ -14,6 +14,7 @@ import 'scoring.dart';
 import 'config.dart';
 import 'cycle.dart';
 import 'extract.dart';
+import 'floor.dart';
 import 'instability.dart';
 import 'llm/forecast_call.dart';
 import 'llm/prompt.dart';
@@ -633,6 +634,13 @@ Future<ForecastRun> generateForecast({
     inputs: blendInputs(),
   );
 
+  // Composed once, for the prompt and the floor (upstream item 190), so the
+  // two cannot describe different weather. The trend's shape check records
+  // a degradation when it fails, which is why it runs here and not twice.
+  final anchorsSky = cloudAnchors(hourly, models, issuedHour: issuedHourOf(resolvedIssuance));
+  final anchorsWind = windAnchors(hourly, models, issuedHour: issuedHourOf(resolvedIssuance));
+  final extendedTrendPhrase = _soundPhrase('extended_trend', extendedTrend, degradations);
+
   final judgmentPrompt = buildJudgmentPrompt(
     location,
     verificationAlreadyWritten: verificationAlreadyWritten,
@@ -721,7 +729,7 @@ Future<ForecastRun> generateForecast({
     // applied at the prompt's own arguments because that is this file's
     // equivalent of `_locked_blocks`: the one place every composed phrase
     // passes through on its way to a reader.
-    extendedTrend: _soundPhrase('extended_trend', extendedTrend, degradations),
+    extendedTrend: extendedTrendPhrase,
     // THE APP OMITTED TWO OF THESE ENTIRELY — upstream ROADMAP item 104.
     //
     // describeWindShift and consensusDirection have been ported, exported and
@@ -739,17 +747,11 @@ Future<ForecastRun> generateForecast({
     // the whole day, null on 18 of 19 archived issuances, beside a tile
     // printing "midday SW". The day has two bearings here.
     // The sky follows — upstream item 187 finding 1.
-    anchorSkies: {
-      for (final a in cloudAnchors(hourly, models,
-          issuedHour: issuedHourOf(resolvedIssuance)))
-        a['when']!: a['cover']!,
-    },
+    anchorSkies: {for (final a in anchorsSky) a['when']!: a['cover']!},
     // And each day beyond today — upstream item 187.
     skyByDay: skyByDay(daily, models, today: today),
     anchorDirections: {
-      for (final a in windAnchors(hourly, models,
-          issuedHour: issuedHourOf(resolvedIssuance)))
-        a['when'] as String: a['direction'] as String?,
+      for (final a in anchorsWind) a['when'] as String: a['direction'] as String?,
     },
     // Item 118: the anchors are hours of the day, so a clause with none of
     // them still ahead describes a day the reader has already finished.
@@ -803,19 +805,56 @@ Future<ForecastRun> generateForecast({
     }
   }
 
+  // THE FLOOR — upstream item 190. Code's write-up stands where the
+  // placeholder stood, from the same values the served call and the tiles
+  // use; the caller stores it as the narrative with `narrativeSourceCode`
+  // and replaces it when [writeUpForecast] answers. No day-over-day
+  // comparison here yet: the app holds yesterday's actuals, the run does
+  // not, so the opener is the served call's rain character.
+  final tp = served.judgment.todayProperties;
+  final floor = composeFloor(FloorInputs(
+    date: formatDate(today),
+    tempHighLowDisplay: formatTempHighLow(tp.tempHighC, tp.tempLowC),
+    issuedLocalTime: _localTimeOf(resolvedIssuance),
+    sunrise: _sunOf(resolvedIssuance, 'sunrise'),
+    sunset: _sunOf(resolvedIssuance, 'sunset'),
+    cloudAnchors: [for (final a in anchorsSky) a.cast<String, Object?>()],
+    windAnchors: [for (final a in anchorsWind) a.cast<String, Object?>()],
+    peakWindPrimaryKmh: tp.peakWindPrimaryKmh,
+    // The app computes no UV figure yet and has no secondary point.
+    airQualityIndex: tp.airQualityAqi,
+    groundAqi: _groundReadingsOf(groundAqiReadings),
+    servedToday: {'rain': tp.rain, 'onset_hour': tp.onsetHour, 'precip_mm': tp.precipMm},
+    extendedCalls: [
+      for (final e in served.judgment.extendedProperties)
+        {'lead_time_days': e.leadTimeDays, 'rain': e.rain, 'rain_probability_pct': e.rainProbabilityPct},
+    ],
+    highsByLead: {
+      '3': [for (final p in day3) if (blendInputs().contains(p.model) && p.highC != null) p.highC!],
+      '7': [for (final p in day7) if (blendInputs().contains(p.model) && p.highC != null) p.highC!],
+    },
+    day0PeakCapeJkg: [for (final p in day0) if (blendInputs().contains(p.model)) p.peakCapeJkg],
+    extendedTrend: extendedTrendPhrase,
+    modelConfigured: llm != null,
+  ));
+
   final response = ForecastResponse(
     yesterdayVerification: verificationNotWritten,
     skillProfileSummaries: const [],
     todayProperties: served.judgment.todayProperties,
     extendedProperties: served.judgment.extendedProperties,
-    todayNarrative: narrativeUnavailableMarkdown,
+    todayNarrative: floor,
   );
-  // THE PENDING MARKER — see [narrativePendingSummary].
-  degradations.add(RunDegradation(
-    code: degradationNarrative,
-    summary: narrativePendingSummary,
-    detail: narrativePendingDetail,
-  ));
+  // THE PENDING MARKER — see [narrativePendingSummary]. Only where a model
+  // may still answer it: an install with none is not degraded, and the
+  // floor's sign-off says so.
+  if (llm != null) {
+    degradations.add(RunDegradation(
+      code: degradationNarrative,
+      summary: narrativePendingSummary,
+      detail: narrativePendingDetail,
+    ));
+  }
 
   return ForecastRun(
     degradations: degradations,
@@ -909,6 +948,39 @@ String _isoLikePython(DateTime value) {
 /// has no business making it.
 /// The issuance's local "HH:MM", or null when the moment cannot be read.
 ///
+/// A sun time of the issuance, "HH:MM", as [_onsetWordFor] reads it.
+String? _sunOf(Object? issuance, String key) {
+  if (issuance == null) return null;
+
+  try {
+    final d = issuance is Map<String, Object?>
+        ? issuance
+        : (issuance as dynamic).toJson() as Map<String, Object?>;
+    return d[key] as String?;
+  } catch (_) {
+    return null;
+  }
+}
+
+/// The ground stations' readings as the floor names them, from whatever
+/// shape the caller passed: maps, or objects with `name` and `aqi`.
+List<Map<String, Object?>> _groundReadingsOf(Object? raw) {
+  if (raw is! List) return const [];
+  final out = <Map<String, Object?>>[];
+  for (final r in raw) {
+    try {
+      final name = r is Map ? r['name'] : (r as dynamic).name;
+      final aqi = r is Map ? r['aqi'] : (r as dynamic).aqi;
+      if (name is String && aqi is num) {
+        out.add({'name': name, 'aqi': aqi.toInt()});
+      }
+    } catch (_) {
+      // A reading of a shape the floor cannot name is left out, never invented.
+    }
+  }
+  return out;
+}
+
 /// Same extraction as [issuedHourOf] beside it, and null for the same reason
 /// that returns 24: a run that cannot say what hour it is must not stamp an
 /// observation block with one. [describeObservedSoFar] then opens with "So

@@ -102,10 +102,10 @@ See *The two-call split* and *Every run is an issuance* below.
    ┌───────────────────────────────────▼────────────────────────────────┐
    │ 6b. THE WRITE-UP   olw write-up, a separate step after the commit  │
    │    Asked once at once and once an hour later, from the archived    │
-   │    prompts and the stored call; a served answer replaces the       │
-   │    placeholder and republishes. Prose only — cannot alter a scored │
-   │    field. Until it lands the entry carries `narrative_unavailable` │
-   │    as the pending marker.                                          │
+   │    prompts and the stored call; a served answer replaces code's    │
+   │    floor and republishes. Prose only — cannot alter a scored       │
+   │    field. Until it lands the entry holds the floor (floor.py, item │
+   │    190) as `narrative_source: code`, with the pending marker.      │
    └───────────────────────────────────┬────────────────────────────────┘
                                        │
    ┌───────────────────────────────────▼────────────────────────────────┐

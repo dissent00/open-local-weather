@@ -29,6 +29,10 @@ const String callSourceConsensus = 'consensus';
 /// The tile's own ceiling, measured by the judgment prompt.
 const int rainLabelMaxChars = 48;
 
+/// A window wider than this is not a window — upstream 2026-10-04; past it
+/// the tile shows the served onset alone.
+const int onsetWindowMaxSpreadH = 6;
+
 /// The amount bands that read as isolated rather than as showers (under 5 mm).
 const List<String> _isolatedBands = [dryDayLabel, 'largely dry'];
 
@@ -92,7 +96,7 @@ int? _hourOf(String hhmm) => int.tryParse(hhmm.split(':').first);
 
 /// `onset_window`: the spread of the wet models' onsets still ahead. Mirrors
 /// `onset_window_label`: sorted, de-duplicated, "From HH:MM" when one.
-String? onsetWindowLabel(List<String> onsets, {required int? issuedHour}) {
+String? onsetWindowLabel(List<String> onsets, {required int? issuedHour, String? servedOnset}) {
   final ahead = <String>{
     for (final o in onsets)
       if (o.isNotEmpty && (issuedHour == null || _hourOf(o) == null || _hourOf(o)! >= issuedHour)) o,
@@ -100,6 +104,11 @@ String? onsetWindowLabel(List<String> onsets, {required int? issuedHour}) {
     ..sort();
   if (ahead.isEmpty) return null;
   if (ahead.length == 1) return 'From ${ahead.first}';
+
+  final first = _hourOf(ahead.first), last = _hourOf(ahead.last);
+  if (first != null && last != null && last - first > onsetWindowMaxSpreadH) {
+    return 'From ${servedOnset ?? ahead.first}';
+  }
   return '${ahead.first} – ${ahead.last}';
 }
 
@@ -193,8 +202,12 @@ ServedCall servedCall({
     for (final p in voters)
       if (p.rain == true && p.onset != null && p.onset!.isNotEmpty) p.onset!,
   ];
-  var when = labelWord(
-      (rain && onset != null && onset.isNotEmpty && onsetWordFor != null) ? onsetWordFor(onset) : null);
+  // No timing word for an hour already lived through — the window's rule,
+  // applied to the label (upstream 2026-10-04).
+  final onsetAhead = onset != null &&
+      onset.isNotEmpty &&
+      (issuedHour == null || _hourOf(onset) == null || _hourOf(onset)! >= issuedHour);
+  var when = labelWord((rain && onsetAhead && onsetWordFor != null) ? onsetWordFor(onset) : null);
   if (!rain && convective) {
     when = labelWord(thunderWhen);
   }
@@ -203,7 +216,7 @@ ServedCall servedCall({
 
   final today = TodayProperties(
     rainExpected: rainLabel(rain: rain, precipMm: precipMm, convective: convective, when: when),
-    onsetWindow: rain ? onsetWindowLabel(wetOnsets, issuedHour: issuedHour) : null,
+    onsetWindow: rain ? onsetWindowLabel(wetOnsets, issuedHour: issuedHour, servedOnset: onset) : null,
     peakWindPrimaryKmh: primaryGust,
     peakWindSecondaryKmh: secondaryGust,
     tempHighC: high,
