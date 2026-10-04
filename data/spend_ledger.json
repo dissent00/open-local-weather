@@ -361,6 +361,30 @@
       "outcome": "http_200",
       "elapsed_s": 137.462,
       "served_model": "dots-studio/dots-3-note-preview:free"
+    },
+    {
+      "at": "2026-10-04T05:28:59.280152+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 0.346
+    },
+    {
+      "at": "2026-10-04T05:31:59.627787+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 0.398
+    },
+    {
+      "at": "2026-10-04T05:39:00.027766+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 71.686
     }
   ]
 }
