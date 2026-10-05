@@ -7,6 +7,8 @@
   "temp_high_c": 31.8,
   "temp_low_c": 19.4,
   "temp_high_low_display": "32°C / 89°F high, 19°C / 67°F low",
+  "served_call": null,
+  "call_source": null,
   "cloud_anchors": [],
   "wind_anchors": [],
   "mslp_trend_24h": "+0.9 hPa",
@@ -1840,7 +1842,7 @@
       "note_sign_corrected_on": null
     },
     "day7": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     }
@@ -1852,6 +1854,8 @@
   },
   "yesterday_verification_summary": "Verification across lead times shows solid performance at Day+0, where most models except ECMWF correctly anticipated yesterday's dry conditions. At Day+3, ECMWF and Best Match successfully verified, whereas GFS, ICON, and UKMO missed. Day+7 verification favored GFS and Best Match, while ECMWF incorrectly predicted precipitation.",
   "narrative_markdown": "## Overview\n\nThe forecast below could not be written up this issuance: the model call that turns the day's figures into prose did not complete. The figures themselves were produced normally and are shown as usual — they are the same numbers this forecast is scored on.\n\nThere is no discussion, no extended outlook and no hazard section for this issuance. Check a later one.",
+  "narrative_source": null,
+  "extended_trend": null,
   "whatsapp_summary": null,
   "earlier_issuances": [
     {
@@ -1893,6 +1897,7 @@
         }
       ],
       "narrative_markdown": "## Today's Forecast\nDaytime temperatures reaching 32°C / 90°F and overnight lows dropping to 19.5°C / 67°F are expected today, alongside a chance of evening showers and thunderstorms. Thunder possible from the morning, peaking this evening. Winds will follow a pattern of being north-northeasterly overnight, turning south-southwest by midday and west-northwest into the evening, with peak gusts reaching 38 km/h (20 kt). Cloud cover will feature a split among models, with ECMWF and GFS maintaining mostly overcast skies while UKMO forecasts clearer periods. Solar UV exposure will reach a peak UV index of 9.5 (very high). Ground air quality sensors report a range from 20 to 147, with the worst reading at Ochieng' Avenue, Kisumu Central, while model guidance estimates overall air quality at US AQI 82.\n\n## Extended Outlook\nRegarding the extended window, temperatures and winds much the same through Wednesday, with showers possible Tuesday, dry Wednesday, and thunderstorms likely each day. Through Wednesday 2026-09-30, daily high temperatures will range between 31°C / 88°F and 36°C / 97°F depending on model resolution, with overnight lows around 18°C / 64°F to 22°C / 72°F. Cloud cover through mid-week will show a strong model split, with UKMO keeping conditions largely clear while ECMWF, ICON, and GFS predict mostly cloudy skies. Looking further ahead to Sunday 2026-10-04, confidence decreases as models diverge; ECMWF projects rain returning with higher precipitation chances and lower daytime temperatures near 26°C / 79°F, while GFS maintains warmer, dry conditions near 34°C / 93°F.\n\n## Severe Weather / Hazard Potential\nConvective instability varies significantly across guidance today. UKMO and Best Match indicate extreme instability with peak CAPE reaching 4330 J/kg and 4040 J/kg respectively this evening, supported by ECMWF (2260 J/kg) and ICON (2110 J/kg), whereas GFS shows limited instability peaking at 410 J/kg. Modest rainfall predictions do not preclude severe convection, as high CAPE with limited moisture can produce dry thunderstorms or localized downpours. Strong, sudden gusts are possible with any storm that develops, regardless of background winds, as convective downdrafts operate on scales unaligned with daily wind averages.\n\n## Winam Gulf — Conditions for Boaters\nOver open waters of Winam Gulf, wind conditions will follow the timeline: northeasterly overnight at 10 km/h (5 kt) gusting 13 km/h (7 kt), then south-southwesterly by midday at 7 km/h (4 kt) gusting 19 km/h (10 kt), then west-northwesterly into the evening at 13 km/h (7 kt) gusting 26 km/h (14 kt). Peak gusts over the gulf are expected up to 31 km/h (17 kt). Boaters should remain alert for sudden, violent wind shifts and enhanced gusts near any thunderstorm activity during the evening hours.\n\n## Detailed Discussion\n### Synoptic Overview\nAcross roughly 2,600 km, pressure is lowest toward the north (1008 hPa) and highest toward the southeast (1016 hPa) — an 8 hPa spread, a moderate large-scale gradient. Pressure overhead is near-steady. Regionally across the Nyanza Basin, mean surface pressure ranges from 1011.4 hPa over Kisumu to 1013.7 hPa in the southern highlands. A slight 24-hour pressure tendency of -0.2 hPa is noted locally, with minor pressure rises anticipated mid-week. The moderate regional pressure gradient and persistent moisture convergence near Winam Gulf remain favorable for convective cloud development during afternoon and evening heating.\n\n### Forecaster Confidence Notes\nGuidance weighting today leans on ICON for precipitation, as it is established at Day+0 as the strongest rain caller, while GFS is established as the weakest. Systematic model biases have been accounted for: GFS systematically under-forecasts peak wind, requiring an upward calibration to a peak gust of 38 km/h. ICON systematically over-forecasts overnight lows and under-forecasts peak wind, while UKMO systematically under-forecasts cloud cover and overnight lows.\n\nThe Kenya Meteorological Department (KMD) local forecast for Kisumu calls for a maximum temperature of 32.0°C / 90°F and a minimum of 20.0°C / 68°F, with sunny intervals by day and a chance of light showers and thunderstorms overnight. This aligns closely with the numerical consensus and the forecaster's call.\n\nThe model guidance behind this issuance is at least 9 hours old (last aligned at 18:00Z). Long-run verification data includes 47 reviewed days; Day+0 and Day+7 evaluations represent a settled picture, while Day+3 comparisons reflect 16 checks where performance differences remain within the noise floor.\n\nIndividual ground air quality station reports:\n- Kisumu Airport: AQI 35 (PM2.5: 35.0 µg/m³, PM10: 15.0 µg/m³)\n- Ochieng' Avenue, Kisumu Central: AQI 147 (PM2.5: 147.0 µg/m³, PM10: 18.0 µg/m³)\n- Dunga Beach: AQI 20 (PM2.5: 20.0 µg/m³, PM10: 37.0 µg/m³)",
+      "narrative_source": null,
       "whatsapp_summary": null,
       "generated_at_utc": "2026-09-27T03:11:45.456391Z",
       "issued_local_time": "06:01",
@@ -1934,7 +1939,9 @@
           "sustained_kmh": 12.7,
           "when": "evening"
         }
-      ]
+      ],
+      "served_call": null,
+      "call_source": null
     }
   ],
   "morning_issuance": null,
@@ -1954,6 +1961,7 @@
     "llm_provider": "GeminiProvider",
     "llm_model": "gemini-3.6-flash",
     "narrative_llm_model": null,
+    "llm_call_outcome": null,
     "pipeline_version": "0.1.0",
     "system_prompt_sha256": "aaed19a3b9d3037b09eec025e0551907deed2aed09ca452b5fedd989c70558c8",
     "finish_reason": "STOP",

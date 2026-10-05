@@ -2,70 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-09-27T15:01:33.050436+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 2.152
-    },
-    {
-      "at": "2026-09-27T15:02:05.205950+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 2.622
-    },
-    {
-      "at": "2026-09-27T15:03:07.831034+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 28.58
-    },
-    {
-      "at": "2026-09-27T15:10:36.413965+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 22.143
-    },
-    {
-      "at": "2026-09-27T15:10:58.563200+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 5.734
-    },
-    {
-      "at": "2026-09-27T15:11:34.300436+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 5.944
-    },
-    {
-      "at": "2026-09-27T15:12:40.249463+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 5.505
-    },
-    {
-      "at": "2026-09-27T15:19:45.757043+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 5.913
-    },
-    {
       "at": "2026-09-28T03:01:46.097844+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -385,6 +321,14 @@
       "purpose": "write-up",
       "outcome": "http_200",
       "elapsed_s": 71.686
+    },
+    {
+      "at": "2026-10-05T03:01:36.805013+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 17.712
     }
   ]
 }
