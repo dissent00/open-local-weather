@@ -321,6 +321,39 @@
       "outcome": "http_200",
       "elapsed_s": 628.964,
       "served_model": "dots-studio/dots-3-note-preview:free"
+    },
+    {
+      "at": "2026-10-05T04:22:58.343437+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 0.721
+    },
+    {
+      "at": "2026-10-05T04:25:59.066797+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 0.712
+    },
+    {
+      "at": "2026-10-05T04:32:59.781082+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 3.214
+    },
+    {
+      "at": "2026-10-05T04:33:02.998119+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 272.945,
+      "served_model": "dots-studio/dots-3-note-preview:free"
     }
   ]
 }
