@@ -26921,6 +26921,50 @@ hidden scored row.
 
 ---
 
+## 196. The OpenClaw skill, made trustworthy · **Planned — after item 191; raised 2026-10-05**
+
+The operator's question: OpenClaw users already pay for model calls and
+could contribute forecasts to the shared record (item 182's crowdsourced
+server, Ensemble item 107). Can the skill be secure enough to be trusted,
+on a platform whose users have been taught to distrust skills (item 182:
+ClawHavoc, CVE-2026-25253, Snyk's 36.8%)?
+
+**What the skill is.** SKILL.md plus one script. A cron automation with a
+"Command" payload runs the pipeline's free half with no model turn: fetch,
+extract, the served call, the floor, the brief. A model turn then writes
+the brief through OpenClaw's own provider binding. A POST contributes the
+day's entry to the server.
+
+**The trust design, each point checkable by a reader of the skill:**
+- **Small and auditable.** One script, under 200 lines, no network code of
+  its own: the pipeline is installed from a tagged release with its hash
+  pinned, and nothing is fetched or executed at run time beyond it.
+- **It never sees a key.** The model call goes through OpenClaw's binding;
+  the skill hands over the brief and receives text. It reads no
+  configuration, no environment beyond its own data directory.
+- **Least privilege.** The Command is a fixed string; no shell is built
+  from user input; the skill writes only under its own directory.
+- **Contributions cannot poison the record.** Each install signs with an
+  Ed25519 key it generated; a contribution is the entry JSON with the
+  location coarsened to a forecast area (Ensemble item 107's rule) and
+  nothing else; the server re-verifies every claim against public
+  observations before a contribution weighs anything; a contributor's
+  weight is its own verified record; contributions are rate-limited and
+  withdrawable.
+- **Reproducible and reviewed.** A build hash in the listing; submitted to
+  ClawHub's review; the operator reads the scanner's result before listing.
+- **What this repo cannot fix:** OpenClaw's default sandboxing. The README
+  says so and tells the user to run the skill sandboxed.
+
+**Measure first.** The skill in a VM with canary keys in every place a
+skill could look: no read. A replayed contribution is rejected. A
+mutated entry (one number changed) scores worse than the honest one and
+gains no weight. Only then a listing.
+
+Related: items 182, 191, 192; Ensemble item 107.
+
+---
+
 ## 195. The interpreter: synoptic claims the record scores · **Planned — after item 103 point 5 and item 71's reference; raised 2026-10-01**
 
 The operator's intent, 2026-09-30: the arithmetic sees wind and rain at
@@ -27133,7 +27177,62 @@ Related: items 81, 170, 178, 179, 180, 172, 14; Ensemble item 24.
 
 ---
 
-## 191. The writer: a brief, a writer prompt, and an audit · **Next after item 190; raised 2026-10-01**
+## 191. The writer: a brief, a writer prompt, and an audit · **Next; raised 2026-10-01; the operator's decisions and the first measurement 2026-10-05**
+
+**Decided 2026-10-05.**
+1. **Two tiers.** A full brief for the pipeline's routes and a mini brief
+   for on-device models. Two rather than one because on-device models will
+   grow and Android will get them; the mini tier is sized for today's Apple
+   on-device budget of 4,096 tokens shared by brief, instructions and
+   output. Apple's Private Cloud Compute is open to developers in the Small
+   Business Program under two million downloads at no cloud API cost
+   (developer.apple.com/private-cloud-compute, read 2026-10-05); its
+   model's context size is unread, and decides which tier it takes.
+2. **Sections are the reader's choice.** The floor's sections are the base:
+   Today's Forecast, Extended Outlook, and Conditions for Boaters where a
+   secondary point exists. Severe Weather appears when the convective flag
+   or a warning is live. Synoptic Overview, Detailed Discussion and
+   Forecaster Confidence Notes are opt-in. `write_up_sections` in
+   location.yaml and a toggle per section in the app's settings; the writer
+   prompt asks only for the enabled sections, the brief carries only the
+   blocks they need, and the audit checks exactly that set.
+3. **The audit stays strict.** The only transformations it accepts are the
+   ones code itself performs: unit conversions (°C to °F, km/h to kt), the
+   tile's display precision, time formats and day names. Any other figure
+   in the prose is a rejection. Weather does not round itself.
+4. **Routes to backtest:** Gemini, OpenRouter free, then Apple on-device
+   through a Swift prototype, lowest priority: it serves the phones least
+   in need, and its interest is as a contributor to the shared record
+   (Ensemble item 107) rather than as the underserved reader's route.
+5. **The model's own call — recommended, awaiting the operator's yes.**
+   Retire the 48K-token judgment call on free routes: it is the one call
+   Gemini still refuses, the record already answers its question (code
+   blend 77%, the model 67% at Day+0 over 44 and 37 checks), and it costs
+   the run minutes. Keep it available per link under item 192's jobs where
+   a paid key makes it free. Replace the model's scored contribution with
+   something code cannot do, at no extra call: the write-up ends with a
+   FORECASTER'S PICK, the model named to trust for today's rain and one
+   reason, parsed by the audit, stored, and scored tomorrow against the
+   per-model verification. Over time the series asks whether the model's
+   pick beats "always ECMWF". It is item 195's shape in miniature, on the
+   brief, and the first scored claim a writer makes.
+
+**Measured 2026-10-05, zero calls, 31 archived issuances,** the tiers
+simulated from the archived user prompts' blocks with the lite renderer's
+transforms and the replacements below estimated by hand:
+- Full tier: median 9,809 characters (~3.9K tokens at 2.5 per token), p95
+  12,253 (~4.9K), max 12,550. The review rendered as sentences is the
+  largest block left, 2,463 characters median; it is cut to the findings the
+  enabled sections use.
+- Mini tier, first cut (the full tier without observed-so-far, the
+  secondary point, last-known AQI, sky by day, UV, recency and the ring):
+  median 8,330 (~3.3K tokens), over the on-device budget. It also drops
+  the calendar and the preamble, keeps three review findings, and reduces
+  the instability and windows blocks to their timing lines. Target: 6,000
+  characters, ~2.4K tokens, leaving 1,700 for instructions and output.
+- "EARLIER TODAY" appears only in archives from before item 137 and is not
+  in the brief.
+
 
 The narrative call sends ~146K characters (~56K tokens at the measured 2.5
 characters per token; item 174's ~4 understated the bill by 1.6×) and asks
@@ -27193,7 +27292,7 @@ and null for the floor.
   at the same minute, alternating order. Says whether a small call lowers
   Gemini's own refusals or only opens other routes.
 
-Related: items 112, 174, 176, 180, 182, 164, 147, 158, 186; Ensemble item 1.
+Related: items 112, 174, 176, 180, 182, 164, 147, 158, 186, 196; Ensemble items 1, 107, 191.
 
 ---
 
