@@ -1243,6 +1243,8 @@ def test_every_vector_file_is_exercised():
         # ROADMAP item 189 — the served call built from code.
         "code_call.json",
         "floor.json",
+        "extended_days.json",
+        "extended_outlook.json",
         "rain_label.json",
         "onset_window_label.json",
         "cams_peak_aqi.json",
@@ -1513,6 +1515,8 @@ NOT_KEYWORD_CALLS = frozenset({
     "wind_describe_shift.json", "wind_timeline.json",
     # Its input is a FloorInputs object, built before the call — item 190.
     "floor.json",
+    # An OutlookInputs object — item 190 step 3.
+    "extended_outlook.json",
 })
 
 # Input keys that are not arguments — the same exemption the Dart guard has.
@@ -1612,6 +1616,24 @@ def test_vectors_floor():
 
     for case in load("floor.json")["cases"]:
         assert compose_floor(FloorInputs.from_json(case["input"])) == case["expected"], case["name"]
+
+
+def test_vectors_extended_days():
+    """ROADMAP item 190 step 3 — the day table from the daily arrays."""
+    from openlocalweather.outlook import extended_days
+
+    for case in load("extended_days.json")["cases"]:
+        i = case["input"]
+        got = extended_days(i["daily"], i["models"], date.fromisoformat(i["today"]))
+        assert [asdict(d) for d in got] == case["expected"], case["name"]
+
+
+def test_vectors_extended_outlook():
+    """ROADMAP item 190 step 3 — the outlook's two paragraphs."""
+    from openlocalweather.outlook import OutlookInputs, describe_extended_outlook
+
+    for case in load("extended_outlook.json")["cases"]:
+        assert describe_extended_outlook(OutlookInputs.from_json(case["input"])) == case["expected"], case["name"]
 
 
 def test_vectors_code_call():

@@ -2023,6 +2023,34 @@
       "title": "Earlier Issuances",
       "type": "array"
     },
+    "extended_days": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extended Days"
+    },
+    "extended_outlook": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Extended Outlook"
+    },
     "extended_trend": {
       "anyOf": [
         {

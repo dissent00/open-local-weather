@@ -144,6 +144,8 @@ absent values are `null`, never omitted keys.
 | `cams_peak_aqi.json` | `cams_peak_aqi` | 5 |
 | `verification_summary.json` | `verification_summary` | 4 |
 | `floor.json` | `compose_floor` | Code's write-up from the day's stored values (item 190): the comparison or the served call's rain character, the sky and wind from the anchors, UV and the worst station, the trend and the served leads, the boaters' section, the two sign-offs. |
+| `extended_days.json` | `extended_days` | 1 |
+| `extended_outlook.json` | `describe_extended_outlook` | 8 |
 | `sustained_wind_gap.json` | `sustained_wind_gap` | 7 |
 | `cell_key.json` | `cell_key` | 12 |
 | `convective_timing.json` | `convective_timing` | 14 |

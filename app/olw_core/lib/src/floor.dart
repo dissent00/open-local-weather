@@ -64,6 +64,7 @@ class FloorInputs {
     this.highsByLead = const {},
     this.day0PeakCapeJkg = const [],
     this.extendedTrend,
+    this.extendedOutlook,
     this.secondaryName,
     this.modelConfigured = true,
   });
@@ -87,6 +88,10 @@ class FloorInputs {
   final Map<String, List<double>> highsByLead;
   final List<double?> day0PeakCapeJkg;
   final String? extendedTrend;
+
+  /// The two paragraphs of item 190 step 3, which replace the trend clause
+  /// and the lead lines where the run composed them.
+  final String? extendedOutlook;
   final String? secondaryName;
   final bool modelConfigured;
 
@@ -114,6 +119,7 @@ class FloorInputs {
           for (final c in (j['day0_peak_cape_jkg'] as List?) ?? const []) (c as num?)?.toDouble()
         ],
         extendedTrend: j['extended_trend'] as String?,
+        extendedOutlook: j['extended_outlook'] as String?,
         secondaryName: j['secondary_name'] as String?,
         modelConfigured: (j['model_configured'] as bool?) ?? true,
       );
@@ -130,7 +136,8 @@ String composeFloor(FloorInputs i) {
   final today = _sentences(_todayParts(i));
   if (today.isNotEmpty) sections.add('$todayHeading\n\n$today');
 
-  final extended = _sentences(_extendedParts(i));
+  final outlook = i.extendedOutlook?.trim();
+  final extended = outlook != null && outlook.isNotEmpty ? outlook : _sentences(_extendedParts(i));
   if (extended.isNotEmpty) sections.add('$extendedHeading\n\n$extended');
 
   final boaters = i.secondaryName == null ? '' : _sentences(_boatersParts(i));

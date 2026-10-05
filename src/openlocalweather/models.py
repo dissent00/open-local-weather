@@ -1870,6 +1870,14 @@ class DailyLogEntry(BaseModel):
     # daily arrays the entry does not keep, so a stored day cannot rebuild
     # it. None before 2026-10-04 and on a day the data was too thin.
     extended_trend: str | None = None
+    # THE OUTLOOK IN CODE — item 190 step 3, 2026-10-05. `extended_days` is
+    # the day table for Day+1 to Day+7 as the models see them together
+    # (outlook.ExtendedDay), the brief's extended block and the floor's
+    # source; `extended_outlook` is the two paragraphs composed from it,
+    # stored so a stored day renders the same text. None before the field
+    # existed.
+    extended_days: list[dict] | None = None
+    extended_outlook: str | None = None
     whatsapp_summary: str | None = None
 
     # Every issuance BEFORE the current one, oldest first. The current

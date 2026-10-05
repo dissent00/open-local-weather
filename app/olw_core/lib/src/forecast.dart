@@ -15,6 +15,7 @@ import 'config.dart';
 import 'cycle.dart';
 import 'extract.dart';
 import 'floor.dart';
+import 'outlook.dart' as outlook;
 import 'instability.dart';
 import 'llm/forecast_call.dart';
 import 'llm/prompt.dart';
@@ -293,6 +294,10 @@ Future<ForecastRun> generateForecast({
 
   /// The code blend over the caller's record; see [CodeBlendFor].
   required CodeBlendFor codeBlendFor,
+
+  /// What the caller's record says at the scored leads, for the outlook's
+  /// ranking lines (upstream item 190 step 3); empty on a thin record.
+  List<outlook.LeadRecord> leadRecords = const [],
   required LocationConfig location,
   required DateTime today,
   required String publicWebpageUrl,
@@ -640,6 +645,19 @@ Future<ForecastRun> generateForecast({
   final anchorsSky = cloudAnchors(hourly, models, issuedHour: issuedHourOf(resolvedIssuance));
   final anchorsWind = windAnchors(hourly, models, issuedHour: issuedHourOf(resolvedIssuance));
   final extendedTrendPhrase = _soundPhrase('extended_trend', extendedTrend, degradations);
+  // THE OUTLOOK IN CODE — upstream item 190 step 3: the day table for Day+1
+  // to Day+7 from the same daily arrays the scored leads read, and the two
+  // paragraphs over it. No met service here: the app has none yet.
+  final outlookText = outlook.describeExtendedOutlook(outlook.OutlookInputs(
+    days: outlook.extendedDays(daily, blendInputs(), today),
+    todayHighC: mean([for (final p in day0) p.highC]),
+    todayWindKmh: mean([for (final p in day0) p.windKmh]),
+    served: {
+      for (final e in served.judgment.extendedProperties)
+        '${e.leadTimeDays}': {'rain': e.rain, 'rain_probability_pct': e.rainProbabilityPct},
+    },
+    records: leadRecords,
+  ));
 
   final judgmentPrompt = buildJudgmentPrompt(
     location,
@@ -835,6 +853,7 @@ Future<ForecastRun> generateForecast({
     },
     day0PeakCapeJkg: [for (final p in day0) if (blendInputs().contains(p.model)) p.peakCapeJkg],
     extendedTrend: extendedTrendPhrase,
+    extendedOutlook: outlookText,
     modelConfigured: llm != null,
   ));
 

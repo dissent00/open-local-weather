@@ -1636,6 +1636,25 @@ void main() {
     });
   });
 
+  group('the outlook in code', () {
+    // Upstream item 190 step 3.
+    test('extended_days', () {
+      for (final c in casesOf('extended_days.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final got = extendedDays((i['daily'] as Map).cast<String, Object?>(),
+            (i['models'] as List).cast<String>(), parseDate(i['today'] as String));
+        expectMatches([for (final d in got) d.toJson()], c['expected'], c['name'] as String);
+      }
+    });
+
+    test('extended_outlook', () {
+      for (final c in casesOf('extended_outlook.json')) {
+        final got = describeExtendedOutlook(OutlookInputs.fromJson(c['input'] as Map<String, Object?>));
+        expect(got, c['expected'], reason: c['name'] as String);
+      }
+    });
+  });
+
   group('the floor', () {
     // Upstream item 190: code's write-up, the same text from the same values.
     test('floor', () {
@@ -2332,6 +2351,8 @@ void main() {
       // Upstream item 189 — the served call built from code.
       'code_call.json',
       'floor.json',
+      'extended_days.json',
+      'extended_outlook.json',
       'rain_label.json',
       'onset_window_label.json',
       'cams_peak_aqi.json',

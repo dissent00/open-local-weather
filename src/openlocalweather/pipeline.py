@@ -82,6 +82,8 @@ from openlocalweather.calibration import calibrated_gust_consensus, gust_correct
 from openlocalweather.code_blend import blend_inputs, code_blend_predictions, window_code_blend
 from openlocalweather.code_call import ServedCall, served_call, verification_summary
 from openlocalweather.floor import NARRATIVE_SOURCE_CODE, compose_floor_for_entry
+from openlocalweather.outlook import OutlookInputs, describe_extended_outlook, lead_records
+from openlocalweather.outlook import extended_days as outlook_day_table
 from openlocalweather.comparison import (
     comparison_for_prompt,
     compute_day_over_day,
@@ -2705,6 +2707,9 @@ def _compose_log_entry(
     llm_call_outcome: str | None = None,
     # The three-day clause, stored for the floor — item 190.
     extended_trend: str | None = None,
+    # The day table and the outlook composed from it — item 190 step 3.
+    extended_days: list[dict] | None = None,
+    extended_outlook: str | None = None,
 ) -> DailyLogEntry:
     """The day's entry, built in the one place it is built.
 
@@ -2860,6 +2865,8 @@ def _compose_log_entry(
         yesterday_verification_summary=llm_response.yesterday_verification,
         narrative_markdown=llm_response.today_narrative,
         extended_trend=extended_trend,
+        extended_days=extended_days,
+        extended_outlook=extended_outlook,
         guidance_initialised_at=guidance.guidance_cycle.initialised_at,
         guidance_age_hours=guidance.guidance_cycle.age_hours,
         guidance_source=guidance.guidance_cycle.source,
@@ -3762,6 +3769,34 @@ def _issue_forecast(
         inputs=blend_inputs(location.local_bulletin_model_id),
     )
 
+    # THE OUTLOOK IN CODE — item 190 step 3: the day table for Day+1 to Day+7
+    # from the same daily arrays the scored leads read, and the two
+    # paragraphs composed from it, the served calls and the record. Built
+    # here, beside the served call, so the floor and the brief share one
+    # set of numbers with the tiles.
+    outlook_days = outlook_day_table(guidance.primary_daily, blend_inputs(location.local_bulletin_model_id), today)
+    outlook = describe_extended_outlook(
+        OutlookInputs(
+            days=outlook_days,
+            today_high_c=_mean_of([p.high_c for p in day0_models]),
+            today_wind_kmh=_mean_of([p.wind_kmh for p in day0_models]),
+            served={
+                str(e.lead_time_days): {"rain": e.rain, "rain_probability_pct": e.rain_probability_pct}
+                for e in call.judgment.extended_properties
+            },
+            records=lead_records(
+                track_record_entries,
+                visible_models=models_visible_to_the_forecaster(location.local_bulletin_model_id),
+            ),
+            met_service_name=location.local_bulletin_source_name or None,
+            met_service_day3_rain=(
+                guidance.met_service_prediction_day3.rain
+                if guidance.met_service_prediction_day3 is not None
+                else None
+            ),
+        )
+    )
+
     # --- Step 6b: the prompts, and the model's own call ---
     # A location with no WAQI stations gets a prompt with no ground-station
     # guidance and no GROUND AQI blocks at all, rather than a daily note that
@@ -3985,6 +4020,8 @@ def _issue_forecast(
         served_call=call,
         llm_call_outcome=llm.outcome,
         extended_trend=_extended_trend(guidance, day0_models, extended_days, today),
+        extended_days=[asdict(d) for d in outlook_days],
+        extended_outlook=outlook,
     )
 
     # THE FLOOR — ROADMAP item 190. Code's write-up stands where the

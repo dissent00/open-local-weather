@@ -6351,6 +6351,121 @@ def export_code_call() -> None:
     )
 
 
+def export_extended_outlook() -> None:
+    """The Extended Outlook in code — ROADMAP item 190 step 3.
+
+    `extended_days.json` pins the day table from a daily block: eight days
+    of four models with a fifth that reaches only five days, wet and dry
+    days, a thunder day, the sky words. `extended_outlook.json` pins the two
+    paragraphs over the table: the near trend and sky, rain gaining or
+    losing support, a day that stands out for wind, the scored calls with
+    the models' votes and the met service's word, the record's ranking or
+    its absence, the far trend from Day+3's base, which models reach, the
+    wetter solutions.
+    """
+    from datetime import date as _date
+
+    from openlocalweather.outlook import (
+        ExtendedDay,
+        LeadRecord,
+        OutlookInputs,
+        describe_extended_outlook,
+        extended_days,
+    )
+
+    today = _date(2026, 10, 5)
+    times = [(today + timedelta(days=n)).isoformat() for n in range(8)]
+    models = ["gfs_seamless", "ecmwf_ifs025", "icon_seamless", "ukmo_seamless"]
+
+    def series(model, values):
+        return {f"{key}_{model}": vals for key, vals in values.items()}
+
+    daily = {"daily": {"time": times}}
+    daily["daily"].update(series("gfs_seamless", {
+        "temperature_2m_max": [33.5, 34.0, 35.1, 33.5, 34.1, 31.1, 30.4, 29.5],
+        "temperature_2m_min": [19.8, 19.4, 18.3, 19.3, 19.2, 18.0, 18.6, 18.3],
+        "precipitation_sum": [0.0, 2.6, 0.2, 0.3, 2.6, 9.5, 4.6, 1.8],
+        "windgusts_10m_max": [30.0, 28.0, 41.0, 32.8, 30.0, 25.0, 20.0, 14.4],
+        "cape_max": [900.0, 1200.0, 300.0, 320.0, 1500.0, 2100.0, 800.0, 600.0],
+        "cloud_cover_mean": [60.0, 55.0, 70.0, 75.0, 80.0, 85.0, 70.0, 65.0],
+    }))
+    daily["daily"].update(series("ecmwf_ifs025", {
+        "temperature_2m_max": [31.0, 31.5, 31.0, 29.2, 28.0, 26.5, 24.0, 22.8],
+        "temperature_2m_min": [20.0, 20.1, 19.8, 20.3, 19.9, 19.2, 19.0, 18.8],
+        "precipitation_sum": [0.4, 1.2, 1.8, 6.5, 8.0, 12.0, 10.0, 9.0],
+        "windgusts_10m_max": [34.0, 33.0, 44.0, 36.4, 33.0, 30.0, 28.0, 28.4],
+        "cape_max": [1100.0, 1300.0, 1800.0, 2110.0, 2000.0, 1900.0, 1700.0, 1840.0],
+        "cloud_cover_mean": [70.0, 72.0, 78.0, 80.0, 82.0, 84.0, 80.0, 79.0],
+    }))
+    daily["daily"].update(series("icon_seamless", {
+        "temperature_2m_max": [32.0, 32.5, 33.0, 31.3, 30.0, 29.0, 27.5, None],
+        "temperature_2m_min": [21.0, 21.5, 21.0, 21.9, 20.5, 20.0, 19.5, None],
+        "precipitation_sum": [0.1, 0.9, 1.1, 3.0, 7.5, 11.0, 8.0, None],
+        "windgusts_10m_max": [31.0, 30.0, 40.0, 30.6, 29.0, 27.0, 26.0, None],
+        "cape_max": [1000.0, 1250.0, 1600.0, 2200.0, 1900.0, 1850.0, 1600.0, None],
+        "cloud_cover_mean": [65.0, 66.0, 74.0, 76.0, 79.0, 83.0, 78.0, None],
+    }))
+    daily["daily"].update(series("ukmo_seamless", {
+        "temperature_2m_max": [32.5, 32.0, 32.8, 31.7, 31.0, 30.0, None, None],
+        "temperature_2m_min": [18.0, 17.8, 17.5, 17.3, 17.0, 17.2, None, None],
+        "precipitation_sum": [0.0, 0.5, 0.3, 0.4, 1.0, 2.0, None, None],
+        "windgusts_10m_max": [26.0, 25.0, 38.0, 26.6, 25.0, 24.0, None, None],
+        "cape_max": [800.0, 900.0, 2500.0, 2970.0, 1200.0, 900.0, None, None],
+        "cloud_cover_mean": [50.0, 52.0, 60.0, 62.0, 66.0, 70.0, None, None],
+    }))
+
+    days = extended_days(daily, models, today)
+    write(
+        "extended_days.json",
+        "extended_days",
+        "The day table for Day+1 to Day+7 from the daily arrays, as the scored leads read them: the "
+        "models that reach each day, the wet votes, the mean amount and each model's, the highs as "
+        "mean and range, the lows, the gust, the thunder tier over the independent models, the sky "
+        "word. A model that stops reaching leaves the day's list; a day no model reaches is absent.",
+        [{"name": "eight days of four models, one stopping at five and one at six",
+          "input": {"daily": daily, "models": models, "today": today.isoformat()},
+          "expected": [asdict(d) for d in days]}],
+    )
+
+    def record(lead, best=None, pct=None, checks=0):
+        return LeadRecord(lead_time_days=lead, best_model=best, rain_pct=pct, checks=checks)
+
+    base = dict(
+        days=days, today_high_c=32.3, today_wind_kmh=30.2,
+        served={"3": {"rain": True, "rain_probability_pct": 68}, "7": {"rain": True, "rain_probability_pct": 100}},
+        records=[record(3, "ecmwf_ifs025", 77.0, 52), record(7, "ecmwf_ifs025", 80.0, 48)],
+        met_service_name="Kenya Meteorological Department (KMD)", met_service_day3_rain=True,
+    )
+
+    def case(name, **changes):
+        inputs = OutlookInputs(**{**base, **changes})
+        return {"name": name, "input": inputs.to_json(), "expected": describe_extended_outlook(inputs)}
+
+    near_only = [d for d in days if d.lead_time_days <= 3]
+    calm = [ExtendedDay(**{**asdict(d), "wind_kmh": 30.0}) for d in days]
+    uniform_sky = [ExtendedDay(**{**asdict(d), "sky": "Mostly cloudy"}) for d in days]
+    write(
+        "extended_outlook.json",
+        "describe_extended_outlook",
+        "Two paragraphs over the day table: the trend clause through Day+3 with the sky, rain's "
+        "support among the models moving one way, a day standing out for wind, the scored call with "
+        "the models' votes and the met service's word, the record's best model or its absence; then "
+        "the same trend measured from Day+3, which models still reach, the wetter solutions, the "
+        "Day+7 call and its record. The numbers are the table's; the only probability printed is "
+        "the served call's.",
+        [
+            case("the stored day: a windier Wednesday, rain gaining support, two models past Saturday"),
+            case("no far days: one paragraph", days=near_only),
+            case("a thin record ranks nobody", records=[record(3), record(7)]),
+            case("no served calls and no met service", served={}, met_service_name=None, met_service_day3_rain=None),
+            case("winds that never stand out", days=calm),
+            case("one sky word throughout", days=uniform_sky),
+            case("no model configured for the met service's word", met_service_day3_rain=None),
+            case("today unknown: the trend clauses go, the rest stays", today_high_c=None, today_wind_kmh=None),
+        ],
+    )
+
+
 def export_floor() -> None:
     """The floor, code's write-up — ROADMAP item 190.
 
@@ -6438,6 +6553,12 @@ def export_floor() -> None:
                      {"lead_time_days": 3, "rain": True, "rain_probability_pct": None},
                      {"lead_time_days": 7, "rain": False, "rain_probability_pct": None}]),
             case("no issue time, no stamp", issued_local_time=None),
+            case("the outlook composed in code replaces the trend and the lead lines",
+                 extended_outlook=(
+                     "Temperatures and winds much the same through Thursday, with rain possible from Thursday. "
+                     "Thursday's call: rain, 68%, with two of four models wet; highs 31 to 34 °C.\n\n"
+                     "Further out, cooling through Monday, with showers possible Friday and Saturday."
+                 )),
         ],
     )
 
@@ -6993,6 +7114,7 @@ def main() -> None:
     export_code_blend()
     export_code_call()
     export_floor()
+    export_extended_outlook()
     print("\nDone. Commit the result — the vectors are the contract.")
 
 

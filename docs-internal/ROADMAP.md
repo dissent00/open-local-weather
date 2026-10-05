@@ -27296,7 +27296,31 @@ Related: items 112, 174, 176, 180, 182, 164, 147, 158, 186, 196; Ensemble items 
 
 ---
 
-## 190. The floor: a code-written write-up replaces the placeholder · **Shipped 2026-10-04 on the Python, vector and Dart sides; the app's half owed in Ensemble**
+## 190. The floor: a code-written write-up replaces the placeholder · **Shipped 2026-10-04; step 3, the outlook in code, 2026-10-05**
+
+**Step 3, 2026-10-05: the Extended Outlook in code.** The operator's ask on
+reading the floor: not a line per day but the trends — "rain likely
+through Thursday, increasing chance, windier on Wednesday", then the longer
+term — the way the model's outlook read when it read well. `outlook.py`
+(`olw_core/outlook.dart`): `extended_days` builds a day table for Day+1 to
+Day+7 from the daily arrays the scored leads already read, stored on the
+entry as `extended_days` (the brief's extended block, item 191);
+`describe_extended_outlook` composes two paragraphs stored as
+`extended_outlook`, which the floor shows under its heading. The near term
+is the trend clause the prompt already carried (`describe_extended_trend`),
+then the sky by day, rain's support among the models moving one way (the
+honest form of "increasing chance": the models' stated probabilities did
+not sort outcomes on the record, item 158, so support is counted in
+votes), a day that stands out for wind by the day-over-day band, the
+served call with the votes and the met service's word, and the record's
+best model or its absence. The far term is the same trend clause measured
+from Day+3, which models still reach, the wetter solutions a band apart,
+the Day+7 call and its record. Pinned by `extended_days.json` and
+`extended_outlook.json`; every sentence through `phrase_defect`. Rendered
+over the 31 archived issuances for the operator's read (0 shape defects)
+before wiring; swept across the two languages on 1,500 random outlooks and
+400 random day tables. Not in the app's outlook: the met service's word.
+
 
 **Step 2, 2026-10-04, after the operator read the renders.** The floor is
 a pure function over `FloorInputs` (`compose_floor`), mirrored in

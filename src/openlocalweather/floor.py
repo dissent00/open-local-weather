@@ -98,6 +98,9 @@ class FloorInputs:
     highs_by_lead: dict[str, list[float]] = field(default_factory=dict)
     day0_peak_cape_jkg: list[float | None] = field(default_factory=list)
     extended_trend: str | None = None
+    # The two paragraphs of item 190 step 3, which replace the trend clause
+    # and the lead lines in the Extended Outlook where the entry has them.
+    extended_outlook: str | None = None
     secondary_name: str | None = None
     model_configured: bool = True
 
@@ -143,6 +146,7 @@ class FloorInputs:
             },
             day0_peak_cape_jkg=[p.peak_cape_jkg for p in scored.day0 if p.model in blend_inputs()],
             extended_trend=entry.extended_trend,
+            extended_outlook=entry.extended_outlook,
             secondary_name=secondary_name,
             model_configured=model_configured,
         )
@@ -156,7 +160,9 @@ def compose_floor(inputs: FloorInputs) -> str:
     if today:
         sections.append(f"{TODAY_HEADING}\n\n{today}")
 
-    extended = _sentences(_extended_parts(inputs))
+    # The outlook composed in code (item 190 step 3) is already two checked
+    # paragraphs; without it, the trend clause and a line per scored lead.
+    extended = inputs.extended_outlook.strip() if inputs.extended_outlook else _sentences(_extended_parts(inputs))
     if extended:
         sections.append(f"{EXTENDED_HEADING}\n\n{extended}")
 
