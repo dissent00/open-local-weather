@@ -921,7 +921,7 @@
   "model_predictions": null,
   "verification": {
     "day0": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     },
@@ -945,6 +945,8 @@
   "narrative_markdown": "Isolated afternoon showers and thunderstorms are expected today, with the first storms possible from 16:00. Thunder is possible from the afternoon, peaking this evening. The day's high reaches 31.6°C / 89°F and the overnight low falls to 19.3°C / 67°F. Winds are north-northeasterly overnight, turning southwest by midday and west-southwest into the evening. Morning skies are mostly cloudy, turning partly cloudy by midday, and mostly cloudy again this evening. Rainfall is expected to be light, around 2.9 mm (0.1 inch). Peak gusts are forecast to reach 41.8 km/h (23 kt). The UV index peaks at 9.5, very high. Ground air quality sensors report AQI in the 28-41 range, good to moderate, though model data suggests higher values around 72 this afternoon.",
   "narrative_source": "llm",
   "extended_trend": "temperatures and winds much the same through Thursday, with showers and thunderstorms possible Tuesday, dry Wednesday with thunderstorms likely, and rain and thunderstorms likely from Thursday",
+  "extended_days": null,
+  "extended_outlook": null,
   "whatsapp_summary": null,
   "earlier_issuances": [],
   "morning_issuance": null,

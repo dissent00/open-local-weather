@@ -1870,7 +1870,7 @@
       "note_sign_corrected_on": null
     },
     "day7": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     }
@@ -1882,6 +1882,10 @@
   },
   "yesterday_verification_summary": "Not written this issuance — the write-up call did not complete.",
   "narrative_markdown": "## Write-up unavailable\n\nThe forecast below could not be written up this issuance: the model call that turns the day's figures into prose did not complete. The figures themselves were produced normally and are shown as usual — they are the same numbers this forecast is scored on.\n\nThere is no discussion, no extended outlook and no hazard section for this issuance. Check a later one.",
+  "narrative_source": null,
+  "extended_trend": null,
+  "extended_days": null,
+  "extended_outlook": null,
   "whatsapp_summary": null,
   "earlier_issuances": [
     {
@@ -1923,6 +1927,7 @@
         }
       ],
       "narrative_markdown": "## Overview\n\nThe forecast below could not be written up this issuance: the model call that turns the day's figures into prose did not complete. The figures themselves were produced normally and are shown as usual — they are the same numbers this forecast is scored on.\n\nThere is no discussion, no extended outlook and no hazard section for this issuance. Check a later one.",
+      "narrative_source": null,
       "whatsapp_summary": null,
       "generated_at_utc": "2026-09-28T03:13:03.621448Z",
       "issued_local_time": "06:01",
