@@ -940,9 +940,9 @@
     "text": "Kenya Meteorological Department (KMD) — forecast for Kisumu\nValid for 2026-10-06.\nMax 31.0C / Min 20.0C.\nTonight: Partly cloudy.\nMorning: Sunny intervals\nAfternoon: Sunny intervals, Light showers and thunderstorms likely over few places.\nNational outlook mentions this area:\n  - Light to moderate rainfall is expected in Kisumu, Siaya, Kericho, Kisii, Kakamega, Bungoma, Busia,",
     "fetched_at_utc": "2026-10-06T03:05:33.194232Z"
   },
-  "yesterday_verification_summary": "Day+0 for 2026-10-05: gfs_seamless and kenya_met called the rain right; ecmwf_ifs025, icon_seamless, ukmo_seamless and best_match did not. Day+3 for 2026-10-02: gfs_seamless and ukmo_seamless called the rain right; ecmwf_ifs025, icon_seamless and best_match did not. Day+7 for 2026-09-28: gfs_seamless called the rain right; ecmwf_ifs025 and best_match did not.",
-  "narrative_markdown": "## Today's Forecast\n\nCloudier than yesterday; temperatures and winds little changed. Showery from the afternoon, with thunder possible from midday, peaking this evening. Gusting to strong breeze. 31°C / 88°F high, 19°C / 67°F low. Sky mostly cloudy early, partly cloudy at midday and mostly cloudy in the evening. Wind NE early and SW at midday; gusts to 48 km/h (26 kt). UV index 9.5 (very high). Air quality 59 (moderate) at Ochieng' Avenue, Kisumu Central, the highest of 3 stations.\n\n## Extended Outlook\n\nBecoming calmer through Friday, with showers and thunderstorms likely each day. Skies mostly cloudy throughout. Friday's call: rain, 100%, with all four models wet; highs 29 to 33 °C. At this lead ECMWF has the best record, right 77% of the time over 53 checks.\n\nFurther out, cooling through Tuesday, with rain and thunderstorms likely Saturday and Sunday, and showers and thunderstorms possible Monday and Tuesday. Only GFS, ECMWF and ICON reach past Sunday. ECMWF, ICON and UKMO are the wetter solutions from Saturday to Tuesday; GFS keeps it drier. Tuesday's call: rain, 100%, with both models wet; highs 26 to 30 °C. At this lead ECMWF has the best record, right 77% of the time over 49 checks.\n\n## Winam Gulf — Conditions for Boaters\n\nPeak gust 40 km/h (21 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.\n\nFigures issued 06:01. Written by code; a discussion follows when a model answers.\n",
-  "narrative_source": "code",
+  "yesterday_verification_summary": "Yesterday's verification at Day+0 revealed that most models missed the rain event, and nearly all under-forecast peak wind. Daytime highs were generally under-forecast, while overnight lows showed mixed biases. At Day+3 and Day+7, the models continued to show systematic errors in temperature and wind.",
+  "narrative_markdown": "## Today's Forecast\n\nShowers and thunderstorms are expected today, with a high of 31.3°C. Thunder possible from midday, peaking this evening. The morning will be mostly cloudy, becoming partly cloudy by midday, and mostly cloudy again this evening. Rain is expected to begin at 16:00 and continue into the evening, with a 100% chance and up to 9.1 mm of precipitation. Winds will be northeasterly overnight, turning southwest by midday, with peak gusts reaching 47.5 km/h and sustained winds around 20-25 km/h. The UV index is expected to peak at 9.5, which is very high. Air quality will be moderate, with ground sensors reporting up to 59 AQI at Ochieng' Avenue and the model-based estimate at 67. Tonight will be mostly cloudy with a chance of showers, and the low will be around 19.2°C.",
+  "narrative_source": "llm",
   "extended_trend": "becoming calmer through Friday, with showers and thunderstorms likely each day",
   "extended_days": [
     {
@@ -1141,7 +1141,7 @@
     "generated_at_utc": "2026-10-06T03:05:33.194261Z",
     "llm_provider": "OpenAICompatProvider",
     "llm_model": "dots-studio/dots-3-note-preview:free",
-    "narrative_llm_model": null,
+    "narrative_llm_model": "dots-studio/dots-3-note-preview:free",
     "llm_call_outcome": "served",
     "pipeline_version": "0.1.0",
     "system_prompt_sha256": "cb57f8dbbe0fe44ba844f62ba359caa3b423a911c9c7fbc2962489dff5a77bcd",
@@ -1209,12 +1209,6 @@
     "trigger_source": "workflow_dispatch",
     "issued_local_time": "06:01",
     "observations_local_time": "06:01",
-    "degradations": [
-      {
-        "code": "narrative_unavailable",
-        "summary": "Today's figures are decided and published. The written discussion follows when a model answers; the numbers are the same ones this forecast is scored on.",
-        "detail": "The write-up is asked for after the forecast is committed and published (ROADMAP item 189), by `olw write-up`, from the archived prompts and the stored call. Until it lands the entry carries the placeholder."
-      }
-    ]
+    "degradations": []
   }
 }
