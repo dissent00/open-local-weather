@@ -3763,11 +3763,12 @@ def test_the_live_config_asks_the_models_call_once(tmp_path, monkeypatch):
     """One attempt per link for the model's own call — item 189. The live
     link's 180/420 s schedule belongs to the write-up, in `olw write-up`;
     here a refusal hands over at once and the gateway serves the hidden row
-    while the page shows code's call."""
-    entry, slept, gemini = _live_bad_morning(tmp_path, monkeypatch, [503])
+    while the page shows code's call. Two Gemini links since 2026-10-08, the
+    version test (item 132): one try each, the newer model after the pin."""
+    entry, slept, gemini = _live_bad_morning(tmp_path, monkeypatch, [503, 503])
 
     assert slept == [], "no retry wait inside the run"
-    assert len(gemini) == 1
+    assert [r.model for r in gemini] == ["gemini-3.6-flash", "gemini-3.8-flash"]
     assert entry.served_call is not None and entry.call_source == "consensus"
     assert entry.meta.llm_call_outcome == "served" and entry.meta.llm_provider == "OpenAICompatProvider"
     assert DEGRADATION_NARRATIVE in {d.code for d in entry.meta.degradations}, "the write-up is pending"

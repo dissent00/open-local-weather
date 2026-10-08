@@ -151,6 +151,13 @@ class LLMProviderEntry(BaseModel):
     # OPENROUTER_BASE_URL, OPENROUTER_MODEL. Defaults per kind to the names
     # this project has always used.
     env_prefix: str | None = None
+    # The model this link asks for, named here rather than in `{PREFIX}_MODEL`
+    # — the operator's call, 2026-10-08 (ROADMAP item 132). One key can then
+    # reach several models: the version test is two `gemini` links on
+    # GEMINI_API_KEY. A link that names none reads the variable as before; a
+    # link that names one is not moved by a variable set in a browser, for
+    # the reason `_build_llm_provider` gives about the provider's name.
+    model: str | None = None
     # The gateway's OWN in-request order (OpenRouter's `models`), which is a
     # different order from this chain. It belongs to the entry because once a
     # chain holds two gateways, a top-level list cannot say which it means.

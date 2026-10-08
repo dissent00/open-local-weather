@@ -436,11 +436,14 @@ def test_the_live_config_is_what_we_think_it_is():
     # failure the guard exists to prevent.
     assert direct.max_calls_per_24h >= 2 * direct.max_calls_per_run
     # THE VERSION TEST — 2026-10-08, ROADMAP item 132: the newest Flash on
-    # its own prefix and quota, one try after every refusal of the pin,
-    # before the gateway so nothing gets worse while it is measured.
-    assert (newer.kind, newer.name, newer.env_prefix, newer.max_attempts) == (
-        "gemini", "gemini-newer", "GEMINI2", 1
+    # the same key and its own quota, one try after every refusal of the
+    # pin, before the gateway so nothing gets worse while it is measured.
+    # Both links NAME their model, so neither moves with GEMINI_MODEL.
+    assert direct.model == "gemini-3.6-flash"
+    assert (newer.kind, newer.name, newer.model, newer.max_attempts) == (
+        "gemini", "gemini-newer", "gemini-3.8-flash", 1
     )
+    assert newer.env_prefix is None, "one key reaches both"
     assert newer.max_calls_per_run == 1
     assert newer.max_calls_per_24h == 6
     # THE GATEWAY WRITES, ONE TRY PER CHANCE — 2026-10-02. Its 1700 s
@@ -696,6 +699,60 @@ def test_entries_sharing_an_env_prefix_are_fatal(monkeypatch):
 
     assert "LLM" in str(e.value)
     assert "anthropic" in str(e.value) and "openai" in str(e.value)
+
+
+def test_a_link_names_its_model_and_one_key_reaches_two(monkeypatch):
+    """The operator's call, 2026-10-08 (ROADMAP item 132): a link names its
+    model in config, so one key can reach several models — the version test
+    is two `gemini` links on GEMINI_API_KEY. Before this the model came only
+    from `{PREFIX}_MODEL`, so a second model meant the same key copied under
+    a second prefix."""
+    _clear_llm_env(monkeypatch)
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+
+    built = _build_llm_provider(
+        providers=[
+            {"kind": "gemini", "model": "gemini-3.6-flash"},
+            {"kind": "gemini", "name": "newer", "model": "gemini-3.8-flash"},
+        ]
+    )
+
+    assert [p.model for p in built._providers] == ["gemini-3.6-flash", "gemini-3.8-flash"]
+
+
+def test_the_config_model_beats_the_environment_model(monkeypatch):
+    """`GEMINI_MODEL` set in a browser has no diff and no history — the
+    reason `_build_llm_provider` gives for reading the PROVIDER from config.
+    A model named in the committed config wins over the variable. A link
+    that names none still reads the variable, so no deployment changes."""
+    _clear_llm_env(monkeypatch)
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.5-flash")
+
+    named = _build_llm_provider(providers=[{"kind": "gemini", "model": "gemini-3.8-flash"}])
+    bare = _build_llm_provider(providers=["gemini"])
+
+    assert named.model == "gemini-3.8-flash"
+    assert bare.model == "gemini-3.5-flash"
+
+
+def test_two_links_of_one_kind_on_one_prefix_must_each_name_a_model(monkeypatch):
+    """Without a model each, the second link is the first again — or the same
+    model by way of the environment, which the check cannot see at config
+    time. Refused before anything is built, like the other collisions."""
+    _clear_llm_env(monkeypatch)
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+
+    with pytest.raises(SystemExit) as unnamed:
+        _build_llm_provider(providers=["gemini", {"kind": "gemini", "model": "gemini-3.8-flash"}])
+    with pytest.raises(SystemExit) as same:
+        _build_llm_provider(providers=[
+            {"kind": "gemini", "model": "gemini-3.8-flash"},
+            {"kind": "gemini", "model": "gemini-3.8-flash"},
+        ])
+
+    assert "model" in str(unnamed.value)
+    assert "gemini-3.8-flash" in str(same.value) and "identical" in str(same.value)
 
 
 def test_a_named_entry_whose_key_is_absent_is_dropped_by_its_name(monkeypatch, capsys):

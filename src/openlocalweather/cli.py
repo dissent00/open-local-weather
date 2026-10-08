@@ -238,6 +238,8 @@ class _ProviderEntry:
     kind: str
     label: str
     env_prefix: str
+    # Named in config, or None to read `{PREFIX}_MODEL` — see LLMProviderEntry.
+    model: str | None = None
     fallback_models: tuple[str, ...] = ()
 
     # This link's own 24-hour ceiling, or None for the deployment's — item
@@ -300,6 +302,7 @@ def _resolve_provider_entries(
                 env_prefix=str(
                     entry.get("env_prefix") or DEFAULT_ENV_PREFIXES.get(kind, "LLM")
                 ).strip().upper(),
+                model=str(entry.get("model") or "").strip() or None,
                 # A MAPPING ENTRY DOES NOT INHERIT THE TOP-LEVEL LIST, and
                 # this is the one line of this change that driving found and
                 # the tests did not. `llm_fallback_models` holds OpenRouter
@@ -376,17 +379,34 @@ def _reject_colliding_entries(entries: list[_ProviderEntry]) -> None:
     legitimate for ONE case and the map is what says so: `gemini` and
     `gemini-interactions` are one key reaching two APIs.
     """
-    seen: dict[tuple[str, str], str] = {}
+    seen: dict[tuple[str, str, str | None], str] = {}
     for entry in entries:
-        key = (entry.kind, entry.env_prefix)
+        key = (entry.kind, entry.env_prefix, entry.model)
         if key in seen:
+            on = f" on model {entry.model!r}" if entry.model else ""
             raise SystemExit(
                 f"llm_providers names {entry.kind!r} twice reading the same "
-                f"{entry.env_prefix}_* variables — the second link would be "
-                f"identical to the first. Give one its own env_prefix, or "
-                f"remove it."
+                f"{entry.env_prefix}_* variables{on} — the second link would be "
+                f"identical to the first. Give one its own model or env_prefix, "
+                f"or remove it."
             )
         seen[key] = entry.label
+
+    # ONE KIND TWICE ON ONE PREFIX IS A KEY REACHING TWO MODELS — 2026-10-08.
+    # Legitimate only when each link names its model: a link that names
+    # none reads `{PREFIX}_MODEL`, which this cannot see at config time, so
+    # it could be the other link by another name and the chain would try
+    # one model twice while reporting two.
+    by_kind_prefix: dict[tuple[str, str], list[_ProviderEntry]] = {}
+    for entry in entries:
+        by_kind_prefix.setdefault((entry.kind, entry.env_prefix), []).append(entry)
+    for (kind, prefix), sharing in by_kind_prefix.items():
+        if len(sharing) > 1 and any(e.model is None for e in sharing):
+            raise SystemExit(
+                f"llm_providers names {kind!r} {len(sharing)} times on {prefix}_*; "
+                f"each must name its `model`, or one is {prefix}_MODEL by another "
+                f"name and the chain would try the same model twice."
+            )
 
     by_prefix: dict[str, list[_ProviderEntry]] = {}
     for entry in entries:
@@ -581,7 +601,7 @@ def _build_one_llm_provider(
             )
         return GeminiProvider(
             api_key=api_key,
-            model=entry.env("MODEL", DEFAULT_GEMINI_MODEL),
+            model=entry.model or entry.env("MODEL", DEFAULT_GEMINI_MODEL),
             thinking_level=thinking_level,
         )
 
@@ -598,17 +618,17 @@ def _build_one_llm_provider(
         # passing it — the run would look configured and behave otherwise.
         return GeminiInteractionsProvider(
             api_key=api_key,
-            model=entry.env("MODEL", DEFAULT_GEMINI_MODEL),
+            model=entry.model or entry.env("MODEL", DEFAULT_GEMINI_MODEL),
         )
 
     if entry.kind == "anthropic":
         api_key = entry.env("API_KEY")
-        model = entry.env("MODEL")
+        model = entry.model or entry.env("MODEL")
         if not api_key or not model:
             raise SystemExit(
                 f"llm_providers entry {entry.label!r} (anthropic) requires "
-                f"{entry.env_prefix}_API_KEY and {entry.env_prefix}_MODEL to be set. "
-                "See QUICKSTART.md for recommended model ids."
+                f"{entry.env_prefix}_API_KEY and a model ({entry.env_prefix}_MODEL, "
+                "or `model` on the entry). See QUICKSTART.md for recommended model ids."
             )
         return AnthropicProvider(
             api_key=api_key,
@@ -620,13 +640,13 @@ def _build_one_llm_provider(
 
     if entry.kind == "openai":
         base_url = entry.env("BASE_URL")
-        model = entry.env("MODEL")
+        model = entry.model or entry.env("MODEL")
         if not base_url or not model:
             raise SystemExit(
                 f"llm_providers entry {entry.label!r} (openai) requires "
-                f"{entry.env_prefix}_BASE_URL and {entry.env_prefix}_MODEL to be set "
-                f"(plus {entry.env_prefix}_API_KEY for any hosted endpoint). "
-                "See QUICKSTART.md for per-service values."
+                f"{entry.env_prefix}_BASE_URL and a model ({entry.env_prefix}_MODEL, "
+                f"or `model` on the entry), plus {entry.env_prefix}_API_KEY for any "
+                "hosted endpoint. See QUICKSTART.md for per-service values."
             )
         # The gateway's OWN fallback list — item 81. `LLM_FALLBACK_MODELS`
         # overrides the config for a one-off, the same way LLM_PROVIDER does.

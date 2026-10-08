@@ -20028,19 +20028,26 @@ time, not proof. The one prior reading, item 102's 09-11 A/B, saw 3.8
 refuse four times on a morning 3.6 refused too. From 10-02 to 10-07 the
 3.6 link served 3 of 24 calls, every refusal a 503 inside 19 s.
 
-The test: a second `gemini` link, `env_prefix: GEMINI2`,
-`GEMINI2_MODEL=gemini-3.8-flash`, one try after every refusal of the
-first, before the gateway. Second rather than first so nothing gets worse
-while it is measured. The ledger records the model per row, so the reading
-after a week is, of the 3.6 refusals, how many 3.8 served minutes later, on
-the real prompt at the real hour. Decision rule: half or more, flip the
-order and the app's `defaultGeminiModel`; refused alongside 3.6, the
+The test: a second `gemini` link naming `model: gemini-3.8-flash` on the
+same key, one try after every refusal of the first, before the gateway.
+Second rather than first so nothing gets worse while it is measured. The
+ledger records the model per row, so the reading after a week is, of the
+3.6 refusals, how many 3.8 served minutes later, on the real prompt at
+the real hour. Decision rule: half or more, flip the order and the app's
+`defaultGeminiModel`; refused alongside 3.6, the
 version is not the cause and items 191 to 194 stand as ordered on
 2026-10-07. Cost at worst three calls a day on 3.8's own quota, Gemini's
-daily allowance being per model; the 3.6 link's seven are unchanged. Inert
-until `GEMINI2_API_KEY` exists: the run then says the link was dropped on
-stderr and carries on. Not checked: whether 3.7 differs from 3.8; item
-192's probe can take it.
+daily allowance being per model; the 3.6 link's seven are unchanged.
+
+Decided the same day, the operator's: a link names its model in config,
+`model:` on the entry of any kind, so one credential reaches several
+models; `{PREFIX}_MODEL` stays the fallback for a link that names none,
+and a link that names one is not moved by a variable set in a browser;
+two links of one kind on one prefix must each name a model, or the
+collision check refuses the chain. The first cut, commit ffd7bef, had
+used a second prefix and a copy of the key under `GEMINI2_API_KEY`; this
+replaces it before it ran. Not checked: whether 3.7 differs from 3.8;
+item 192's probe can take it.
 
 ---
 
@@ -27157,7 +27164,9 @@ forwards any `*_API_KEY`. What it lacks is written here.
   tried in order; each link decides for itself whether it retries or
   hands over. "One attempt per link" is item 189's rule for the model's
   OWN call only; for the write-up, attempts and backoff stay per link and
-  configurable, as today's `max_attempts` and `retry_delays_s` are.
+  configurable, as today's `max_attempts` and `retry_delays_s` are. A
+  link names its model since 2026-10-08 (`model:`), so one credential
+  reaches several.
 - The project default is one production example, slightly involved and
   no more: Gemini direct, three tries at 180 and 420 s, then a gateway
   link that is inert until keyed. Groq joins the example once item 191's

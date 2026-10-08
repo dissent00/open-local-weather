@@ -384,7 +384,8 @@ def test_the_live_config_spends_under_ten_gemini_calls_a_day():
     assert worst_case(direct) == 7
     assert worst_case(newer) == 3
     assert all(worst_case(link) < 10 for link in gemini)
-    assert newer.env_prefix == "GEMINI2", "its own prefix, so the chain may hold the kind twice"
+    assert (direct.model, newer.model) == ("gemini-3.6-flash", "gemini-3.8-flash")
+    assert newer.env_prefix is None, "the same key reaches both; a link names its model"
     assert newer.max_calls_per_24h == 6, "two mornings of three chances in one rolling day"
     assert not any(not isinstance(e, str) and e.kind == "gemini-interactions" for e in location.llm_providers), (
         "the queue left the chain on 2026-09-30"

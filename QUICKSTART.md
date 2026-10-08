@@ -270,7 +270,11 @@ what the chain calls this link on stderr and in the warnings — with two
 `openai` entries, "openai was dropped" would not say which. `env_prefix` is
 the prefix on every variable that entry reads, so `OPENROUTER` means
 `OPENROUTER_API_KEY`, `OPENROUTER_BASE_URL`, `OPENROUTER_MODEL` and
-optionally `OPENROUTER_JSON_MODE`.
+optionally `OPENROUTER_JSON_MODE`. `model` names the model this link asks
+for, so one key can reach several models: two `gemini` links on
+`GEMINI_API_KEY`, one per version, need no second key. A link that names
+none reads `{PREFIX}_MODEL`; a link that names one is not moved by that
+variable. Two links of one kind on one prefix must each name a model.
 
 **A bare entry does not read `LLM_*` — it reads the default for its KIND**,
 and there are two defaults, not one:
