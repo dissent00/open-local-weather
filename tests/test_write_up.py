@@ -142,13 +142,14 @@ def test_a_missing_write_up_is_written_after_the_wait_and_republished(tmp_path, 
 def test_every_link_may_write_under_the_live_config(tmp_path, wired):
     """`llm_fallback_calls: both_calls` since 2026-10-02: the gateway writes
     when Gemini refuses, because the forecast is already published and on
-    the first live day seven 503s left the day without prose."""
+    the first live day seven 503s left the day without prose. Two Gemini
+    links since 2026-10-08, the version test (ROADMAP item 132)."""
     _store(tmp_path, missing=True)
 
     _run(tmp_path)
 
     [providers] = wired["providers"]
-    assert [getattr(p, "kind", p) for p in providers] == ["gemini", "openai"]
+    assert [getattr(p, "kind", p) for p in providers] == ["gemini", "gemini", "openai"]
 
 
 def test_scored_call_keeps_the_write_up_on_the_first_link(tmp_path, wired, monkeypatch):

@@ -20016,6 +20016,32 @@ not is the NARRATIVE half — whether the prose should say a persistently cloudy
 day is persistent, and on what evidence. Re-read the item with that narrowing
 in mind rather than building what it originally described.
 
+### The pinned version — a test in production, 2026-10-08
+
+The operator's question: the pin is `gemini-3.6-flash`; could Google be
+allocating less to an older version? Nothing is published on capacity per
+version. What the record holds: Google's deprecations page (read 2026-10-07)
+lists 3.7 Flash released 2026-08-13 and 3.8 Flash 2026-09-02 above 3.6
+(2026-07-21), none with a shutdown date; the dashboard's 503 series above
+stepped up around 08-25 and from 09-03, days after each. Coincidence in
+time, not proof. The one prior reading, item 102's 09-11 A/B, saw 3.8
+refuse four times on a morning 3.6 refused too. From 10-02 to 10-07 the
+3.6 link served 3 of 24 calls, every refusal a 503 inside 19 s.
+
+The test: a second `gemini` link, `env_prefix: GEMINI2`,
+`GEMINI2_MODEL=gemini-3.8-flash`, one try after every refusal of the
+first, before the gateway. Second rather than first so nothing gets worse
+while it is measured. The ledger records the model per row, so the reading
+after a week is, of the 3.6 refusals, how many 3.8 served minutes later, on
+the real prompt at the real hour. Decision rule: half or more, flip the
+order and the app's `defaultGeminiModel`; refused alongside 3.6, the
+version is not the cause and items 191 to 194 stand as ordered on
+2026-10-07. Cost at worst three calls a day on 3.8's own quota, Gemini's
+daily allowance being per model; the 3.6 link's seven are unchanged. Inert
+until `GEMINI2_API_KEY` exists: the run then says the link was dropped on
+stderr and carries on. Not checked: whether 3.7 differs from 3.8; item
+192's probe can take it.
+
 ---
 
 ## 133. The model infers geography from a place name, and should be told it instead · **Planned — raised 2026-09-15**

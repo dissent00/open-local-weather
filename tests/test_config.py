@@ -364,19 +364,28 @@ def test_the_live_config_spends_under_ten_gemini_calls_a_day():
     call — the model's own judgment, one attempt per link whatever the
     link's schedule says — and the write-up is asked twice by `olw
     write-up`, each time up to the link's `max_attempts`. Derived from the
-    live config so a change to either fails here."""
+    live config so a change to either fails here.
+
+    Two Gemini links since 2026-10-08, the version test (ROADMAP item 132):
+    the pinned 3.6 Flash first, a newer Flash once after each refusal.
+    Gemini's daily allowance is per model, so the target binds each link
+    on its own quota, not their sum."""
     from openlocalweather.config import load_location_config
 
     location = load_location_config("config/location.yaml")
     gemini = [e for e in location.llm_providers if not isinstance(e, str) and e.kind == "gemini"]
-    [direct] = gemini
+    [direct, newer] = gemini
     judgment_attempts = 1
     write_up_chances = 2
 
-    worst_case = judgment_attempts + write_up_chances * direct.max_attempts
+    def worst_case(link):
+        return judgment_attempts + write_up_chances * link.max_attempts
 
-    assert worst_case == 7
-    assert worst_case < 10
+    assert worst_case(direct) == 7
+    assert worst_case(newer) == 3
+    assert all(worst_case(link) < 10 for link in gemini)
+    assert newer.env_prefix == "GEMINI2", "its own prefix, so the chain may hold the kind twice"
+    assert newer.max_calls_per_24h == 6, "two mornings of three chances in one rolling day"
     assert not any(not isinstance(e, str) and e.kind == "gemini-interactions" for e in location.llm_providers), (
         "the queue left the chain on 2026-09-30"
     )

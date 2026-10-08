@@ -181,9 +181,9 @@ location:
     # three tries inside a minute all failed. Since ROADMAP item 189 the run
     # sends ONE request, for the model's own hidden call, and `olw write-up`
     # asks for the prose twice with this schedule, so a day spends at most 7
-    # Gemini calls, pinned by tests/test_config.py. The queue (Interactions
-    # API) left the chain on 2026-09-30: it read 1 of its 6 jobs, at about
-    # 2 quota units a submit.
+    # calls on this link, pinned by tests/test_config.py. The queue
+    # (Interactions API) left the chain on 2026-09-30: it read 1 of its 6
+    # jobs, at about 2 quota units a submit.
     - kind: gemini
       max_attempts: 3
       retry_delays_s: [180, 420]
@@ -191,6 +191,26 @@ location:
       max_calls_per_run: 3
       # A runaway guard: two mornings can fall in one rolling 24 hours.
       max_calls_per_24h: 18
+    # THE VERSION TEST — 2026-10-08, the operator's call (ROADMAP item 132).
+    # The same key, the newest Flash, ONE try after every refusal above. The
+    # link above served 3 of 24 calls from 2026-10-02 to 10-07, every
+    # refusal a 503 inside 19 s. Google's deprecations page lists 3.7 Flash
+    # (2026-08-13) and 3.8 Flash (2026-09-02) above our 3.6 (2026-07-21),
+    # and each shipped days before a step in the 503 series. Second rather
+    # than first so nothing gets worse while it is measured: the ledger
+    # records the model per row, so a week says, of the refusals above, how
+    # many this served minutes later. Its own prefix because the chain
+    # refuses one kind twice on one prefix; its own ceiling because Gemini's
+    # daily allowance is per model. Inert until GEMINI2_API_KEY and
+    # GEMINI2_MODEL exist; the run then says so on stderr and carries on.
+    - kind: gemini
+      name: gemini-newer
+      env_prefix: GEMINI2
+      max_attempts: 1
+      # One try per chance: the run's call, then each write-up chance.
+      max_calls_per_run: 1
+      # Two mornings of three chances in one rolling day.
+      max_calls_per_24h: 6
     # ROADMAP item 81, 2026-09-21. The second entry is a CHAIN, not a
     # replacement: Gemini answers when it can, and this takes the calls it
     # sheds. Measured over 2026-08-28 to 09-21, the 15:01 slot failed on

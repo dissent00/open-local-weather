@@ -426,7 +426,7 @@ def test_the_live_config_is_what_we_think_it_is():
     # when it can and the gateway takes what it sheds. Item 186, 2026-09-30:
     # one run a day, the queue gone, Gemini direct three times per call, 3
     # and 10 minutes apart.
-    direct, gateway = live.llm_providers
+    direct, newer, gateway = live.llm_providers
     assert (direct.kind, direct.max_attempts, direct.retry_delays_s) == ("gemini", 3, [180, 420])
     # PER PROCESS: a write-up's tries; the forecast run sends one request
     # since item 189.
@@ -435,6 +435,14 @@ def test_the_live_config_is_what_we_think_it_is():
     # rolling 24 hours, and a run refused for yesterday's spending is the
     # failure the guard exists to prevent.
     assert direct.max_calls_per_24h >= 2 * direct.max_calls_per_run
+    # THE VERSION TEST — 2026-10-08, ROADMAP item 132: the newest Flash on
+    # its own prefix and quota, one try after every refusal of the pin,
+    # before the gateway so nothing gets worse while it is measured.
+    assert (newer.kind, newer.name, newer.env_prefix, newer.max_attempts) == (
+        "gemini", "gemini-newer", "GEMINI2", 1
+    )
+    assert newer.max_calls_per_run == 1
+    assert newer.max_calls_per_24h == 6
     # THE GATEWAY WRITES, ONE TRY PER CHANCE — 2026-10-02. Its 1700 s
     # deadline times four tries would hold the runner for two hours.
     assert (gateway.kind, gateway.max_attempts) == ("openai", 1)
