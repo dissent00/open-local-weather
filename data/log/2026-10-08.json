@@ -908,9 +908,9 @@
     "text": "Kenya Meteorological Department (KMD): post has no PDF link.",
     "fetched_at_utc": "2026-10-08T03:03:10.225071Z"
   },
-  "yesterday_verification_summary": "Day+0 for 2026-10-07: ecmwf_ifs025, icon_seamless, ukmo_seamless, best_match and kenya_met called the rain right; gfs_seamless did not. Day+3 for 2026-10-04: gfs_seamless, ecmwf_ifs025, icon_seamless, ukmo_seamless and best_match called the rain right. Day+7 for 2026-09-30: ecmwf_ifs025 and best_match called the rain right; gfs_seamless did not.",
-  "narrative_markdown": "## Today's Forecast\n\nLargely dry, with thunder possible from the morning, peaking this afternoon. 31°C / 87°F high, 19°C / 67°F low. Sky mostly cloudy early, partly cloudy at midday and overcast in the evening. Wind NNE early and SSW at midday; gusts to 44 km/h (24 kt). UV index 9.5 (very high). Air quality 70 (moderate) at Ochieng' Avenue, Kisumu Central, the highest of 3 stations.\n\n## Extended Outlook\n\nTemperatures and winds much the same through Sunday, with showers and thunderstorms likely each day. Skies mostly cloudy throughout. Sunday's call: rain, 100%, with all four models wet; highs 28 to 32 °C. At this lead ECMWF has the best record, right 77% of the time over 54 checks.\n\nFurther out, temperatures and winds much the same through Thursday, with showers and thunderstorms likely Monday and Tuesday, and showers and thunderstorms possible Wednesday and Thursday. Only GFS, ECMWF and ICON reach past Tuesday. ECMWF is the wetter solution from Monday to Thursday; GFS, ICON and UKMO keep it drier. Thursday's call: rain, 100%, with one of two models wet; highs 24 to 33 °C. At this lead ECMWF has the best record, right 80% of the time over 51 checks.\n\n## Winam Gulf — Conditions for Boaters\n\nPeak gust 36 km/h (19 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.\n\nFigures issued 06:01. Written by code; a discussion follows when a model answers.\n",
-  "narrative_source": "code",
+  "yesterday_verification_summary": "Yesterday's Day+0 verification saw five of six models correctly call the rain, with GFS the sole miss — and it also failed to flag the thunder the station observed. Every model under-forecast peak wind, with errors from 5 to 18 km/h. Temperature performance was mixed: GFS ran cool on daytime highs while ICON ran notably warm on overnight lows.",
+  "narrative_markdown": "A warm day ahead under mostly cloudy skies at dawn, turning partly cloudy by midday, with a high of 30.7°C / 87°F. Thunder possible from the morning, peaking this afternoon. Isolated showers develop from 15:00 to 16:00, bringing 4.1 mm (0.16 in) of rain with a 100% chance of measurable precipitation. North-northeasterly overnight, turning south-southwesterly by midday, with peak gusts reaching 43.6 km/h (24 kt). The UV index peaks at 9.5 — very high — so protection is needed during the strongest sun. Air quality is moderate at AQI 80; the ground sensor at Ochieng' Avenue, Kisumu Central reports the highest reading at 70. Skies turn overcast by evening as the showers move through, and overnight lows settle near 19.3°C / 67°F.",
+  "narrative_source": "llm",
   "extended_trend": "temperatures and winds much the same through Sunday, with showers and thunderstorms likely each day",
   "extended_days": [
     {
@@ -1108,7 +1108,7 @@
     "generated_at_utc": "2026-10-08T03:03:10.225094Z",
     "llm_provider": "OpenAICompatProvider",
     "llm_model": "dots-studio/dots-3-note-preview:free",
-    "narrative_llm_model": null,
+    "narrative_llm_model": "dots-studio/dots-3-note-preview:free",
     "llm_call_outcome": "served",
     "pipeline_version": "0.1.0",
     "system_prompt_sha256": "cb57f8dbbe0fe44ba844f62ba359caa3b423a911c9c7fbc2962489dff5a77bcd",
@@ -1176,12 +1176,6 @@
     "trigger_source": "workflow_dispatch",
     "issued_local_time": "06:01",
     "observations_local_time": "06:01",
-    "degradations": [
-      {
-        "code": "narrative_unavailable",
-        "summary": "Today's figures are decided and published. The written discussion follows when a model answers; the numbers are the same ones this forecast is scored on.",
-        "detail": "The write-up is asked for after the forecast is committed and published (ROADMAP item 189), by `olw write-up`, from the archived prompts and the stored call. Until it lands the entry carries the placeholder."
-      }
-    ]
+    "degradations": []
   }
 }

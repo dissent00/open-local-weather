@@ -320,6 +320,39 @@
       "purpose": "write-up",
       "outcome": "http_200",
       "elapsed_s": 16.123
+    },
+    {
+      "at": "2026-10-08T04:13:51.567601+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 34.243
+    },
+    {
+      "at": "2026-10-08T04:17:25.811959+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 2.485
+    },
+    {
+      "at": "2026-10-08T04:24:28.298536+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 1.587
+    },
+    {
+      "at": "2026-10-08T04:24:29.887602+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 282.177,
+      "served_model": "dots-studio/dots-3-note-preview:free"
     }
   ]
 }
