@@ -878,9 +878,9 @@
     "text": "Kenya Meteorological Department (KMD): post has no PDF link.",
     "fetched_at_utc": "2026-10-09T03:06:18.404482Z"
   },
-  "yesterday_verification_summary": "Day+0 for 2026-10-08: gfs_seamless, ecmwf_ifs025, icon_seamless, ukmo_seamless and best_match called the rain right. Day+3 for 2026-10-05: ecmwf_ifs025, icon_seamless and best_match called the rain right; gfs_seamless and ukmo_seamless did not. Day+7 for 2026-10-01: ecmwf_ifs025 and best_match called the rain right; gfs_seamless did not.",
-  "narrative_markdown": "## Today's Forecast\n\nShowery from the afternoon, with thunder possible from the morning, peaking this afternoon. 31°C / 87°F high, 20°C / 68°F low. Sky mostly cloudy early, partly cloudy at midday and overcast in the evening. Wind ENE early, SSW at midday and NE in the evening; gusts to 36 km/h (19 kt). UV index 9.5 (very high). Air quality 50 (good) at Kisumu Airport, the highest of 3 stations.\n\n## Extended Outlook\n\nTemperatures and winds much the same through Monday, with showers and thunderstorms likely each day. Skies mostly cloudy throughout. Monday's call: rain, 100%, with all four models wet; highs around 29 °C. At this lead ECMWF has the best record, right 77% of the time over 55 checks.\n\nFurther out, temperatures and winds much the same through Friday, with showers and thunderstorms likely Tuesday and Wednesday, and showers and thunderstorms possible Thursday and Friday. Only GFS, ECMWF and ICON reach past Wednesday. ECMWF and ICON are the wetter solutions from Tuesday to Friday; GFS and UKMO keep it drier. Friday's call: rain, 100%, with both models wet; highs 25 to 30 °C. At this lead ECMWF has the best record, right 80% of the time over 52 checks.\n\n## Winam Gulf — Conditions for Boaters\n\nPeak gust 26 km/h (14 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.\n\nFigures issued 06:01. Written by code; a discussion follows when a model answers.\n",
-  "narrative_source": "code",
+  "yesterday_verification_summary": "At Day+0, all models correctly predicted the rain, though onset timing varied and peak wind speeds were generally under-forecast. At Day+3, two models missed the rain event entirely, and at Day+7, one model failed to capture the observed precipitation. Convective correctness was mixed, with only one model correctly calling thunderstorms at Day+0.",
+  "narrative_markdown": "Afternoon showers and thunderstorms, with a high of 30.7°C. Thunder possible from the morning, peaking this afternoon. Mostly cloudy at dawn, becoming partly cloudy by midday and overcast this evening. East-northeasterly overnight, turning south-southwest by midday and northeast into the evening, with gusts to 35.7 km/h (19 kt). Rain develops between 14:00 and 16:00, with around 6.4 mm expected. The UV index peaks at 9.5 (Very High) this afternoon. Ground stations report AQI 38-50 (Good), though the model-based estimate is 78 (Moderate). Morning temperatures are around 19°C, with tonight's low near 20.0°C.",
+  "narrative_source": "llm",
   "extended_trend": "temperatures and winds much the same through Monday, with showers and thunderstorms likely each day",
   "extended_days": [
     {
@@ -1078,7 +1078,7 @@
     "generated_at_utc": "2026-10-09T03:06:18.404513Z",
     "llm_provider": "code",
     "llm_model": "olw_code_blend",
-    "narrative_llm_model": null,
+    "narrative_llm_model": "dots-studio/dots-3-note-preview:free",
     "llm_call_outcome": "refused: LLM returned empty content (finish_reason='content_filter').",
     "pipeline_version": "0.1.0",
     "system_prompt_sha256": "cb57f8dbbe0fe44ba844f62ba359caa3b423a911c9c7fbc2962489dff5a77bcd",
@@ -1151,11 +1151,6 @@
         "code": "synoptic_unavailable",
         "summary": "The wider pressure picture did not arrive, so this forecast describes the local pattern without the regional one around it.",
         "detail": "The synoptic-scale pressure ring did not arrive (Request to https://api.open-meteo.com/v1/forecast failed: HTTPSConnectionPool(host='api.open-meteo.com', port=443): Read timed out. (read timeout=30)). The narrative's large-scale paragraph falls back to local gradients, which cannot locate a system's direction."
-      },
-      {
-        "code": "narrative_unavailable",
-        "summary": "Today's figures are decided and published. The written discussion follows when a model answers; the numbers are the same ones this forecast is scored on.",
-        "detail": "The write-up is asked for after the forecast is committed and published (ROADMAP item 189), by `olw write-up`, from the archived prompts and the stored call. Until it lands the entry carries the placeholder."
       }
     ]
   }
