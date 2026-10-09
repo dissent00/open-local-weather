@@ -2,22 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-10-01T04:31:46.660278+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 14.791
-    },
-    {
-      "at": "2026-10-01T04:34:01.456085+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 80.097
-    },
-    {
       "at": "2026-10-02T04:01:44.030258+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -352,6 +336,31 @@
       "purpose": "write-up",
       "outcome": "http_200",
       "elapsed_s": 282.177,
+      "served_model": "dots-studio/dots-3-note-preview:free"
+    },
+    {
+      "at": "2026-10-09T03:04:25.306309+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 1.643
+    },
+    {
+      "at": "2026-10-09T03:04:26.953622+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "forecast",
+      "outcome": "timeout",
+      "elapsed_s": 90.125
+    },
+    {
+      "at": "2026-10-09T03:05:57.084502+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 21.312,
       "served_model": "dots-studio/dots-3-note-preview:free"
     }
   ]
