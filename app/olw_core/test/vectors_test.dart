@@ -1665,6 +1665,21 @@ void main() {
     });
   });
 
+  group('the write-up gate', () {
+    // Upstream 2026-10-09: an answer missing the headings it was asked for
+    // is not a write-up; the defects, named in the prompt's order.
+    test('write_up_audit', () {
+      for (final c in casesOf('write_up_audit.json')) {
+        final input = c['input'] as Map<String, Object?>;
+        final got = auditWriteUp(
+          input['markdown'] as String,
+          List<String>.from(input['headings'] as List),
+        );
+        expect(got, c['expected'], reason: c['name'] as String);
+      }
+    });
+  });
+
   group('the served call', () {
     // Upstream item 189: the call the reader is shown, built from code.
     List<ModelPrediction> preds(List raw) => [
@@ -2353,6 +2368,7 @@ void main() {
       'floor.json',
       'extended_days.json',
       'extended_outlook.json',
+      'write_up_audit.json',
       'rain_label.json',
       'onset_window_label.json',
       'cams_peak_aqi.json',

@@ -15,7 +15,7 @@ from openlocalweather import cli
 from openlocalweather.config import load_location_config
 from openlocalweather.dates import today_in_tz
 from openlocalweather.llm.errors import LLMUnavailableError
-from openlocalweather.llm.prompt import build_narrative_prompt
+from openlocalweather.llm.prompt import build_narrative_prompt, narrative_headings
 from openlocalweather.llm.schema import GeminiNarrativeResponse
 from openlocalweather.models import (
     DEGRADATION_NARRATIVE,
@@ -30,6 +30,14 @@ from openlocalweather.store import log_store
 
 CONFIG = "config/location.yaml"
 PLACEHOLDER = "## Write-up unavailable"
+# Every heading the prompt asks for, each with a line under it: what the gate
+# (2026-10-09) accepts. The earlier one-heading fake would now be refused.
+COMPLIANT = "\n\n".join(f"{h}\nWritten." for h in narrative_headings(load_location_config(CONFIG)))
+# The gateway's answer of 2026-10-09, 613 characters and no heading at all.
+THIN = (
+    "Afternoon showers and thunderstorms, with a high of 30.7°C. Thunder possible "
+    "from the morning, peaking this afternoon. Rain develops between 14:00 and 16:00."
+)
 
 
 class FakeWriter:
@@ -38,8 +46,9 @@ class FakeWriter:
     after_attempt = None
     after_response = None
 
-    def __init__(self, refuse: bool = False):
+    def __init__(self, refuse: bool = False, thin: bool = False):
         self.refuse = refuse
+        self.thin = thin
         self.calls = []
 
     def generate(self, system_prompt, user_prompt, response_schema):
@@ -48,7 +57,9 @@ class FakeWriter:
         self.calls.append((system_prompt, user_prompt, response_schema.__name__))
         if self.refuse:
             raise LLMUnavailableError("Gemini request failed after 3 attempts: Gemini returned HTTP 503")
-        return GeminiNarrativeResponse(yesterday_verification="Checked.", today_narrative="## Today's Forecast\nDry.")
+        return GeminiNarrativeResponse(
+            yesterday_verification="Checked.", today_narrative=THIN if self.thin else COMPLIANT
+        )
 
 
 def _day():
@@ -130,10 +141,10 @@ def test_a_missing_write_up_is_written_after_the_wait_and_republished(tmp_path, 
 
     entry = log_store.read_log_entry(tmp_path, day)
     assert wired["slept"] == [3600]
-    assert entry.narrative_markdown == "## Today's Forecast\nDry."
+    assert entry.narrative_markdown == COMPLIANT
     assert not [d for d in entry.meta.degradations or [] if d.code == DEGRADATION_NARRATIVE]
     assert entry.meta.narrative_llm_model == "gemini-3.6-flash"
-    assert wired["published"] == ["## Today's Forecast\nDry."]
+    assert wired["published"] == [COMPLIANT]
     [(_, user_prompt, schema)] = wired["writer"].calls
     assert schema == "GeminiNarrativeResponse"
     assert user_prompt.startswith("THE ARCHIVED USER PROMPT"), "the archived prompt, with the call appended"
@@ -150,6 +161,55 @@ def test_every_link_may_write_under_the_live_config(tmp_path, wired):
 
     [providers] = wired["providers"]
     assert [getattr(p, "kind", p) for p in providers] == ["gemini", "gemini", "openai"]
+
+
+def test_a_thin_answer_is_refused_and_the_floor_stays(tmp_path, wired, capsys):
+    """2026-10-09, the fourth day running: the gateway's free model answered
+    613 characters with none of the seven headings, and it replaced a floor
+    that carried the Extended Outlook. An answer missing the headings it was
+    asked for is refused like a 503: the day keeps code's write-up, nothing
+    is published, and the verdict lands on the ledger row (ROADMAP item 192
+    orders routes by audit pass rate, which needs it there)."""
+    from openlocalweather.spend import read_ledger
+
+    day = _store(tmp_path, missing=True)
+    wired["writer"].thin = True
+
+    assert _run(tmp_path) == 0
+
+    entry = log_store.read_log_entry(tmp_path, day)
+    assert entry.narrative_markdown == PLACEHOLDER
+    assert [d.code for d in entry.meta.degradations] == [DEGRADATION_NARRATIVE]
+    assert entry.meta.narrative_llm_model is None
+    assert wired["published"] == []
+    err = capsys.readouterr().err
+    assert "refused" in err and "missing ## Extended Outlook" in err
+    [row] = [r for r in read_ledger(tmp_path) if r.purpose == "write-up"]
+    assert row.audit.startswith("refused: missing ## Today's Forecast")
+
+
+def test_a_thin_first_link_falls_through_to_the_next(tmp_path, wired, monkeypatch, capsys):
+    """Item 192: a failed audit falls through like a refusal, for the
+    write-up only, and spends one call. The next link gets the same ask,
+    and its answer is the one credited."""
+    from openlocalweather.llm.fallback import FallbackProvider
+    from openlocalweather.spend import read_ledger
+
+    thin, good = FakeWriter(thin=True), FakeWriter()
+    good.model = "gemini-3.8-flash"
+    monkeypatch.setattr(cli, "_build_llm_provider", lambda **k: FallbackProvider([thin, good]))
+    day = _store(tmp_path, missing=True)
+
+    assert _run(tmp_path) == 0
+
+    entry = log_store.read_log_entry(tmp_path, day)
+    assert entry.narrative_markdown == COMPLIANT
+    assert entry.meta.narrative_llm_model == "gemini-3.8-flash"
+    assert (len(thin.calls), len(good.calls)) == (1, 1)
+    assert "refused" in capsys.readouterr().err
+    audits = [(r.model, r.audit) for r in read_ledger(tmp_path) if r.purpose == "write-up"]
+    assert audits[0][0] == "gemini-3.6-flash" and audits[0][1].startswith("refused: missing")
+    assert audits[1] == ("gemini-3.8-flash", "passed")
 
 
 def test_scored_call_keeps_the_write_up_on_the_first_link(tmp_path, wired, monkeypatch):

@@ -91,6 +91,17 @@ class LlmUnavailableError extends LlmResponseError {
   String toString() => 'LlmUnavailableError: $message';
 }
 
+/// The vendor answered and the caller would not take the answer — the
+/// write-up gate, upstream 2026-10-09: a narrative missing the headings it
+/// was asked for. A subclass for the reason above: every `on
+/// LlmResponseError` keeps catching it, so the app records the refusal and
+/// keeps code's write-up.
+class LlmAnswerRefused extends LlmResponseError {
+  LlmAnswerRefused(super.message);
+  @override
+  String toString() => 'LlmAnswerRefused: $message';
+}
+
 /// Transient statuses worth retrying, shared by all three providers.
 ///
 /// 529 is Anthropic's `overloaded_error`. It is included for everyone

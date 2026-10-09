@@ -267,3 +267,36 @@ def test_a_bare_provider_is_its_own_served_identity():
         "Recorder",
         "gemini-3.6-flash",
     )
+
+
+def test_a_refused_answer_falls_through_like_a_refusal(capsys):
+    """2026-10-09: an answer the caller will not accept — a write-up missing
+    the headings it was asked for — is handed to the next link, and the link
+    that answered it is not credited as having served. ROADMAP item 192: a
+    failed audit falls through like a refusal and spends one call."""
+    from openlocalweather.llm.errors import LLMAnswerRefused
+    from openlocalweather.llm.fallback import FallbackProvider
+
+    class Link:
+        def __init__(self, model, answer):
+            self.model, self.answer, self.calls = model, answer, 0
+
+        def generate(self, system_prompt, user_prompt, response_schema):
+            self.calls += 1
+            return self.answer
+
+    def accept(answer):
+        if answer == "thin":
+            raise LLMAnswerRefused("thin: missing ## Extended Outlook")
+
+    thin, good = Link("gemini-3.6-flash", "thin"), Link("gemini-3.8-flash", "## full")
+    chain = FallbackProvider([thin, good])
+
+    assert chain.generate("s", "u", object, accept=accept) == "## full"
+    assert chain.last_served is good
+    assert (thin.calls, good.calls) == (1, 1)
+    err = capsys.readouterr().err
+    assert "gemini-3.6-flash" in err and "refused" in err and "1 provider(s) left" in err
+
+    with pytest.raises(LLMAnswerRefused):
+        FallbackProvider([thin]).generate("s", "u", object, accept=accept)

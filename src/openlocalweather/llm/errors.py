@@ -52,3 +52,14 @@ class LLMUnavailableError(LLMResponseError):
     judgment call still aborts the run and the rendering call still degrades
     the issuance, whichever kind of failure ended the chain.
     """
+
+
+class LLMAnswerRefused(LLMResponseError):
+    """The vendor answered and the caller would not take the answer.
+
+    The write-up gate, 2026-10-09: a narrative missing the headings it was
+    asked for. Neither a vendor that is down nor a schema the model could
+    not fill. The chain steps past it as it steps past an unavailable link,
+    because the next link gets the same ask and may answer it whole
+    (ROADMAP item 192: a failed audit falls through like a refusal).
+    """

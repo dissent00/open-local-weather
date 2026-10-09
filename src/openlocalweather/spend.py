@@ -188,6 +188,13 @@ class SpendRecord:
     # means served as asked, or the provider did not say.
     served_model: str | None = None
 
+    # THE CALLER'S VERDICT ON WHAT CAME BACK — the write-up gate, 2026-10-09.
+    # "passed", or "refused: " and why. `outcome` says the vendor answered;
+    # this says whether the answer was the thing asked for, which ROADMAP
+    # item 192 needs per route to order the chain. Absent when no caller
+    # judged the answer.
+    audit: str | None = None
+
     def to_json(self) -> dict:
         d = {
             "at": self.at.isoformat(),
@@ -205,6 +212,8 @@ class SpendRecord:
             d["elapsed_s"] = self.elapsed_s
         if self.served_model is not None:
             d["served_model"] = self.served_model
+        if self.audit is not None:
+            d["audit"] = self.audit
         return d
 
     @staticmethod
@@ -217,6 +226,7 @@ class SpendRecord:
             outcome=d.get("outcome"),
             elapsed_s=d.get("elapsed_s"),
             served_model=d.get("served_model"),
+            audit=d.get("audit"),
         )
 
 
@@ -469,6 +479,18 @@ def record_attempt(
     records.append(SpendRecord(at=now, provider=provider, model=model, purpose=purpose))
     _write_ledger(data_dir, records)
     return used + 1
+
+
+def record_audit(data_dir: str | Path, *, provider: str, model: str, verdict: str) -> None:
+    """The caller's verdict, on the latest row for (provider, model): the row
+    the hook wrote just before the request that produced the answer. No
+    such row means no request was recorded, and there is nothing to judge."""
+    records = read_ledger(data_dir)
+    for i in range(len(records) - 1, -1, -1):
+        if records[i].provider == provider and records[i].model == model:
+            records[i] = replace(records[i], audit=verdict)
+            _write_ledger(data_dir, records)
+            return
 
 
 def record_poll(

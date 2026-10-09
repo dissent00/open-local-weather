@@ -18,9 +18,14 @@ import hashlib
 import itertools
 
 from openlocalweather.defaults import BLEND_MODEL_ID
+from openlocalweather.llm.errors import LLMAnswerRefused
+from openlocalweather.llm.fallback import FallbackProvider
 from openlocalweather.llm.prompt import build_narrative_prompt, build_narrative_user_prompt
+from openlocalweather.llm.provider import provider_identity
+from openlocalweather.llm.schema import GeminiNarrativeResponse
 from openlocalweather.floor import NARRATIVE_SOURCE_LLM
 from openlocalweather.models import DEGRADATION_NARRATIVE
+from openlocalweather.spend import record_audit
 from openlocalweather.verify.scoring import resolve_prediction_rows
 
 # `today_properties`, split by WHERE each field survives: nine are published
@@ -132,3 +137,85 @@ def apply_write_up(entry, narrative, served_model: str) -> None:
     entry.meta.degradations = [
         d for d in (entry.meta.degradations or []) if d.code != DEGRADATION_NARRATIVE
     ]
+
+
+def _level(heading: str) -> str:
+    """The '#' run that opens a heading line."""
+    return heading[: len(heading) - len(heading.lstrip("#"))]
+
+
+def audit_write_up(markdown: str, headings: list[str]) -> list[str]:
+    """Why an answer is not the write-up it was asked for, or [] when it is.
+
+    THE GATE, 2026-10-09. Four mornings running, the gateway's free model
+    answered 600 to 800 characters under none or one of the seven headings,
+    and each answer replaced a floor that carried the Extended Outlook: the
+    page lost its week to a paragraph. The headings are the prompt's own
+    "EXACT headings in order", so this asks only what was asked. Measured on
+    the record before writing it: every Gemini narrative since the current
+    heading set (15 of 15 from 2026-09-10) passes; the four gateway texts
+    and the 2026-09-22 text that lost its newlines are refused.
+
+    Three defects, named in the prompt's order, one per heading: missing,
+    out of order, or empty. A heading is a line of its own, stripped. A
+    parent heading holding only its subsections is not empty — Detailed
+    Discussion is two subsections and nothing of its own on every Gemini
+    day of the record. Headings the prompt did not ask for are ignored: the
+    record carried an Overview above Today's Forecast until item 159.
+    """
+    lines = [line.strip() for line in markdown.splitlines()]
+    heading_lines = [i for i, line in enumerate(lines) if line.startswith("#")]
+    defects: list[str] = []
+    last_at = -1
+
+    for heading in headings:
+        if heading not in lines:
+            defects.append(f"missing {heading}")
+            continue
+        at = lines.index(heading)
+        if at < last_at:
+            defects.append(f"out of order {heading}")
+            continue
+        last_at = at
+
+        following = [i for i in heading_lines if i > at]
+        end = following[0] if following else len(lines)
+        if any(lines[at + 1 : end]):
+            continue
+        if following and lines[end].startswith(_level(heading) + "#"):
+            continue
+        defects.append(f"empty {heading}")
+
+    return defects
+
+
+def write_up_gate(provider, headings: list[str], data_dir):
+    """The chain's `accept` for the write-up: audits the answer, writes the
+    verdict on the answering link's ledger row, and refuses a thin answer
+    so the chain moves on (ROADMAP item 192). `provider_identity` is read
+    INSIDE the call, while the chain still names the link that answered;
+    after it returns the chain has cleared it."""
+
+    def accept(narrative: GeminiNarrativeResponse) -> None:
+        defects = audit_write_up(narrative.today_narrative, headings)
+        name, model = provider_identity(provider)
+        verdict = "passed" if not defects else "refused: " + "; ".join(defects)
+        record_audit(data_dir, provider=name, model=model, verdict=verdict)
+        if defects:
+            raise LLMAnswerRefused(f"the answer is not a write-up: {'; '.join(defects)}")
+
+    return accept
+
+
+def ask_for_write_up(provider, system_prompt: str, user_prompt: str, accept) -> GeminiNarrativeResponse:
+    """One accepted answer from the first link that gives one.
+
+    A chain puts each link's answer to `accept` and moves on past a refusal;
+    a single provider is asked once and its answer put to `accept` here, so
+    the verdict is recorded either way."""
+    if isinstance(provider, FallbackProvider):
+        return provider.generate(system_prompt, user_prompt, GeminiNarrativeResponse, accept=accept)
+
+    narrative = provider.generate(system_prompt, user_prompt, GeminiNarrativeResponse)
+    accept(narrative)
+    return narrative

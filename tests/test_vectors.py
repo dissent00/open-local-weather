@@ -1245,6 +1245,8 @@ def test_every_vector_file_is_exercised():
         "floor.json",
         "extended_days.json",
         "extended_outlook.json",
+        # The write-up gate, 2026-10-09.
+        "write_up_audit.json",
         "rain_label.json",
         "onset_window_label.json",
         "cams_peak_aqi.json",
@@ -1715,3 +1717,12 @@ def test_vectors_verification_summary():
         i = case["input"]
         got = verification_summary([Lead(r) for r in i["lead_time_results"]], visible_models=i["visible_models"])
         assert got == case["expected"], case["name"]
+
+
+def test_vectors_write_up_audit():
+    """The write-up gate, 2026-10-09: the headings an answer was asked for,
+    present, in order and with a body each, or the defects in that order."""
+    from openlocalweather.write_up import audit_write_up
+
+    for case in load("write_up_audit.json")["cases"]:
+        assert audit_write_up(**case["input"]) == case["expected"], case["name"]

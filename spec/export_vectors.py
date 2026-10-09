@@ -7051,6 +7051,64 @@ def export_solar() -> None:
     )
 
 
+def export_write_up_audit() -> None:
+    """The write-up gate — 2026-10-09, the first line of ROADMAP item 191's
+    audit shipped early. An answer missing the headings it was asked for is
+    not a write-up: the record's own shapes (Gemini's 2026-10-07 write-up,
+    the gateway's 2026-10-09 paragraph) and hand-made defects of each kind.
+    """
+    from openlocalweather.write_up import audit_write_up
+
+    headings = [
+        "## Today's Forecast", "## Extended Outlook", "## Severe Weather / Hazard Potential",
+        "## Winam Gulf — Conditions for Boaters", "## Detailed Discussion",
+        "### Synoptic Overview", "### Forecaster Confidence Notes",
+    ]
+    old = [h.replace("Winam Gulf", "Lake Victoria") for h in headings]
+    fixtures = Path(__file__).resolve().parent.parent / "tests" / "fixtures"
+
+    def text(*sections):
+        return "\n".join(f"{heading}\n{body}" for heading, body in sections)
+
+    complete = text(*[(h, "Written.") for h in headings])
+
+    def case(name, markdown, asked=headings):
+        return {
+            "name": name,
+            "input": {"markdown": markdown, "headings": list(asked)},
+            "expected": audit_write_up(markdown, list(asked)),
+        }
+
+    write(
+        "write_up_audit.json",
+        "audit_write_up",
+        "The write-up gate (2026-10-09): the headings an answer was asked for, present, in order "
+        "and with a body each, or the defects named in that order; a parent heading holding only "
+        "its subsections is not empty, and headings not asked for are ignored.",
+        [
+            case("Gemini's write-up of 2026-10-07 passes", (fixtures / "write_up_2026-10-07.md").read_text()),
+            case("the gateway's text of 2026-10-09 carries no heading", (fixtures / "write_up_2026-10-09.md").read_text()),
+            case("a complete answer passes", complete),
+            case("a parent heading holding only its subsections is not empty",
+                 complete.replace("## Detailed Discussion\nWritten.", "## Detailed Discussion")),
+            case("a heading the prompt did not ask for is ignored", "## Overview\nGone since item 159.\n" + complete),
+            case("a heading missing", complete.replace("## Extended Outlook\nWritten.", "")),
+            case("a heading out of order",
+                 text(("## Extended Outlook", "Written."), ("## Today's Forecast", "Written."),
+                      *[(h, "Written.") for h in headings[2:]])),
+            case("a heading with nothing under it",
+                 complete.replace("## Severe Weather / Hazard Potential\nWritten.", "## Severe Weather / Hazard Potential\n")),
+            case("a heading that is not a line of its own", "## Today's ForecastnShowers.n## Extended Outlooknthe week."),
+            case("the headings alone", "\n".join(headings)),
+            case("trailing whitespace and CRLF still count",
+                 complete.replace("## Today's Forecast\n", "## Today's Forecast  \r\n")),
+            case("the record before the Gulf was renamed, under its own list",
+                 text(*[(h, "Written.") for h in old]), old),
+            case("the same text under today's list", text(*[(h, "Written.") for h in old])),
+        ],
+    )
+
+
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     print("Exporting cross-language test vectors:")
@@ -7115,6 +7173,7 @@ def main() -> None:
     export_code_call()
     export_floor()
     export_extended_outlook()
+    export_write_up_audit()
     print("\nDone. Commit the result — the vectors are the contract.")
 
 

@@ -27252,6 +27252,30 @@ Related: items 81, 170, 178, 179, 180, 172, 14; Ensemble item 24.
    pick beats "always ECMWF". It is item 195's shape in miniature, on the
    brief, and the first scored claim a writer makes.
 
+**The gate — the audit's first line, shipped early 2026-10-09.** Four
+mornings running (10-05, 10-06, 10-08, 10-09) the gateway's free model
+answered 600 to 800 characters under none or one of the seven headings, and
+each answer replaced a floor that carried the Extended Outlook: the reader
+lost the week to a paragraph. `audit_write_up(markdown, headings)` in
+`write_up.py` (`olw_core/write_up.dart`, pinned by `write_up_audit.json`
+and swept across the two languages on 3,000 random texts, 0 divergences):
+the headings the prompt asked for, from `narrative_headings(location)`,
+present, in order and with a body each; a parent holding only its
+subsections is not empty; headings not asked for are ignored. Measured on
+the 50 stored LLM narratives before writing it: every Gemini narrative
+since the current heading set (15 of 15 from 09-10) passes, the four
+gateway texts and the 09-22 text that lost its newlines are refused, 0
+false rejects. A refused answer raises `LLMAnswerRefused`, which the chain
+steps past like an unavailable link (`FallbackProvider.generate(...,
+accept=)`), so the next link gets the same ask and spends one call, as
+item 192 wrote; the verdict, "passed" or "refused: " and why, lands on the
+ledger row of the link that answered (`SpendRecord.audit`), which is what
+item 192's ordering by audit pass rate reads. The day keeps code's
+write-up until an answer passes. The app refuses the same way inside
+`writeUpForecast` and keeps the floor; it has no chain to fall through.
+Not in this gate: the numbers, the locked phrases, the vocabulary — the
+rest of the audit above.
+
 **Measured 2026-10-05, zero calls, 31 archived issuances,** the tiers
 simulated from the archived user prompts' blocks with the lite renderer's
 transforms and the replacements below estimated by hand:

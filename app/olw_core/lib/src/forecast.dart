@@ -16,6 +16,7 @@ import 'cycle.dart';
 import 'extract.dart';
 import 'floor.dart';
 import 'outlook.dart' as outlook;
+import 'write_up.dart' as write_up;
 import 'instability.dart';
 import 'llm/forecast_call.dart';
 import 'llm/prompt.dart';
@@ -157,6 +158,7 @@ class ForecastRun {
     required this.day7Predictions,
     required this.judgmentPrompt,
     required this.narrativePrompt,
+    required this.narrativeHeadings,
     required this.userPrompt,
     required this.degradations,
   });
@@ -207,6 +209,10 @@ class ForecastRun {
   /// from these three by `buildNarrativeUserPrompt`.
   final String judgmentPrompt;
   final String narrativePrompt;
+
+  /// The headings [narrativePrompt] asks for, which [writeUpForecast] holds
+  /// the answer to — the write-up gate, upstream 2026-10-09.
+  final List<String> narrativeHeadings;
   final String userPrompt;
 }
 
@@ -899,6 +905,7 @@ Future<ForecastRun> generateForecast({
     ],
     judgmentPrompt: judgmentPrompt,
     narrativePrompt: narrativePrompt,
+    narrativeHeadings: write_up.narrativeHeadings(location.secondaryPoint),
     userPrompt: userPrompt,
   );
 }
@@ -908,16 +915,28 @@ Future<ForecastRun> generateForecast({
 /// The narrative call is handed the served call, so the prose is written
 /// around exactly what the reader was shown. A thrown [LlmResponseError] is
 /// the caller's to record: the forecast is already stored, and the day keeps
-/// its placeholder.
+/// code's write-up.
+///
+/// THE GATE, upstream 2026-10-09: an answer missing the headings it was
+/// asked for is refused as [LlmAnswerRefused], so a thin answer never
+/// replaces the floor and its Extended Outlook. The app has one provider and
+/// no chain to fall through; the pipeline's chain hands the ask to its next
+/// link.
 Future<NarrativeResponse> writeUpForecast({
   required LlmProvider provider,
   required ForecastRun run,
-}) =>
-    provider.generate(
-      systemPrompt: run.narrativePrompt,
-      userPrompt: buildNarrativeUserPrompt(run.userPrompt, run.servedCall.judgment.toJson()),
-      shape: narrativeShape,
-    );
+}) async {
+  final narrative = await provider.generate(
+    systemPrompt: run.narrativePrompt,
+    userPrompt: buildNarrativeUserPrompt(run.userPrompt, run.servedCall.judgment.toJson()),
+    shape: narrativeShape,
+  );
+  final defects = write_up.auditWriteUp(narrative.todayNarrative, run.narrativeHeadings);
+  if (defects.isNotEmpty) {
+    throw LlmAnswerRefused('the answer is not a write-up: ${defects.join('; ')}');
+  }
+  return narrative;
+}
 
 /// The rain onset's sun-relative word for today, or null without a sun —
 /// mirrors pipeline.py's `_onset_word_for`.

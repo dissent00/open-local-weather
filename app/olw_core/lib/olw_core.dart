@@ -37,6 +37,7 @@ export 'src/code_blend.dart';
 export 'src/code_call.dart';
 export 'src/floor.dart';
 export 'src/outlook.dart';
+export 'src/write_up.dart';
 export 'src/cell.dart';
 export 'src/comparison.dart';
 export 'src/scales.dart';

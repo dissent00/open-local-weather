@@ -69,7 +69,13 @@ final _llmPayload = {
     'synoptic_pattern': 'Weak easterly flow over the basin',
     'air_quality_aqi': 42,
   },
-  'today_narrative': '## Overview\n\nShowers likely this afternoon.',
+  // Every heading the prompt asks for (the test location has no secondary
+  // point), each with a line under it: what the write-up gate accepts.
+  'today_narrative': "## Today's Forecast\nShowers likely this afternoon.\n\n"
+      '## Extended Outlook\nWritten.\n\n'
+      '## Severe Weather / Hazard Potential\nWritten.\n\n'
+      '## Detailed Discussion\n### Synoptic Overview\nWritten.\n\n'
+      '### Forecaster Confidence Notes\nWritten.',
   'whatsapp_summary': 'Rain likely this afternoon.',
 };
 
@@ -1216,6 +1222,68 @@ void main() {
     expect(llm.calls, hasLength(1), reason: 'the run never asks for the write-up');
 
     expect(() => writeUpForecast(provider: llm, run: run), throwsA(isA<LlmResponseError>()));
+  });
+
+  test("a thin answer is refused and the day keeps code's write-up", () async {
+    // Upstream 2026-10-09: four mornings running a free gateway model answered
+    // one paragraph under none of the headings, and it replaced the floor and
+    // its Extended Outlook. The gate refuses it as LlmAnswerRefused, a
+    // LlmResponseError, which the app records like any refusal.
+    final llm = _StubProvider({
+      ..._llmPayload,
+      'today_narrative': 'Afternoon showers and thunderstorms, with a high of 30.7°C.',
+    });
+    final run = await generateForecast(
+      client: mockClient(),
+      llm: llm,
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
+      gustBias: null,
+      verificationContext: null,
+      trackRecordContext: null,
+      reviewContext: null,
+      nowLocal: DateTime(2026, 8, 19, 18, 15),
+    );
+
+    expect(
+      () => writeUpForecast(provider: llm, run: run),
+      throwsA(isA<LlmAnswerRefused>()
+          .having((e) => e.message, 'message', contains("missing ## Today's Forecast"))),
+    );
+  });
+
+  test('the run names the headings its prompt asks for, in order', () async {
+    // The gate's list and the prompt's text are pinned together here, as
+    // upstream pins them in test_write_up_audit.py: the template is not built
+    // from the list because its text is pinned by hash.
+    final run = await generateForecast(
+      client: mockClient(),
+      llm: _StubProvider(),
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
+      gustBias: null,
+      verificationContext: null,
+      trackRecordContext: null,
+      reviewContext: null,
+      nowLocal: DateTime(2026, 8, 19, 18, 15),
+    );
+
+    expect(run.narrativeHeadings, [
+      "## Today's Forecast",
+      '## Extended Outlook',
+      '## Severe Weather / Hazard Potential',
+      '## Detailed Discussion',
+      '### Synoptic Overview',
+      '### Forecaster Confidence Notes',
+    ]);
+    final lines = [for (final l in run.narrativePrompt.split('\n')) l.trim()];
+    final positions = [for (final h in run.narrativeHeadings) lines.indexOf(h)];
+    expect(positions.every((p) => p >= 0), isTrue, reason: 'every heading is a line of the prompt');
+    expect(positions, [...positions]..sort(), reason: 'in the prompt\'s order');
   });
 
   test('guidance recency hours_old rounds half-to-even, matching Python', () async {

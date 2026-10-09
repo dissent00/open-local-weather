@@ -387,3 +387,22 @@ def test_an_open_row_serialises_without_the_fields_at_all(tmp_path):
         "model": "m",
         "purpose": "forecast",
     }
+
+
+def test_the_callers_verdict_lands_on_the_answering_row(tmp_path):
+    """ROADMAP item 192 orders routes by served rate AND audit pass rate, so
+    the verdict on an answer goes on the row of the call that produced it:
+    the latest row for that provider and model, written by the hook just
+    before the request left. Absent when unset, like served_model."""
+    from openlocalweather.spend import SpendRecord, read_ledger, record_attempt, record_audit
+
+    record_attempt(tmp_path, provider="GeminiProvider", model="gemini-3.6-flash", purpose="write-up")
+    record_attempt(tmp_path, provider="OpenAICompatProvider", model="nex", purpose="write-up")
+    record_audit(tmp_path, provider="GeminiProvider", model="gemini-3.6-flash", verdict="refused: missing ## Extended Outlook")
+
+    rows = read_ledger(tmp_path)
+    assert [(r.model, r.audit) for r in rows] == [
+        ("gemini-3.6-flash", "refused: missing ## Extended Outlook"), ("nex", None),
+    ]
+    assert "audit" not in rows[1].to_json()
+    assert SpendRecord.from_json(rows[0].to_json()).audit == rows[0].audit

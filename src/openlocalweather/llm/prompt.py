@@ -543,6 +543,24 @@ def build_judgment_prompt(
 # instructions to a model, not a changelog — item 158 step 9.
 
 
+def narrative_headings(location: LocationConfig) -> list[str]:
+    """The headings STEP 2 asks for, in its order: the write-up gate's list
+    (2026-10-09). The template is NOT built from this list, because its text
+    is pinned by hash in the prompt archive and `write_up_prompts` refuses a
+    prompt it cannot reproduce; tests/test_write_up_audit.py pins the two
+    together instead."""
+    secondary = location.secondary_point
+    return [
+        "## Today's Forecast",
+        "## Extended Outlook",
+        "## Severe Weather / Hazard Potential",
+        *([f"## {secondary.name} — {secondary.section_label}"] if secondary.enabled else []),
+        "## Detailed Discussion",
+        "### Synoptic Overview",
+        "### Forecaster Confidence Notes",
+    ]
+
+
 def build_narrative_prompt(
     location: LocationConfig,
     rolling_window_short: int = ROLLING_WINDOW_SHORT,

@@ -28,7 +28,7 @@ from typing import TypeVar
 
 from pydantic import BaseModel
 
-from openlocalweather.llm.errors import LLMUnavailableError
+from openlocalweather.llm.errors import LLMAnswerRefused, LLMResponseError, LLMUnavailableError
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -155,14 +155,23 @@ class FallbackProvider:
             if hasattr(provider, "on_poll"):
                 provider.on_poll = value
 
-    def generate(self, system_prompt: str, user_prompt: str, response_schema: type[T]) -> T:
-        last: LLMUnavailableError | None = None
+    def generate(
+        self, system_prompt: str, user_prompt: str, response_schema: type[T], *, accept=None
+    ) -> T:
+        """The first link's answer that `accept` takes, or the first answer
+        when there is no `accept`. `accept` raising `LLMAnswerRefused` hands
+        the same ask to the next link — the write-up gate, 2026-10-09."""
+        last: LLMResponseError | None = None
 
         for position, provider in enumerate(self._providers, start=1):
             name, model = type(provider).__name__, getattr(provider, "model", "unknown")
             self.active_provider = provider
             try:
                 answer = provider.generate(system_prompt, user_prompt, response_schema)
+                if accept is not None:
+                    # STILL INSIDE THE TRY, with `active_provider` set, so a
+                    # verdict written from here names the link that answered.
+                    accept(answer)
                 # WHO ANSWERED, KEPT PAST THE `finally` BELOW — item 171.
                 # `active_provider` is cleared the moment this returns, so
                 # anything asking afterwards — and the log entry is written
@@ -172,15 +181,20 @@ class FallbackProvider:
                 # under `gemini-3.6-flash`.
                 self.last_served = provider
                 return answer
-            except LLMUnavailableError as e:
+            except (LLMUnavailableError, LLMAnswerRefused) as e:
                 # LOUD, because a silent fallback is the failure `config.py`'s
                 # validator already warns about: a deployment quietly served by
                 # its second choice looks exactly like one served by its first,
                 # and the difference is the whole reliability question.
                 last = e
                 remaining = len(self._providers) - position
+                what = (
+                    "answered, and the answer was refused"
+                    if isinstance(e, LLMAnswerRefused)
+                    else "is unavailable"
+                )
                 print(
-                    f"{name} ({model}) is unavailable: {e}. "
+                    f"{name} ({model}) {what}: {e}. "
                     + (
                         f"Falling back, {remaining} provider(s) left."
                         if remaining

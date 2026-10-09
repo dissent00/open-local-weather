@@ -1871,9 +1871,11 @@ def _run_write_up(args) -> int:
     """
     from openlocalweather.llm.errors import LLMResponseError
     from openlocalweather.llm.provider import FallbackCalls, served_identity
-    from openlocalweather.llm.schema import GeminiNarrativeResponse
+    from openlocalweather.llm.prompt import narrative_headings
     from openlocalweather.spend import SpendCapExceeded
-    from openlocalweather.write_up import CannotRewrite, apply_write_up, needs_write_up, write_up_prompts
+    from openlocalweather.write_up import (
+        CannotRewrite, apply_write_up, ask_for_write_up, needs_write_up, write_up_gate, write_up_prompts,
+    )
 
     location = load_location_config(args.config)
     data_dir = Path(args.data_dir)
@@ -1918,10 +1920,17 @@ def _run_write_up(args) -> int:
     verify_spend, _ = attach_spend_cap(
         provider, data_dir, max_calls=location.max_llm_calls_per_24h, purpose="write-up"
     )
+    # THE GATE — 2026-10-09. An answer missing the headings it was asked for
+    # is refused like a 503, and the next link gets the same ask; the day
+    # keeps code's write-up, which carries the Extended Outlook a thin
+    # answer had been replacing. The verdict goes on the ledger row.
     try:
-        narrative = provider.generate(system_prompt, user_prompt, GeminiNarrativeResponse)
+        narrative = ask_for_write_up(
+            provider, system_prompt, user_prompt,
+            write_up_gate(provider, narrative_headings(location), data_dir),
+        )
     except (LLMResponseError, SpendCapExceeded) as e:
-        print(f"The write-up was refused ({e}); the day keeps its placeholder.", file=sys.stderr)
+        print(f"The write-up was refused ({e}); the day keeps code's write-up.", file=sys.stderr)
         return 0
     verify_spend()
 
