@@ -27288,7 +27288,11 @@ characters, max 8,307 (~3.3K tokens at 2.5 per token); mini tier p50
 4,347, max 4,831 (~1.9K). Both inside the go: full under 4.5K tokens
 with the writer prompt, mini under the 2.4K the on-device budget leaves.
 The user prompt the write-up sends today is 122K characters, so the
-brief is a fifteenth of it.
+brief is a fifteenth of it. Swept across the two languages 2026-10-10
+(`olw_core/tool/sweep_brief.py` and `.dart`): 3,000 random briefs, the
+basin reduction and both tiers over every section, with exact halves,
+a change rounding to negative zero and whole numbers as strings placed
+on purpose; 0 divergences.
 
 **The gate — the audit's first line, shipped early 2026-10-09.** Four
 mornings running (10-05, 10-06, 10-08, 10-09) the gateway's free model
