@@ -27252,6 +27252,44 @@ Related: items 81, 170, 178, 179, 180, 172, 14; Ensemble item 24.
    pick beats "always ECMWF". It is item 195's shape in miniature, on the
    brief, and the first scored claim a writer makes.
 
+**Build plan, 2026-10-09, under the operator's rule: "if the LLM responds,
+we see that section, if not we get it from code. For all sections."** The
+write-up is composed section by section: a section is the model's where
+the model answered it and the audit passed, and code's otherwise; code
+therefore gains the three sections it does not yet write (Severe Weather,
+Synoptic Overview, Forecaster Confidence Notes). The page says per section
+who wrote it. Decided while planning, and a change from the 10-05 text:
+the writer answers in JSON with ONE MARKDOWN STRING PER SECTION, not one
+Markdown document. The schema is enforced on every route this project
+has; a missing or empty field is the section-level fallback with no
+parsing; the heading gate becomes field presence; and the long-output
+failure item 180 measured is answered by the brief's size and the word
+cap, not by the container. The brief is PARSED FROM THE ARCHIVED USER
+PROMPT and the stored entry (`brief.py`, `BriefInputs.from_user_prompt`),
+not rebuilt from the run: the archive is what the run hashes, so a
+write-up at any hour reads the same input, the measurement over the
+archive runs production's parser, and the pipeline needs no plumbing.
+`write_up_sections` in location.yaml names the sections; the brief carries
+only their blocks. In order, each a seam: (a) the brief, `olw brief`, the
+size measurement, vectors, the Dart port; (b) the writer prompt, the
+per-section schema, the audit (numbers in the brief after unit
+normalisation, locked phrases, vocabulary, `phrase_defect`), the
+composition with per-section provenance, `olw write-up` on the brief, the
+app's `writeUpForecast` likewise; (c) code's three new sections; (d) the
+routes and measurements (size-blindness, the writer backtest, Groq), the
+app's section toggles and the mini tier. The forecaster's pick and the
+retirement of the model's own call (point 5) wait for the operator's yes.
+
+**Measured 2026-10-09, zero calls, the brief rendered from the 35
+archived days with every section enabled** (`tools/measure_brief.py`):
+the archive grew its blocks over September, so the days since 10-05, when
+the day table exists, are the representative ones. Full tier p50 8,091
+characters, max 8,307 (~3.3K tokens at 2.5 per token); mini tier p50
+4,347, max 4,831 (~1.9K). Both inside the go: full under 4.5K tokens
+with the writer prompt, mini under the 2.4K the on-device budget leaves.
+The user prompt the write-up sends today is 122K characters, so the
+brief is a fifteenth of it.
+
 **The gate — the audit's first line, shipped early 2026-10-09.** Four
 mornings running (10-05, 10-06, 10-08, 10-09) the gateway's free model
 answered 600 to 800 characters under none or one of the seven headings, and

@@ -147,6 +147,8 @@ absent values are `null`, never omitted keys.
 | `extended_days.json` | `extended_days` | 1 |
 | `extended_outlook.json` | `describe_extended_outlook` | 8 |
 | `write_up_audit.json` | `audit_write_up` | The write-up gate (2026-10-09): the headings an answer was asked for, present, in order and with a body each, or the defects named in that order. A parent heading holding only its subsections is not empty; headings not asked for are ignored. |
+| `brief_inputs.json` | `BriefInputs.from_user_prompt` | The writer's brief parsed from an archived user prompt and the stored day (item 191): each block the brief reads, the review's established findings only, the basin pressure reduced to a range and a three-day change. |
+| `brief.json` | `render_brief` | The brief's text for the enabled sections at a tier (item 191): the blocks those sections read, in the page's order, model ids as the page's names, whole numbers without a point. |
 | `sustained_wind_gap.json` | `sustained_wind_gap` | 7 |
 | `cell_key.json` | `cell_key` | 12 |
 | `convective_timing.json` | `convective_timing` | 14 |

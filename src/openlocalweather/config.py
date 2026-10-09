@@ -264,6 +264,26 @@ class LocationConfig(BaseModel):
     timezone: str
     primary_point: Point
     secondary_point: SecondaryPoint = Field(default_factory=SecondaryPoint)
+    # THE SECTIONS THE WRITE-UP HOLDS — ROADMAP item 191, decision 2
+    # (2026-10-05): the reader's choice. The floor's three are the default;
+    # `severe` is rendered only while the convective flag or a warning is
+    # live, `secondary` only where a secondary point exists; the discussion
+    # (`synoptic`, `confidence`) is opt-in. The brief carries only the
+    # blocks the enabled sections need, the writer is asked for exactly
+    # them, and the audit checks that set.
+    write_up_sections: list[str] = Field(
+        default_factory=lambda: ["today", "extended", "severe", "secondary"]
+    )
+
+    @field_validator("write_up_sections")
+    @classmethod
+    def _known_sections(cls, v: list[str]) -> list[str]:
+        from openlocalweather.brief import SECTIONS
+
+        unknown = [s for s in v if s not in SECTIONS]
+        if unknown:
+            raise ValueError(f"write_up_sections names unknown section(s) {unknown}; expected from {list(SECTIONS)}.")
+        return [s for s in SECTIONS if s in v]
     region_points: list[RegionPoint] = Field(default_factory=list)
     metar_station_icao: str = ""
     # How to NAME that station to a reader — ROADMAP item 143.

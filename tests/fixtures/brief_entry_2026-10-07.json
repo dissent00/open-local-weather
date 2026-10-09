@@ -1,0 +1,213 @@
+{
+  "date": "2026-10-07",
+  "served_call": {
+    "today_properties": {
+      "rain_expected": "Isolated Afternoon Showers & Thunderstorms",
+      "onset_window": "13:00 \u2013 15:00",
+      "peak_wind_primary_kmh": 39.3,
+      "peak_wind_secondary_kmh": 30.9,
+      "temp_high_c": 31.1,
+      "temp_low_c": 19.2,
+      "rain": true,
+      "onset_hour": "15:00",
+      "precip_mm": 2.2,
+      "rain_probability_pct": 82,
+      "mslp_trend_24h": "+0.5 hPa",
+      "synoptic_pattern": "Moderate large-scale gradient, lowest pressure toward the north",
+      "air_quality_aqi": 72
+    },
+    "extended_properties": [
+      {
+        "lead_time_days": 3,
+        "rain": true,
+        "rain_probability_pct": 100
+      },
+      {
+        "lead_time_days": 7,
+        "rain": true,
+        "rain_probability_pct": 100
+      }
+    ]
+  },
+  "temp_high_low_display": "31\u00b0C / 88\u00b0F high, 19\u00b0C / 67\u00b0F low",
+  "extended_days": [
+    {
+      "lead_time_days": 1,
+      "date": "2026-10-08",
+      "day_name": "Thursday",
+      "models": [
+        "gfs_seamless",
+        "ecmwf_ifs025",
+        "icon_seamless",
+        "ukmo_seamless"
+      ],
+      "wet_votes": 3,
+      "precip_mm": 2.4,
+      "precip_by_model": {
+        "gfs_seamless": 0.0,
+        "ecmwf_ifs025": 4.9,
+        "icon_seamless": 1.4,
+        "ukmo_seamless": 3.4
+      },
+      "high_c": 31.6,
+      "high_min_c": 29.9,
+      "high_max_c": 33.5,
+      "low_c": 19.6,
+      "wind_kmh": 31.1,
+      "thunder": "likely",
+      "sky": "Mostly cloudy"
+    },
+    {
+      "lead_time_days": 2,
+      "date": "2026-10-09",
+      "day_name": "Friday",
+      "models": [
+        "gfs_seamless",
+        "ecmwf_ifs025",
+        "icon_seamless",
+        "ukmo_seamless"
+      ],
+      "wet_votes": 3,
+      "precip_mm": 3.2,
+      "precip_by_model": {
+        "gfs_seamless": 0.1,
+        "ecmwf_ifs025": 7.0,
+        "icon_seamless": 4.9,
+        "ukmo_seamless": 1.0
+      },
+      "high_c": 31.1,
+      "high_min_c": 29.9,
+      "high_max_c": 33.6,
+      "low_c": 19.5,
+      "wind_kmh": 25.3,
+      "thunder": "likely",
+      "sky": "Partly cloudy"
+    },
+    {
+      "lead_time_days": 3,
+      "date": "2026-10-10",
+      "day_name": "Saturday",
+      "models": [
+        "gfs_seamless",
+        "ecmwf_ifs025",
+        "icon_seamless",
+        "ukmo_seamless"
+      ],
+      "wet_votes": 4,
+      "precip_mm": 8.3,
+      "precip_by_model": {
+        "gfs_seamless": 3.6,
+        "ecmwf_ifs025": 8.1,
+        "icon_seamless": 3.6,
+        "ukmo_seamless": 18.0
+      },
+      "high_c": 30.4,
+      "high_min_c": 28.6,
+      "high_max_c": 34.5,
+      "low_c": 19.4,
+      "wind_kmh": 27.4,
+      "thunder": "likely",
+      "sky": "Mostly cloudy"
+    },
+    {
+      "lead_time_days": 4,
+      "date": "2026-10-11",
+      "day_name": "Sunday",
+      "models": [
+        "gfs_seamless",
+        "ecmwf_ifs025",
+        "icon_seamless",
+        "ukmo_seamless"
+      ],
+      "wet_votes": 4,
+      "precip_mm": 13.2,
+      "precip_by_model": {
+        "gfs_seamless": 19.1,
+        "ecmwf_ifs025": 11.9,
+        "icon_seamless": 14.0,
+        "ukmo_seamless": 8.0
+      },
+      "high_c": 29.1,
+      "high_min_c": 27.6,
+      "high_max_c": 31.6,
+      "low_c": 19.4,
+      "wind_kmh": 24.4,
+      "thunder": "likely",
+      "sky": "Mostly cloudy"
+    },
+    {
+      "lead_time_days": 5,
+      "date": "2026-10-12",
+      "day_name": "Monday",
+      "models": [
+        "gfs_seamless",
+        "ecmwf_ifs025",
+        "icon_seamless",
+        "ukmo_seamless"
+      ],
+      "wet_votes": 4,
+      "precip_mm": 9.9,
+      "precip_by_model": {
+        "gfs_seamless": 0.8,
+        "ecmwf_ifs025": 30.9,
+        "icon_seamless": 4.5,
+        "ukmo_seamless": 3.5
+      },
+      "high_c": 29.6,
+      "high_min_c": 26.6,
+      "high_max_c": 31.2,
+      "low_c": 19.0,
+      "wind_kmh": 22.8,
+      "thunder": "likely",
+      "sky": "Mostly cloudy"
+    },
+    {
+      "lead_time_days": 6,
+      "date": "2026-10-13",
+      "day_name": "Tuesday",
+      "models": [
+        "gfs_seamless",
+        "ecmwf_ifs025",
+        "icon_seamless"
+      ],
+      "wet_votes": 3,
+      "precip_mm": 7.9,
+      "precip_by_model": {
+        "gfs_seamless": 0.7,
+        "ecmwf_ifs025": 15.0,
+        "icon_seamless": 7.9
+      },
+      "high_c": 28.8,
+      "high_min_c": 24.8,
+      "high_max_c": 32.1,
+      "low_c": 20.0,
+      "wind_kmh": 25.3,
+      "thunder": "possible",
+      "sky": "Mostly cloudy"
+    },
+    {
+      "lead_time_days": 7,
+      "date": "2026-10-14",
+      "day_name": "Wednesday",
+      "models": [
+        "gfs_seamless",
+        "ecmwf_ifs025"
+      ],
+      "wet_votes": 2,
+      "precip_mm": 6.0,
+      "precip_by_model": {
+        "gfs_seamless": 1.7,
+        "ecmwf_ifs025": 10.4
+      },
+      "high_c": 28.8,
+      "high_min_c": 25.6,
+      "high_max_c": 32.0,
+      "low_c": 18.9,
+      "wind_kmh": 25.1,
+      "thunder": null,
+      "sky": "Mostly cloudy"
+    }
+  ],
+  "overview_comparison": null,
+  "rain_expected": "Isolated Afternoon Showers & Thunderstorms"
+}

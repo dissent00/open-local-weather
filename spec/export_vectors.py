@@ -152,6 +152,13 @@ NOT_PHRASE_VECTORS = frozenset({
     # that a future message worded slightly differently cannot stop the
     # exporter from writing the file that pins the check.
     "phrase_defect.json",
+    # The brief is the WRITER'S INPUT, not a reader's phrase: its blocks are
+    # indented and tab-separated, and its parsed inputs carry the met
+    # service's bulletin verbatim, which indents its own lists. The phrases
+    # a reader is handed verbatim through the brief are pinned by their own
+    # vectors (extended_trend, wind_describe_shift, wind_timeline, …).
+    "brief.json",
+    "brief_inputs.json",
 })
 
 
@@ -7109,6 +7116,66 @@ def export_write_up_audit() -> None:
     )
 
 
+def export_brief() -> None:
+    """The brief — ROADMAP item 191. `brief_inputs.json` pins the parser
+    over 2026-10-07's prompt cut to the blocks the brief reads, with that
+    day's entry; `brief.json` pins the renderer over those inputs at both
+    tiers and for section subsets, plus the absences the renderer names.
+    """
+    from openlocalweather.brief import SECTIONS, TIER_FULL, TIER_MINI, BriefInputs, render_brief
+
+    fixtures = Path(__file__).resolve().parent.parent / "tests" / "fixtures"
+    prompt = (fixtures / "user_prompt_2026-10-07.txt").read_text()
+    entry = json.loads((fixtures / "brief_entry_2026-10-07.json").read_text())
+    names = dict(secondary_name="Winam Gulf", met_service_name="Kenya Met", met_service_model_id="kenya_met")
+    inputs = BriefInputs.from_user_prompt(prompt, entry, **names)
+
+    write(
+        "brief_inputs.json",
+        "BriefInputs.from_user_prompt",
+        "The brief's inputs parsed from an archived user prompt and the stored day: each block the "
+        "brief reads, the review's established findings only, the basin pressure reduced to a range "
+        "and a three-day change.",
+        [{
+            "name": "2026-10-07, every block present",
+            "input": {"user_prompt": prompt, "entry": entry, **names},
+            "expected": inputs.to_json(),
+        }],
+    )
+
+    def case(name, *, tier=TIER_FULL, sections=SECTIONS, **changes):
+        i = BriefInputs.from_json({**inputs.to_json(), **changes})
+        return {
+            "name": name,
+            "input": {"inputs": i.to_json(), "tier": tier, "sections": list(sections)},
+            "expected": render_brief(i, tier=tier, sections=sections),
+        }
+
+    write(
+        "brief.json",
+        "render_brief",
+        "The brief's text for the enabled sections at a tier: the blocks those sections read, in the "
+        "page's order, model ids as the page's names, whole numbers without a point.",
+        [
+            case("full tier, every section"),
+            case("mini tier, every section", tier=TIER_MINI),
+            case("today alone", sections=("today",)),
+            case("the extended outlook alone", sections=("extended",)),
+            case("the discussion alone", sections=("synoptic", "confidence")),
+            case("the floor's four", sections=("today", "extended", "severe", "secondary")),
+            case("mini tier, today alone", tier=TIER_MINI, sections=("today",)),
+            case("no secondary point", secondary_name=None),
+            case("no met service", met_service_name=None, met_service_model_id=None),
+            case("no instability block", instability=None),
+            case("no thunder today", instability={"convective": False}),
+            case("the ring could not be assessed", synoptic_statements=[]),
+            case("no bulletin this run", local_bulletin="Unavailable — nothing fetched"),
+            case("a falling basin", basin_pressure={"points": 5, "today_min_hpa": 1012.8, "today_max_hpa": 1015.0, "change_72h_hpa": -2.3}),
+            case("no day table, no record", extended_days=[], track_record=[], review_findings=[]),
+        ],
+    )
+
+
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     print("Exporting cross-language test vectors:")
@@ -7174,6 +7241,7 @@ def main() -> None:
     export_floor()
     export_extended_outlook()
     export_write_up_audit()
+    export_brief()
     print("\nDone. Commit the result — the vectors are the contract.")
 
 

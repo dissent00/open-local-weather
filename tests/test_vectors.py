@@ -1247,6 +1247,9 @@ def test_every_vector_file_is_exercised():
         "extended_outlook.json",
         # The write-up gate, 2026-10-09.
         "write_up_audit.json",
+        # The brief, item 191.
+        "brief_inputs.json",
+        "brief.json",
         "rain_label.json",
         "onset_window_label.json",
         "cams_peak_aqi.json",
@@ -1519,6 +1522,8 @@ NOT_KEYWORD_CALLS = frozenset({
     "floor.json",
     # An OutlookInputs object — item 190 step 3.
     "extended_outlook.json",
+    # A stored day's JSON beside the prompt text — item 191.
+    "brief_inputs.json",
 })
 
 # Input keys that are not arguments — the same exemption the Dart guard has.
@@ -1726,3 +1731,26 @@ def test_vectors_write_up_audit():
 
     for case in load("write_up_audit.json")["cases"]:
         assert audit_write_up(**case["input"]) == case["expected"], case["name"]
+
+
+def test_vectors_brief_inputs():
+    """ROADMAP item 191 — the brief's parser over an archived prompt."""
+    from openlocalweather.brief import BriefInputs
+
+    for case in load("brief_inputs.json")["cases"]:
+        got = BriefInputs.from_user_prompt(
+            case["input"]["user_prompt"], case["input"]["entry"],
+            secondary_name=case["input"]["secondary_name"], met_service_name=case["input"]["met_service_name"],
+            met_service_model_id=case["input"]["met_service_model_id"],
+        )
+        assert got.to_json() == case["expected"], case["name"]
+
+
+def test_vectors_brief():
+    """ROADMAP item 191 — the brief's text per tier and section set."""
+    from openlocalweather.brief import BriefInputs, render_brief
+
+    for case in load("brief.json")["cases"]:
+        i = BriefInputs.from_json(case["input"]["inputs"])
+        got = render_brief(i, tier=case["input"]["tier"], sections=tuple(case["input"]["sections"]))
+        assert got == case["expected"], case["name"]

@@ -1665,6 +1665,36 @@ void main() {
     });
   });
 
+  group('the brief', () {
+    // Upstream item 191: the writer's input, parsed from the user prompt
+    // and the stored day, rendered per tier and section set.
+    test('brief_inputs', () {
+      for (final c in casesOf('brief_inputs.json')) {
+        final input = c['input'] as Map<String, Object?>;
+        final got = BriefInputs.fromUserPrompt(
+          input['user_prompt'] as String,
+          (input['entry'] as Map).cast<String, Object?>(),
+          secondaryName: input['secondary_name'] as String?,
+          metServiceName: input['met_service_name'] as String?,
+          metServiceModelId: input['met_service_model_id'] as String?,
+        );
+        expect(got.toJson(), c['expected'], reason: c['name'] as String);
+      }
+    });
+
+    test('brief', () {
+      for (final c in casesOf('brief.json')) {
+        final input = c['input'] as Map<String, Object?>;
+        final got = renderBrief(
+          BriefInputs.fromJson((input['inputs'] as Map).cast<String, Object?>()),
+          tier: input['tier'] as String,
+          sections: List<String>.from(input['sections'] as List),
+        );
+        expect(got, c['expected'], reason: c['name'] as String);
+      }
+    });
+  });
+
   group('the write-up gate', () {
     // Upstream 2026-10-09: an answer missing the headings it was asked for
     // is not a write-up; the defects, named in the prompt's order.
@@ -2369,6 +2399,8 @@ void main() {
       'extended_days.json',
       'extended_outlook.json',
       'write_up_audit.json',
+      'brief_inputs.json',
+      'brief.json',
       'rain_label.json',
       'onset_window_label.json',
       'cams_peak_aqi.json',

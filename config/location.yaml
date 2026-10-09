@@ -31,6 +31,10 @@ location:
   # elevation 1133 m, which is lake surface. Candidates further out return
   # cells as cold as 19.5 C on the same day, the same signature as the old
   # point, so nearer is both more relevant and more plausible here.
+  # THE SECTIONS THE WRITE-UP HOLDS — ROADMAP item 191. This deployment
+  # keeps the whole discussion; a fork starts with the first four.
+  write_up_sections: [today, extended, severe, secondary, synoptic, confidence]
+
   secondary_point:
     enabled: true
     name: "Winam Gulf"

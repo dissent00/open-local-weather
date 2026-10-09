@@ -11,6 +11,7 @@
 library;
 
 import 'config.dart';
+import 'py_text.dart';
 
 /// The headings STEP 2 asks for, in its order — `prompt.narrative_headings`.
 ///
@@ -35,7 +36,7 @@ List<String> narrativeHeadings(SecondaryPoint secondary) => [
 /// is two subsections and nothing of its own on every Gemini day of the
 /// record. Headings the prompt did not ask for are ignored.
 List<String> auditWriteUp(String markdown, List<String> headings) {
-  final lines = [for (final line in _splitLinesLikePython(markdown)) _stripLikePython(line)];
+  final lines = [for (final line in splitLinesLikePython(markdown)) stripLikePython(line)];
   final headingLines = [
     for (var i = 0; i < lines.length; i++)
       if (lines[i].startsWith('#')) i,
@@ -76,54 +77,4 @@ String _level(String heading) {
     n++;
   }
   return heading.substring(0, n);
-}
-
-/// Python's `str.splitlines()`: its separators, "\r\n" as one, and no empty
-/// last line after a trailing separator. Dart's LineSplitter knows three of
-/// these, and a heading beside a separator the model emitted has to read the
-/// same way in both languages.
-List<String> _splitLinesLikePython(String text) {
-  const separators = {
-    0x0A, 0x0D, 0x0B, 0x0C, 0x1C, 0x1D, 0x1E, 0x85, 0x2028, 0x2029,
-  };
-  final lines = <String>[];
-  final buffer = StringBuffer();
-  final units = text.runes.toList();
-  for (var i = 0; i < units.length; i++) {
-    final c = units[i];
-    if (!separators.contains(c)) {
-      buffer.writeCharCode(c);
-      continue;
-    }
-    if (c == 0x0D && i + 1 < units.length && units[i + 1] == 0x0A) {
-      i++;
-    }
-    lines.add(buffer.toString());
-    buffer.clear();
-  }
-  if (buffer.isNotEmpty) {
-    lines.add(buffer.toString());
-  }
-  return lines;
-}
-
-/// Python's `str.strip()` with no argument: the characters `str.isspace`
-/// knows, which is not Dart's `trim` set — Dart strips the BOM and not
-/// U+001C to U+001F; Python the reverse.
-String _stripLikePython(String line) {
-  const spaces = {
-    0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x85, 0xA0,
-    0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007,
-    0x2008, 0x2009, 0x200A, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000,
-  };
-  final units = line.runes.toList();
-  var start = 0;
-  var end = units.length;
-  while (start < end && spaces.contains(units[start])) {
-    start++;
-  }
-  while (end > start && spaces.contains(units[end - 1])) {
-    end--;
-  }
-  return String.fromCharCodes(units.sublist(start, end));
 }

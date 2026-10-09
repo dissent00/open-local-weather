@@ -1947,6 +1947,49 @@ def _run_write_up(args) -> int:
     return 0
 
 
+def _run_brief(args) -> int:
+    """Render the writer's brief for stored days — ROADMAP item 191.
+
+    No fetch and no model call: the brief is parsed from the archived user
+    prompt and the stored entry, so what this prints for a day is what
+    `olw write-up` will send a writer.
+    """
+    from openlocalweather.brief import BriefInputs, render_brief
+
+    location = load_location_config(args.config)
+    data_dir = Path(args.data_dir)
+    days = [date.fromisoformat(d) for d in (args.date or [])] or [today_in_tz(location.timezone)]
+    sections = (
+        tuple(s.strip() for s in args.sections.split(",") if s.strip())
+        if args.sections
+        else tuple(location.write_up_sections)
+    )
+    secondary = location.secondary_point
+    rendered = []
+    for d in days:
+        entry = read_log_entry(data_dir, d)
+        archive = data_dir / "prompts" / f"{d}.json"
+        if entry is None or not archive.exists():
+            print(f"No entry or prompt archive for {d}.", file=sys.stderr)
+            continue
+        issuance = json.loads(archive.read_text())["issuances"][-1]
+        inputs = BriefInputs.from_user_prompt(
+            issuance["user_prompt"], entry,
+            secondary_name=secondary.name if secondary.enabled and secondary.name else None,
+            met_service_name=location.local_bulletin_source_name or None,
+            met_service_model_id=location.local_bulletin_model_id or None,
+        )
+        rendered.append(f"<!-- {d} {args.tier} -->\n" + render_brief(inputs, tier=args.tier, sections=sections))
+
+    text = "\n".join(rendered)
+    if args.out:
+        Path(args.out).write_text(text)
+        print(f"Wrote {len(rendered)} brief(s) to {args.out}.")
+    else:
+        print(text, end="")
+    return 0
+
+
 def _run_floor(args) -> int:
     """Render the floor for stored days — ROADMAP item 190's reading gate.
 
@@ -2323,6 +2366,17 @@ def main(argv: list[str] | None = None) -> int:
     floor.add_argument("--pending", action="store_true", help="Every stored day whose write-up never landed.")
     floor.add_argument("--out", default="", help="Write the renders to this file instead of stdout.")
 
+    brief = sub.add_parser(
+        "brief",
+        help="Render the writer's brief for stored days, for reading and sizing — item 191.",
+    )
+    brief.add_argument("--data-dir", default=str(DEFAULT_DATA_DIR), help="Path to the data/ directory")
+    brief.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="Path to location.yaml")
+    brief.add_argument("--date", action="append", help="A day to render, YYYY-MM-DD; repeatable. Default: today.")
+    brief.add_argument("--tier", default="full", choices=("full", "mini"), help="full for the pipeline's routes, mini for on-device models.")
+    brief.add_argument("--sections", default="", help="Comma-separated section ids; default: the deployment's write_up_sections.")
+    brief.add_argument("--out", default="", help="Write the renders to this file instead of stdout.")
+
     window_claims = sub.add_parser(
         "backfill-window-claims",
         help="Add the yardsticks' and code blend's window claims (item 139) to stored rows, and rescore them.",
@@ -2439,6 +2493,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "floor":
         return _run_floor(args)
+
+    if args.command == "brief":
+        return _run_brief(args)
 
     if args.command == "backfill-window-claims":
         return _run_backfill_window_claims(args)
