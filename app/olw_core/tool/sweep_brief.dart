@@ -8,7 +8,7 @@
 //
 // Input: a JSON list of cases {points, inputs} and a JSON list of Python's
 // answers {basin, full, mini}, both written by sweep_brief.py beside this
-// file. Prints the divergences and exits 1 on any. Last run 2026-10-10:
+// file. Prints the divergences and exits 1 on any. Last run 2026-10-09:
 // 3,000 cases, the basin reduction and both tiers over every section, 0
 // divergences.
 import 'dart:convert';
