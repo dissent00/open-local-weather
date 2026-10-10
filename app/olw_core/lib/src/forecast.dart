@@ -417,6 +417,11 @@ Future<ForecastRun> generateForecast({
   /// composed from its readings.
   String? stationName,
 
+  /// The write-up sections this reader shows, by the brief's ids — the
+  /// floor writes these and [writeUpForecast] asks for the same set
+  /// (upstream item 191 step (d), the app's toggles).
+  List<String> enabledSections = defaultBriefSections,
+
   /// Where this run sits in the day — see `daypart` in the Python pipeline.
   ///
   /// Left null on the normal path: this function derives it, mirroring what
@@ -895,9 +900,9 @@ Future<ForecastRun> generateForecast({
             'thunder': observedSoFar.thunder,
             'reported_through': observedSoFar.reportedThrough,
           },
-    // The other three sections — upstream item 191 step (c), enabled as the
-    // writer's default; the app has no basin fetch and no met service yet.
-    enabledSections: defaultBriefSections,
+    // The other three sections — upstream item 191 step (c); the app has
+    // no basin fetch and no met service yet.
+    enabledSections: enabledSections,
     modelsToday: [
       for (final p in day0)
         if (blendInputs().contains(p.model))
