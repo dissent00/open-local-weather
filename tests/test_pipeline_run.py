@@ -5684,3 +5684,26 @@ def test_a_cap_refusal_drops_the_models_row_not_the_day(tmp_path):
     assert entry.meta.llm_call_outcome.startswith("cap: ")
     assert llm.calls == [], "refused before a request was sent"
     assert [p for p in scored_predictions(entry).day0 if p.model == BLEND_MODEL_ID] == []
+
+
+# ---------------------------------------------------------------------------
+# The ring, the basin and the review's findings are kept on the entry —
+# ROADMAP item 103 point 5 and item 191 step (c), 2026-10-10.
+# ---------------------------------------------------------------------------
+
+
+def test_the_ring_record_keeps_the_points_and_the_labels():
+    from types import SimpleNamespace
+
+    from openlocalweather.pipeline import _regional_points, _synoptic_ring_record
+    from openlocalweather.synoptic import SynopticSnapshot
+
+    snapshot = SynopticSnapshot(1012.8, "N", 1008.6, "SE", 1016.3, 7.7, "moderate", {"N": "steady"}, ["Across roughly 2,600 km, pressure is lowest toward the north."])
+    ring = {"points": [{"label": "N", "mslp_hpa": [1008.6, 1008.9, 1009.0], "precip_mm": [0.2, 4.1, 0.0], "cape_jkg": [300.0, 1200.0, 800.0]}]}
+
+    kept = _synoptic_ring_record(SimpleNamespace(synoptic=snapshot, synoptic_ring=ring))
+    assert kept["summary"]["lowest_label"] == "N" and kept["points"] == ring["points"]
+    assert _synoptic_ring_record(SimpleNamespace(synoptic=None, synoptic_ring=None)) is None
+    assert _regional_points([{"daily": {}}]) == [{"daily": {}}]
+    assert _regional_points({"points": [{"daily": {}}]}) == [{"daily": {}}]
+    assert _regional_points(None) is None

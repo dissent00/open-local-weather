@@ -1982,6 +1982,19 @@
       "default": null,
       "title": "Air Quality Index"
     },
+    "basin_pressure": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Basin Pressure"
+    },
     "call_source": {
       "anyOf": [
         {
@@ -2122,6 +2135,22 @@
       "default": null,
       "title": "Guidance Source"
     },
+    "lead_records": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Lead Records"
+    },
     "local_bulletin": {
       "anyOf": [
         {
@@ -2236,6 +2265,22 @@
       "title": "Rain Expected",
       "type": "string"
     },
+    "review_findings": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Review Findings"
+    },
     "served_call": {
       "anyOf": [
         {
@@ -2276,6 +2321,19 @@
     "synoptic_pattern": {
       "title": "Synoptic Pattern",
       "type": "string"
+    },
+    "synoptic_ring": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Synoptic Ring"
     },
     "temp_high_c": {
       "title": "Temp High C",

@@ -79,6 +79,7 @@ from openlocalweather.instability import (
 )
 from openlocalweather.wind import consensus_direction, describe_wind_shift, describe_wind_timeline
 from openlocalweather.calibration import calibrated_gust_consensus, gust_corrections
+from openlocalweather.brief import basin_pressure
 from openlocalweather.code_blend import blend_inputs, code_blend_predictions, window_code_blend
 from openlocalweather.code_call import ServedCall, served_call, verification_summary
 from openlocalweather.floor import NARRATIVE_SOURCE_CODE, compose_floor_for_entry
@@ -426,6 +427,8 @@ class ForwardGuidance:
     bulletin_text: str
     guidance_cycle: ResolvedGuidanceCycle
     synoptic: object | None = None
+    # The ring as fetched, for the entry — item 103 point 5.
+    synoptic_ring: dict | None = None
     # Structured half of the same bulletin fetch, when the source supports
     # it (see fetch/bulletin/kenya_kmd_daily). None for a met service whose
     # bulletin can't be decoded, which must leave scoring untouched rather
@@ -1894,12 +1897,12 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     # Synoptic-scale pressure ring. One request, ~3 KB — see synoptic.py for
     # why the near-field region_points cannot answer this. Optional: losing it
     # costs a paragraph of context, not the forecast.
+    synoptic_ring: dict | None = None
     try:
-        synoptic = summarize_synoptic(
-            open_meteo.fetch_synoptic_pressure(
-                location.primary_point.lat, location.primary_point.lon, location.timezone
-            )
+        synoptic_ring = open_meteo.fetch_synoptic_pressure(
+            location.primary_point.lat, location.primary_point.lon, location.timezone
         )
+        synoptic = summarize_synoptic(synoptic_ring)
     except Exception as e:  # noqa: BLE001 - optional; costs context, not the run
         # It used to be `except Exception: synoptic = None` with no log at
         # all, so a failure here was invisible in every surface — the exact
@@ -2005,6 +2008,7 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
         bulletin_text=bulletin_text,
         guidance_cycle=guidance_cycle,
         synoptic=synoptic,
+        synoptic_ring=synoptic_ring,
         met_service_prediction=met_prediction,
         met_service_valid_for=met_valid_for,
         met_service_prediction_day3=met_day3,
@@ -2151,6 +2155,26 @@ def _ground_aqi_prompt_payload(guidance: ForwardGuidance) -> list[dict]:
         }
         for r in guidance.ground_aqi_readings
     ]
+
+
+def _synoptic_ring_record(guidance: ForwardGuidance) -> dict | None:
+    """The ring as the entry keeps it: the points as fetched and the labels
+    the run reduced them to; None when the ring did not arrive."""
+    if guidance.synoptic_ring is None and guidance.synoptic is None:
+        return None
+    return {
+        "summary": asdict(guidance.synoptic) if guidance.synoptic is not None else None,
+        "points": (guidance.synoptic_ring or {}).get("points"),
+    }
+
+
+def _regional_points(regional_pressure) -> list[dict] | None:
+    """The basin's point blocks, whichever shape the fetch returned them in."""
+    if isinstance(regional_pressure, list):
+        return regional_pressure
+    if isinstance(regional_pressure, dict):
+        return regional_pressure.get("points") or [v for v in regional_pressure.values() if isinstance(v, dict)]
+    return None
 
 
 def _hour_of(hhmm: str | None) -> int | None:
@@ -2720,6 +2744,8 @@ def _compose_log_entry(
     # The day table and the outlook composed from it — item 190 step 3.
     extended_days: list[dict] | None = None,
     extended_outlook: str | None = None,
+    review_findings: list[dict] | None = None,
+    lead_records_kept: list[dict] | None = None,
 ) -> DailyLogEntry:
     """The day's entry, built in the one place it is built.
 
@@ -2804,6 +2830,12 @@ def _compose_log_entry(
         comparison=_tile_comparison(deps, day_over_day),
         mslp_trend_24h=tp.mslp_trend_24h or "",
         synoptic_pattern=tp.synoptic_pattern or "",
+        # The ring, the basin and the review's findings, kept — item 103
+        # point 5 and item 191 step (c), 2026-10-10. See the entry's fields.
+        synoptic_ring=_synoptic_ring_record(guidance),
+        basin_pressure=basin_pressure(_regional_points(guidance.regional_pressure)),
+        review_findings=review_findings,
+        lead_records=lead_records_kept,
         # THE DISPLAY IS COMPOSED HERE, the halves stored beside it. The model
         # supplies the number; `scales.py` supplies the word from the WHO and
         # US EPA tables. Same seam as `temp_high_low_display` two lines up.
@@ -3789,6 +3821,12 @@ def _issue_forecast(
     # here, beside the served call, so the floor and the brief share one
     # set of numbers with the tiles.
     outlook_days = outlook_day_table(guidance.primary_daily, blend_inputs(location.local_bulletin_model_id), today)
+    # The record's lead rankings, computed once for the outlook and kept on
+    # the entry for code's Forecaster Confidence Notes (item 191 step (c)).
+    records = lead_records(
+        track_record_entries,
+        visible_models=models_visible_to_the_forecaster(location.local_bulletin_model_id),
+    )
     outlook = describe_extended_outlook(
         OutlookInputs(
             days=outlook_days,
@@ -3798,10 +3836,7 @@ def _issue_forecast(
                 str(e.lead_time_days): {"rain": e.rain, "rain_probability_pct": e.rain_probability_pct}
                 for e in call.judgment.extended_properties
             },
-            records=lead_records(
-                track_record_entries,
-                visible_models=models_visible_to_the_forecaster(location.local_bulletin_model_id),
-            ),
+            records=records,
             met_service_name=location.local_bulletin_source_name or None,
             met_service_day3_rain=(
                 guidance.met_service_prediction_day3.rain
@@ -4036,6 +4071,12 @@ def _issue_forecast(
         extended_trend=_extended_trend(guidance, day0_models, extended_days, today),
         extended_days=[asdict(d) for d in outlook_days],
         extended_outlook=outlook,
+        review_findings=[
+            {"kind": f.get("kind"), "checks": f.get("checks"), "claim": f.get("claim")}
+            for f in (review_context or {}).get("findings") or []
+            if f.get("confidence") == "established"
+        ],
+        lead_records_kept=[asdict(r) for r in records],
     )
 
     # THE FLOOR — ROADMAP item 190. Code's write-up stands where the

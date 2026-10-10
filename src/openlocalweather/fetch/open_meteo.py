@@ -401,7 +401,15 @@ def fetch_synoptic_pressure(lat: float, lon: float, timezone: str, days: int = 3
     params = {
         "latitude": ",".join(str(p[0]) for p in points),
         "longitude": ",".join(str(p[1]) for p in points),
-        "daily": "pressure_msl_mean",
+        # RAIN AND CAPE BESIDE THE PRESSURE — ROADMAP item 103, 2026-10-10.
+        # Near the equator the synoptic signal is carried by convection,
+        # not by a surface gradient; the models' own rain and instability
+        # at the ring's points, day by day, is their view of weather
+        # arriving from one side. Same request, same byte budget order;
+        # the series is persisted on the entry so that in a month the
+        # question "did rain at the western points precede rain here" has
+        # a record to be asked of. Nothing reads these two yet.
+        "daily": "pressure_msl_mean,precipitation_sum,cape_max",
         "forecast_days": days,
         "timezone": timezone,
         "models": "best_match",
@@ -414,7 +422,10 @@ def fetch_synoptic_pressure(lat: float, lon: float, timezone: str, days: int = 3
                 "label": label,
                 "lat": block.get("latitude"),
                 "lon": block.get("longitude"),
+                "dates": (block.get("daily") or {}).get("time") or [],
                 "mslp_hpa": (block.get("daily") or {}).get("pressure_msl_mean") or [],
+                "precip_mm": (block.get("daily") or {}).get("precipitation_sum") or [],
+                "cape_jkg": (block.get("daily") or {}).get("cape_max") or [],
             }
             for (_, _, label), block in zip(points, blocks)
         ]

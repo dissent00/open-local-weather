@@ -1883,6 +1883,27 @@ class DailyLogEntry(BaseModel):
     # page section by section, and the record must say which half of it a
     # model wrote. None before the field existed and on a floor-only day.
     write_up_sources: dict[str, str] | None = None
+    # THE RING, PERSISTED — ROADMAP item 103 point 5, 2026-10-10. The nine
+    # points' daily pressure, rain and CAPE as fetched ("points"), and the
+    # labels the run reduced them to ("summary", synoptic.SynopticSnapshot).
+    # Until now the ring was fetched, labelled, put in the prompt and
+    # thrown away, so yesterday's was unrecoverable and "did we see it
+    # coming" could not be asked. A few hundred bytes a day. None before
+    # the field existed and on a run the ring did not arrive.
+    synoptic_ring: dict | None = None
+    # The basin's pressure reduced the way the brief reduces it
+    # (brief.basin_pressure): today's range across the points and the
+    # three-day change. Code's Synoptic Overview reads it off the stored
+    # day; the raw points stay in the prompt archive.
+    basin_pressure: dict | None = None
+    # The review's ESTABLISHED findings at issuance, as kind, checks and
+    # claim — what code's Forecaster Confidence Notes are written from on
+    # a stored day. The review is recomputed every run from the whole
+    # record; this is what the run saw.
+    review_findings: list[dict] | None = None
+    # The record's lead rankings at issuance (outlook.LeadRecord), kept for
+    # the same reason: code's Confidence Notes on a stored day.
+    lead_records: list[dict] | None = None
     whatsapp_summary: str | None = None
 
     # Every issuance BEFORE the current one, oldest first. The current
