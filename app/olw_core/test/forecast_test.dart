@@ -69,13 +69,10 @@ final _llmPayload = {
     'synoptic_pattern': 'Weak easterly flow over the basin',
     'air_quality_aqi': 42,
   },
-  // Every heading the prompt asks for (the test location has no secondary
-  // point), each with a line under it: what the write-up gate accepts.
-  'today_narrative': "## Today's Forecast\nShowers likely this afternoon.\n\n"
-      '## Extended Outlook\nWritten.\n\n'
-      '## Severe Weather / Hazard Potential\nWritten.\n\n'
-      '## Detailed Discussion\n### Synoptic Overview\nWritten.\n\n'
-      '### Forecaster Confidence Notes\nWritten.',
+  'today_narrative': '## Overview\n\nShowers likely this afternoon.',
+  // The writer's answer (upstream item 191 step (b)): one passage per
+  // section, each optional. No figure in it, so the audit passes it.
+  'today': 'Showers likely this afternoon, clearing overnight.',
   'whatsapp_summary': 'Rain likely this afternoon.',
 };
 
@@ -129,7 +126,7 @@ class _StubProvider implements LlmProvider {
     if (failJudgment && shape.name == 'judgment') {
       throw LlmResponseError('request failed after 4 attempts');
     }
-    if (failNarrative && shape.name == 'narrative') {
+    if (failNarrative && shape.name == 'write_up') {
       throw LlmResponseError('request failed after 4 attempts');
     }
     // The shape that was asked for. The canned payload is a whole forecast,
@@ -1133,19 +1130,19 @@ void main() {
         reason: 'the judgment call cannot be shown its own answer');
     expect(run.narrativePrompt, contains('STEP 2:'));
 
-    await writeUpForecast(provider: llm, run: run);
+    final written = await writeUpForecast(provider: llm, run: run, place: 'Kisumu');
     expect(llm.calls, hasLength(2));
     final (narrativeSystem, narrativeUser) = llm.calls[1];
-    expect(narrativeSystem, contains('STEP 2:'));
+    // The writer's prompt and the brief, not the narrative call — item 191.
+    expect(narrativeSystem, contains('RETURN JSON with one field per section asked for'));
     expect(narrativeSystem, isNot(contains('today_properties FIELDS, ALL OF THEM')));
-    // The renderer is handed the SERVED call, on top of everything the
-    // judgment saw.
-    expect(narrativeUser, contains(judgmentUser),
-        reason: 'the renderer still needs the raw data for the Discussion');
-    expect(narrativeUser, contains("THE FORECASTER'S CALL"));
-    expect(narrativeUser,
-        contains('"rain_expected": "${run.servedCall.judgment.todayProperties.rainExpected}"'),
+    expect(written.sources['today'], 'llm');
+    // The writer is handed the BRIEF: the served call as the page shows it,
+    // a fraction of what the judgment saw — item 191.
+    expect(narrativeUser, contains('THE CALL'));
+    expect(narrativeUser, contains(run.servedCall.judgment.todayProperties.rainExpected),
         reason: "the served call's label, not the model's");
+    expect(narrativeUser.length, lessThan(judgmentUser.length ~/ 4));
   });
 
   test('a refused judgment still produces the run from code', () async {
@@ -1221,17 +1218,17 @@ void main() {
     );
     expect(llm.calls, hasLength(1), reason: 'the run never asks for the write-up');
 
-    expect(() => writeUpForecast(provider: llm, run: run), throwsA(isA<LlmResponseError>()));
+    expect(() => writeUpForecast(provider: llm, run: run, place: 'Kisumu'), throwsA(isA<LlmResponseError>()));
   });
 
-  test("a thin answer is refused and the day keeps code's write-up", () async {
-    // Upstream 2026-10-09: four mornings running a free gateway model answered
-    // one paragraph under none of the headings, and it replaced the floor and
-    // its Extended Outlook. The gate refuses it as LlmAnswerRefused, a
-    // LlmResponseError, which the app records like any refusal.
+  test("an answer with a figure of its own is refused and the day keeps code's write-up", () async {
+    // Upstream item 191 step (b): each section is audited alone; 30.7 is
+    // nowhere in the brief, so the one section answered fails and nothing
+    // passes. LlmAnswerRefused is a LlmResponseError, which the app records
+    // like any refusal.
     final llm = _StubProvider({
       ..._llmPayload,
-      'today_narrative': 'Afternoon showers and thunderstorms, with a high of 30.7°C.',
+      'today': 'Afternoon showers and thunderstorms, with a high of 30.7°C.',
     });
     final run = await generateForecast(
       client: mockClient(),
@@ -1248,19 +1245,19 @@ void main() {
     );
 
     expect(
-      () => writeUpForecast(provider: llm, run: run),
+      () => writeUpForecast(provider: llm, run: run, place: 'Kisumu'),
       throwsA(isA<LlmAnswerRefused>()
-          .having((e) => e.message, 'message', contains("missing ## Today's Forecast"))),
+          .having((e) => e.message, 'message', contains('today (figures not in the brief: 30.7°C'))),
     );
   });
 
-  test('the run names the headings its prompt asks for, in order', () async {
-    // The gate's list and the prompt's text are pinned together here, as
-    // upstream pins them in test_write_up_audit.py: the template is not built
-    // from the list because its text is pinned by hash.
+  test("the page is the model's section where it passed and code's where it did not", () async {
+    // The operator's rule, upstream 2026-10-09. The stub answers today only;
+    // the Extended Outlook stays code's, and the sign-off says which.
+    final llm = _StubProvider();
     final run = await generateForecast(
       client: mockClient(),
-      llm: _StubProvider(),
+      llm: llm,
       location: _location,
       today: DateTime.utc(2026, 8, 19),
       publicWebpageUrl: 'https://example.com/',
@@ -1272,18 +1269,13 @@ void main() {
       nowLocal: DateTime(2026, 8, 19, 18, 15),
     );
 
-    expect(run.narrativeHeadings, [
-      "## Today's Forecast",
-      '## Extended Outlook',
-      '## Severe Weather / Hazard Potential',
-      '## Detailed Discussion',
-      '### Synoptic Overview',
-      '### Forecaster Confidence Notes',
-    ]);
-    final lines = [for (final l in run.narrativePrompt.split('\n')) l.trim()];
-    final positions = [for (final h in run.narrativeHeadings) lines.indexOf(h)];
-    expect(positions.every((p) => p >= 0), isTrue, reason: 'every heading is a line of the prompt');
-    expect(positions, [...positions]..sort(), reason: 'in the prompt\'s order');
+    final written = await writeUpForecast(provider: llm, run: run, place: 'Kisumu');
+
+    expect(written.markdown, startsWith("## Today's Forecast\n\nShowers likely this afternoon, clearing overnight."));
+    expect(written.markdown, contains('## Extended Outlook\n\n'));
+    expect(written.sources, {'today': 'llm', 'extended': 'code'});
+    expect(written.markdown.trimRight(), endsWith("Today's Forecast by stub-model; the rest written by code."));
+    expect(written.model, 'stub-model');
   });
 
   test('guidance recency hours_old rounds half-to-even, matching Python', () async {
@@ -1455,3 +1447,4 @@ void main() {
     expect(llm.seenUserPrompt, contains('Unavailable - too few verified'));
   });
 }
+

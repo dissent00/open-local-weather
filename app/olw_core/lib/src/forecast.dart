@@ -16,7 +16,9 @@ import 'cycle.dart';
 import 'extract.dart';
 import 'floor.dart';
 import 'outlook.dart' as outlook;
-import 'write_up.dart' as write_up;
+import 'brief.dart';
+import 'py_text.dart';
+import 'writer.dart' as writer;
 import 'instability.dart';
 import 'llm/forecast_call.dart';
 import 'llm/prompt.dart';
@@ -159,7 +161,8 @@ class ForecastRun {
     required this.day7Predictions,
     required this.judgmentPrompt,
     required this.narrativePrompt,
-    required this.narrativeHeadings,
+    required this.floorInputs,
+    required this.briefEntry,
     required this.userPrompt,
     required this.degradations,
   });
@@ -211,9 +214,15 @@ class ForecastRun {
   final String judgmentPrompt;
   final String narrativePrompt;
 
-  /// The headings [narrativePrompt] asks for, which [writeUpForecast] holds
-  /// the answer to — the write-up gate, upstream 2026-10-09.
-  final List<String> narrativeHeadings;
+  /// The floor's inputs, kept for [writeUpForecast]: the sections code
+  /// writes stand wherever the model's section is missing or refused —
+  /// the operator's rule, upstream item 191 step (b).
+  final FloorInputs floorInputs;
+
+  /// The stored day as the brief's parser reads it: the served call, the
+  /// temperature display, the day table. Mirrors what `olw write-up` reads
+  /// off the entry.
+  final Map<String, Object?> briefEntry;
   final String userPrompt;
 }
 
@@ -663,8 +672,9 @@ Future<ForecastRun> generateForecast({
   // THE OUTLOOK IN CODE — upstream item 190 step 3: the day table for Day+1
   // to Day+7 from the same daily arrays the scored leads read, and the two
   // paragraphs over it. No met service here: the app has none yet.
+  final outlookDays = outlook.extendedDays(daily, blendInputs(), today);
   final outlookText = outlook.describeExtendedOutlook(outlook.OutlookInputs(
-    days: outlook.extendedDays(daily, blendInputs(), today),
+    days: outlookDays,
     todayHighC: mean([for (final p in day0) p.highC]),
     todayWindKmh: mean([for (final p in day0) p.windKmh]),
     served: {
@@ -845,7 +855,7 @@ Future<ForecastRun> generateForecast({
   // comparison here yet: the app holds yesterday's actuals, the run does
   // not, so the opener is the served call's rain character.
   final tp = served.judgment.todayProperties;
-  final floor = composeFloor(FloorInputs(
+  final floorInputs = FloorInputs(
     date: formatDate(today),
     tempHighLowDisplay: formatTempHighLow(tp.tempHighC, tp.tempLowC),
     issuedLocalTime: _localTimeOf(resolvedIssuance),
@@ -894,7 +904,8 @@ Future<ForecastRun> generateForecast({
             ),
             observedSoFar,
           ),
-  ));
+  );
+  final floor = composeFloor(floorInputs);
 
   final response = ForecastResponse(
     yesterdayVerification: verificationNotWritten,
@@ -938,37 +949,75 @@ Future<ForecastRun> generateForecast({
     ],
     judgmentPrompt: judgmentPrompt,
     narrativePrompt: narrativePrompt,
-    narrativeHeadings: write_up.narrativeHeadings(location.secondaryPoint),
+    floorInputs: floorInputs,
+    briefEntry: {
+      'served_call': served.judgment.toJson(),
+      'temp_high_low_display': formatTempHighLow(tp.tempHighC, tp.tempLowC),
+      'extended_days': [for (final d in outlookDays) d.toJson()],
+      'overview_comparison': null,
+    },
     userPrompt: userPrompt,
   );
 }
 
-/// The write-up, asked AFTER the caller has stored [run] — upstream item 189.
+/// What the writer produced: the page, who wrote each section, the model.
+class WriteUp {
+  const WriteUp({required this.markdown, required this.sources, required this.model});
+
+  final String markdown;
+  final Map<String, String> sources;
+  final String model;
+}
+
+/// The write-up, asked AFTER the caller has stored [run] — upstream item 189,
+/// written from the brief section by section — item 191 step (b).
 ///
-/// The narrative call is handed the served call, so the prose is written
-/// around exactly what the reader was shown. A thrown [LlmResponseError] is
-/// the caller's to record: the forecast is already stored, and the day keeps
-/// code's write-up.
-///
-/// THE GATE, upstream 2026-10-09: an answer missing the headings it was
-/// asked for is refused as [LlmAnswerRefused], so a thin answer never
-/// replaces the floor and its Extended Outlook. The app has one provider and
-/// no chain to fall through; the pipeline's chain hands the ask to its next
-/// link.
-Future<NarrativeResponse> writeUpForecast({
+/// The brief is parsed from the run's own user prompt and the stored call,
+/// as `olw write-up` parses them from the archive; the writer answers one
+/// Markdown string per section; each answered field is audited alone; the
+/// page is the model's section where it passed and code's where code
+/// writes one. An answer with no passing section is refused as
+/// [LlmAnswerRefused], which the caller records like any refusal; the app
+/// has one provider and no chain to fall through.
+Future<WriteUp> writeUpForecast({
   required LlmProvider provider,
   required ForecastRun run,
+  required String place,
+  List<String> enabledSections = defaultBriefSections,
+  String? metServiceName,
+  String? metServiceModelId,
 }) async {
-  final narrative = await provider.generate(
-    systemPrompt: run.narrativePrompt,
-    userPrompt: buildNarrativeUserPrompt(run.userPrompt, run.servedCall.judgment.toJson()),
-    shape: narrativeShape,
+  final inputs = BriefInputs.fromUserPrompt(
+    run.userPrompt, run.briefEntry,
+    secondaryName: run.floorInputs.secondaryName,
+    metServiceName: metServiceName, metServiceModelId: metServiceModelId,
   );
-  final defects = write_up.auditWriteUp(narrative.todayNarrative, run.narrativeHeadings);
-  if (defects.isNotEmpty) {
-    throw LlmAnswerRefused('the answer is not a write-up: ${defects.join('; ')}');
+  final sections = writer.sectionsToAsk(enabledSections, inputs);
+  if (sections.isEmpty) throw LlmAnswerRefused('no section to write');
+  final brief = renderBrief(inputs, tier: tierFull, sections: sections);
+  final systemPrompt = writer.buildWriterPrompt(
+    sections, place: place, secondaryName: run.floorInputs.secondaryName, metServiceName: metServiceName,
+  );
+  final answer = await provider.generate(systemPrompt: systemPrompt, userPrompt: brief, shape: writeUpShape);
+
+  final answered = [for (final s in sections) if (stripLikePython(answer.section(s) ?? '').isNotEmpty) s];
+  final verdicts = {for (final s in answered) s: writer.auditSection(s, answer.section(s)!, brief, inputs)};
+  final passed = [for (final s in answered) if (verdicts[s]!.isEmpty) s];
+  if (passed.isEmpty) {
+    final refused = [for (final s in answered) '$s (${verdicts[s]!.first})'];
+    throw LlmAnswerRefused('no section passed the audit: ${refused.isEmpty ? 'nothing answered' : refused.join('; ')}');
   }
-  return narrative;
+
+  final (markdown, sources) = writer.composeWriteUp(
+    {for (final s in sections) s: answer.section(s)},
+    verdicts,
+    floorSectionTexts(run.floorInputs),
+    sections,
+    secondaryName: run.floorInputs.secondaryName,
+    modelName: writer.modelDisplayName(provider.model),
+    signOffLine: signOff(run.floorInputs),
+  );
+  return WriteUp(markdown: markdown, sources: sources, model: provider.model);
 }
 
 /// The rain onset's sun-relative word for today, or null without a sun —

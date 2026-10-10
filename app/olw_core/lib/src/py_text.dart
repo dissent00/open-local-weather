@@ -64,3 +64,13 @@ String _strip(String line, {required bool left, required bool right}) {
 int lengthLikePython(String text) => text.runes.length;
 
 String headLikePython(String text, int n) => String.fromCharCodes(text.runes.take(n));
+
+/// Python compares strings by code point; Dart's `compareTo` by UTF-16 unit.
+int comparePython(String a, String b) {
+  final ra = a.runes.toList();
+  final rb = b.runes.toList();
+  for (var k = 0; k < ra.length && k < rb.length; k++) {
+    if (ra[k] != rb[k]) return ra[k] - rb[k];
+  }
+  return ra.length - rb.length;
+}

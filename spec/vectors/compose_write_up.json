@@ -1,0 +1,138 @@
+{
+  "vector_format_version": 1,
+  "function": "compose_write_up",
+  "description": "The page under the operator's rule: the model's section where it answered and passed, code's where code writes one, absent otherwise; the discussion heading once over its two subsections; the sign-off naming what the model wrote.",
+  "cases": [
+    {
+      "name": "the model's today, code's rest",
+      "input": {
+        "answers": {
+          "today": "Model's today.",
+          "extended": "Model's week with 99 of them."
+        },
+        "verdicts": {
+          "today": [],
+          "extended": [
+            "figures not in the brief: 99"
+          ]
+        },
+        "code_sections": {
+          "today": "Code's today.",
+          "extended": "Code's week.",
+          "secondary": "Code's gulf."
+        },
+        "enabled": [
+          "today",
+          "extended",
+          "secondary"
+        ],
+        "secondary_name": "Winam Gulf",
+        "model_name": "Gemini 3.6 Flash",
+        "sign_off_line": "Written by code; a discussion follows when a model answers."
+      },
+      "expected": {
+        "markdown": "## Today's Forecast\n\nModel's today.\n\n## Extended Outlook\n\nCode's week.\n\n## Winam Gulf \u2014 Conditions for Boaters\n\nCode's gulf.\n\nToday's Forecast by Gemini 3.6 Flash; the rest written by code.\n",
+        "sources": {
+          "today": "llm",
+          "extended": "code",
+          "secondary": "code"
+        }
+      }
+    },
+    {
+      "name": "the discussion opens once",
+      "input": {
+        "answers": {
+          "synoptic": "Lower pressure lies north.",
+          "confidence": "The record is settled."
+        },
+        "verdicts": {
+          "synoptic": [],
+          "confidence": []
+        },
+        "code_sections": {},
+        "enabled": [
+          "synoptic",
+          "confidence"
+        ],
+        "secondary_name": null,
+        "model_name": "Gemini 3.6 Flash",
+        "sign_off_line": "Written by code; a discussion follows when a model answers."
+      },
+      "expected": {
+        "markdown": "## Detailed Discussion\n\n### Synoptic Overview\n\nLower pressure lies north.\n\n### Forecaster Confidence Notes\n\nThe record is settled.\n\nSynoptic Overview and Forecaster Confidence Notes by Gemini 3.6 Flash; the rest written by code.\n",
+        "sources": {
+          "synoptic": "llm",
+          "confidence": "llm"
+        }
+      }
+    },
+    {
+      "name": "nothing from the model keeps the floor's sign-off",
+      "input": {
+        "answers": {},
+        "verdicts": {},
+        "code_sections": {
+          "today": "Code's today."
+        },
+        "enabled": [
+          "today",
+          "severe"
+        ],
+        "secondary_name": null,
+        "model_name": "Gemini 3.6 Flash",
+        "sign_off_line": "Written by code; a discussion follows when a model answers."
+      },
+      "expected": {
+        "markdown": "## Today's Forecast\n\nCode's today.\n\nWritten by code; a discussion follows when a model answers.\n",
+        "sources": {
+          "today": "code"
+        }
+      }
+    },
+    {
+      "name": "every section the model's",
+      "input": {
+        "answers": {
+          "today": "Model's today.",
+          "extended": "Model's extended.",
+          "severe": "Model's severe.",
+          "secondary": "Model's secondary.",
+          "synoptic": "Model's synoptic.",
+          "confidence": "Model's confidence."
+        },
+        "verdicts": {
+          "today": [],
+          "extended": [],
+          "severe": [],
+          "secondary": [],
+          "synoptic": [],
+          "confidence": []
+        },
+        "code_sections": {},
+        "enabled": [
+          "today",
+          "extended",
+          "severe",
+          "secondary",
+          "synoptic",
+          "confidence"
+        ],
+        "secondary_name": "Winam Gulf",
+        "model_name": "dots-3-note-preview",
+        "sign_off_line": "Written by code; a discussion follows when a model answers."
+      },
+      "expected": {
+        "markdown": "## Today's Forecast\n\nModel's today.\n\n## Extended Outlook\n\nModel's extended.\n\n## Severe Weather / Hazard Potential\n\nModel's severe.\n\n## Winam Gulf \u2014 Conditions for Boaters\n\nModel's secondary.\n\n## Detailed Discussion\n\n### Synoptic Overview\n\nModel's synoptic.\n\n### Forecaster Confidence Notes\n\nModel's confidence.\n\nToday's Forecast, Extended Outlook, Severe Weather / Hazard Potential, Winam Gulf \u2014 Conditions for Boaters, Synoptic Overview and Forecaster Confidence Notes by dots-3-note-preview; the rest written by code.\n",
+        "sources": {
+          "today": "llm",
+          "extended": "llm",
+          "severe": "llm",
+          "secondary": "llm",
+          "synoptic": "llm",
+          "confidence": "llm"
+        }
+      }
+    }
+  ]
+}

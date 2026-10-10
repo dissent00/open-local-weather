@@ -1,0 +1,42 @@
+{
+  "vector_format_version": 1,
+  "function": "model_display_name",
+  "description": "The sign-off's name for a model id.",
+  "cases": [
+    {
+      "name": "gemini-3.6-flash",
+      "input": {
+        "model_id": "gemini-3.6-flash"
+      },
+      "expected": "Gemini 3.6 Flash"
+    },
+    {
+      "name": "gemini-3.8-flash",
+      "input": {
+        "model_id": "gemini-3.8-flash"
+      },
+      "expected": "Gemini 3.8 Flash"
+    },
+    {
+      "name": "dots-studio/dots-3-note-preview:free",
+      "input": {
+        "model_id": "dots-studio/dots-3-note-preview:free"
+      },
+      "expected": "dots-3-note-preview"
+    },
+    {
+      "name": "nex-agi/nex-n2.5-pro:free",
+      "input": {
+        "model_id": "nex-agi/nex-n2.5-pro:free"
+      },
+      "expected": "nex-n2.5-pro"
+    },
+    {
+      "name": "llama3",
+      "input": {
+        "model_id": "llama3"
+      },
+      "expected": "llama3"
+    }
+  ]
+}

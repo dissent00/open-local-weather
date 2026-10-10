@@ -1248,8 +1248,13 @@ def test_every_vector_file_is_exercised():
         "floor.json",
         "extended_days.json",
         "extended_outlook.json",
-        # The write-up gate, 2026-10-09.
-        "write_up_audit.json",
+        # The writer, item 191 step (b).
+        "llm_schema_write_up.json",
+        "writer_prompt.json",
+        "sections_to_ask.json",
+        "audit_section.json",
+        "compose_write_up.json",
+        "model_display_name.json",
         # The brief, item 191.
         "brief_inputs.json",
         "brief.json",
@@ -1527,6 +1532,8 @@ NOT_KEYWORD_CALLS = frozenset({
     "extended_outlook.json",
     # A stored day's JSON beside the prompt text — item 191.
     "brief_inputs.json",
+    # A model class by name — item 191 step (b).
+    "llm_schema_write_up.json",
 })
 
 # Input keys that are not arguments — the same exemption the Dart guard has.
@@ -1727,33 +1734,56 @@ def test_vectors_verification_summary():
         assert got == case["expected"], case["name"]
 
 
-def test_vectors_write_up_audit():
-    """The write-up gate, 2026-10-09: the headings an answer was asked for,
-    present, in order and with a body each, or the defects in that order."""
-    from openlocalweather.write_up import audit_write_up
+def test_vectors_llm_schema_write_up():
+    """ROADMAP item 191 step (b) — the writer's answer in both dialects."""
+    from openlocalweather.llm.schema import WriteUpResponse, to_gemini_schema, to_strict_json_schema
 
-    for case in load("write_up_audit.json")["cases"]:
-        assert audit_write_up(**case["input"]) == case["expected"], case["name"]
+    cases = {c["name"]: c for c in load("llm_schema_write_up.json")["cases"]}
+    assert cases["gemini"]["input"]["model"] == "WriteUpResponse"
+    assert to_gemini_schema(WriteUpResponse) == cases["gemini"]["expected"]
+    assert to_strict_json_schema(WriteUpResponse) == cases["strict"]["expected"]
 
 
-def test_vectors_brief_inputs():
-    """ROADMAP item 191 — the brief's parser over an archived prompt."""
+def test_vectors_writer_prompt():
+    from openlocalweather.writer import build_writer_prompt
+
+    for case in load("writer_prompt.json")["cases"]:
+        i = dict(case["input"])
+        assert build_writer_prompt(i.pop("sections"), **i) == case["expected"], case["name"]
+
+
+def test_vectors_sections_to_ask():
     from openlocalweather.brief import BriefInputs
+    from openlocalweather.writer import sections_to_ask
 
-    for case in load("brief_inputs.json")["cases"]:
-        got = BriefInputs.from_user_prompt(
-            case["input"]["user_prompt"], case["input"]["entry"],
-            secondary_name=case["input"]["secondary_name"], met_service_name=case["input"]["met_service_name"],
-            met_service_model_id=case["input"]["met_service_model_id"],
-        )
-        assert got.to_json() == case["expected"], case["name"]
+    for case in load("sections_to_ask.json")["cases"]:
+        i = case["input"]
+        assert sections_to_ask(i["enabled"], BriefInputs.from_json(i["inputs"])) == case["expected"], case["name"]
 
 
-def test_vectors_brief():
-    """ROADMAP item 191 — the brief's text per tier and section set."""
-    from openlocalweather.brief import BriefInputs, render_brief
+def test_vectors_audit_section():
+    from openlocalweather.brief import BriefInputs
+    from openlocalweather.writer import audit_section
 
-    for case in load("brief.json")["cases"]:
-        i = BriefInputs.from_json(case["input"]["inputs"])
-        got = render_brief(i, tier=case["input"]["tier"], sections=tuple(case["input"]["sections"]))
+    for case in load("audit_section.json")["cases"]:
+        i = case["input"]
+        got = audit_section(i["section"], i["text"], i["brief"], BriefInputs.from_json(i["inputs"]))
         assert got == case["expected"], case["name"]
+
+
+def test_vectors_compose_write_up():
+    from openlocalweather.writer import compose_write_up
+
+    for case in load("compose_write_up.json")["cases"]:
+        i = dict(case["input"])
+        markdown, sources = compose_write_up(
+            i.pop("answers"), i.pop("verdicts"), i.pop("code_sections"), i.pop("enabled"), **i
+        )
+        assert {"markdown": markdown, "sources": sources} == case["expected"], case["name"]
+
+
+def test_vectors_model_display_name():
+    from openlocalweather.writer import model_display_name
+
+    for case in load("model_display_name.json")["cases"]:
+        assert model_display_name(**case["input"]) == case["expected"], case["name"]

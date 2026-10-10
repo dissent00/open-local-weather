@@ -146,7 +146,12 @@ absent values are `null`, never omitted keys.
 | `floor.json` | `compose_floor` | Code's write-up from the day's stored values (item 190): the comparison or the served call's rain character, the sky and wind from the anchors, UV and the worst station, the trend and the served leads, the boaters' section, the two sign-offs. |
 | `extended_days.json` | `extended_days` | 1 |
 | `extended_outlook.json` | `describe_extended_outlook` | 8 |
-| `write_up_audit.json` | `audit_write_up` | The write-up gate (2026-10-09): the headings an answer was asked for, present, in order and with a body each, or the defects named in that order. A parent heading holding only its subsections is not empty; headings not asked for are ignored. |
+| `llm_schema_write_up.json` | `to_gemini_schema`, `to_strict_json_schema` | The writer's answer in both provider dialects (item 191 step (b)): one Markdown string per section, each optional. |
+| `writer_prompt.json` | `build_writer_prompt` | The writer's system prompt for a section set: the job, the output contract with the word caps, the rules checked in code, one paragraph per section asked for. |
+| `sections_to_ask.json` | `sections_to_ask` | The enabled sections that apply today: severe only while the convective flag is live, the secondary point only where one is named. |
+| `audit_section.json` | `audit_section` | The per-section audit: a heading, the word cap, figures not in the brief by unit, a locked phrase used in part, a model id, a model name or a pipeline word in a reader's section, a shape defect. |
+| `compose_write_up.json` | `compose_write_up` | The page under the operator's rule: the model's section where it passed, code's where code writes one, absent otherwise; the sign-off naming what the model wrote. |
+| `model_display_name.json` | `model_display_name` | The sign-off's name for a model id. |
 | `brief_inputs.json` | `BriefInputs.from_user_prompt` | The writer's brief parsed from an archived user prompt and the stored day (item 191): each block the brief reads, the review's established findings only, the basin pressure reduced to a range and a three-day change. |
 | `brief.json` | `render_brief` | The brief's text for the enabled sections at a tier (item 191): the blocks those sections read, in the page's order, model ids as the page's names, whole numbers without a point. |
 | `sustained_wind_gap.json` | `sustained_wind_gap` | 7 |

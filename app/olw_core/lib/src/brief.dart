@@ -654,7 +654,7 @@ String? _reviewBlock(BriefInputs i, String tier) {
     final ka = a.$2['kind'] == 'ranking' ? 0 : 1;
     final kb = b.$2['kind'] == 'ranking' ? 0 : 1;
     if (ka != kb) return ka - kb;
-    final c = _comparePython('${a.$2['claim']}', '${b.$2['claim']}');
+    final c = comparePython('${a.$2['claim']}', '${b.$2['claim']}');
     return c != 0 ? c : a.$1 - b.$1;
   });
   final ranked = indexed.take(limit);
@@ -846,16 +846,6 @@ String _shortNames(BriefInputs i, String text) {
     out = out.replaceAll(i.metServiceModelId!, i.metServiceName!);
   }
   return out;
-}
-
-/// Python compares strings by code point; Dart's `compareTo` by UTF-16 unit.
-int _comparePython(String a, String b) {
-  final ra = a.runes.toList();
-  final rb = b.runes.toList();
-  for (var k = 0; k < ra.length && k < rb.length; k++) {
-    if (ra[k] != rb[k]) return ra[k] - rb[k];
-  }
-  return ra.length - rb.length;
 }
 
 Map<String, Object?>? _map(Object? value) => value is Map ? value.cast<String, Object?>() : null;

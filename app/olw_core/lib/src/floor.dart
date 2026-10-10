@@ -149,23 +149,33 @@ class FloorInputs {
 
 /// The floor as Markdown with the write-up's headings. Mirrors `compose_floor`.
 String composeFloor(FloorInputs i) {
-  final sections = <String>[];
+  final sections = [for (final (heading, text) in _floorSectionRows(i)) if (text.isNotEmpty) '$heading\n\n$text'];
+  sections.add(signOff(i));
+  return '${sections.join('\n\n')}\n';
+}
 
-  final today = _sentences(_todayParts(i));
-  if (today.isNotEmpty) sections.add('$todayHeading\n\n$today');
+/// The texts code writes, by section id — mirrors `floor_section_texts`,
+/// for the writer's composition (upstream item 191 step (b)).
+Map<String, String> floorSectionTexts(FloorInputs i) {
+  final rows = _floorSectionRows(i);
+  return {
+    for (final (id, (_, text)) in [('today', rows[0]), ('extended', rows[1]), ('secondary', rows[2])])
+      if (text.isNotEmpty) id: text,
+  };
+}
 
+/// The stamp and who wrote it — mirrors `sign_off`.
+String signOff(FloorInputs i) => _sentences(_signOffParts(i));
+
+List<(String, String)> _floorSectionRows(FloorInputs i) {
   final outlook = i.extendedOutlook?.trim();
   final extended = outlook != null && outlook.isNotEmpty ? outlook : _sentences(_extendedParts(i));
-  if (extended.isNotEmpty) sections.add('$extendedHeading\n\n$extended');
-
   final boaters = i.secondaryName == null ? '' : _sentences(_boatersParts(i));
-  if (boaters.isNotEmpty) {
-    sections.add('## ${i.secondaryName} — Conditions for Boaters\n\n$boaters');
-  }
-
-  sections.add(_sentences(_signOffParts(i)));
-
-  return '${sections.join('\n\n')}\n';
+  return [
+    (todayHeading, _sentences(_todayParts(i))),
+    (extendedHeading, extended),
+    ('## ${i.secondaryName} — Conditions for Boaters', boaters),
+  ];
 }
 
 String _sentences(List<String?> parts) =>

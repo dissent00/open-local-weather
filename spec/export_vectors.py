@@ -1901,6 +1901,19 @@ def export_llm_schemas() -> None:
             "expected": to_gemini_schema(GeminiNarrativeResponse),
         },
     ]
+    from openlocalweather.llm.schema import WriteUpResponse
+
+    write(
+        "llm_schema_write_up.json",
+        "to_gemini_schema(WriteUpResponse) | to_strict_json_schema(WriteUpResponse)",
+        "The writer's answer — ROADMAP item 191 step (b): one Markdown string per section, each "
+        "optional, in both provider dialects. A port declares these by hand; this pins them.",
+        [
+            {"name": "gemini", "input": {"model": "WriteUpResponse"}, "expected": to_gemini_schema(WriteUpResponse)},
+            {"name": "strict", "input": {"model": "WriteUpResponse"}, "expected": to_strict_json_schema(WriteUpResponse)},
+        ],
+    )
+
     write(
         "llm_schema_split.json",
         "to_gemini_schema(GeminiJudgmentResponse | GeminiNarrativeResponse)",
@@ -7091,61 +7104,118 @@ def export_solar() -> None:
     )
 
 
-def export_write_up_audit() -> None:
-    """The write-up gate — 2026-10-09, the first line of ROADMAP item 191's
-    audit shipped early. An answer missing the headings it was asked for is
-    not a write-up: the record's own shapes (Gemini's 2026-10-07 write-up,
-    the gateway's 2026-10-09 paragraph) and hand-made defects of each kind.
+def export_writer() -> None:
+    """The writer — ROADMAP item 191 step (b). The prompt per section set,
+    which sections apply today, the per-section audit over 2026-10-07's
+    brief, the composition under the operator's rule, and the sign-off's
+    model names.
     """
-    from openlocalweather.write_up import audit_write_up
+    from openlocalweather.brief import SECTIONS, BriefInputs, render_brief
+    from openlocalweather.writer import (
+        audit_section, build_writer_prompt, compose_write_up, model_display_name, sections_to_ask,
+    )
 
-    headings = [
-        "## Today's Forecast", "## Extended Outlook", "## Severe Weather / Hazard Potential",
-        "## Winam Gulf — Conditions for Boaters", "## Detailed Discussion",
-        "### Synoptic Overview", "### Forecaster Confidence Notes",
-    ]
-    old = [h.replace("Winam Gulf", "Lake Victoria") for h in headings]
     fixtures = Path(__file__).resolve().parent.parent / "tests" / "fixtures"
+    prompt = (fixtures / "user_prompt_2026-10-07.txt").read_text()
+    entry = json.loads((fixtures / "brief_entry_2026-10-07.json").read_text())
+    inputs = BriefInputs.from_user_prompt(prompt, entry, secondary_name="Winam Gulf", met_service_name="Kenya Met", met_service_model_id="kenya_met")
+    brief = render_brief(inputs, sections=SECTIONS)
 
-    def text(*sections):
-        return "\n".join(f"{heading}\n{body}" for heading, body in sections)
-
-    complete = text(*[(h, "Written.") for h in headings])
-
-    def case(name, markdown, asked=headings):
-        return {
-            "name": name,
-            "input": {"markdown": markdown, "headings": list(asked)},
-            "expected": audit_write_up(markdown, list(asked)),
-        }
+    def prompt_case(name, sections, **kw):
+        kw = {"place": "Kisumu", "secondary_name": "Winam Gulf", "met_service_name": "Kenya Met", **kw}
+        return {"name": name, "input": {"sections": list(sections), **kw}, "expected": build_writer_prompt(list(sections), **kw)}
 
     write(
-        "write_up_audit.json",
-        "audit_write_up",
-        "The write-up gate (2026-10-09): the headings an answer was asked for, present, in order "
-        "and with a body each, or the defects named in that order; a parent heading holding only "
-        "its subsections is not empty, and headings not asked for are ignored.",
+        "writer_prompt.json",
+        "build_writer_prompt",
+        "The writer's system prompt for a section set: the job, the output contract with the word caps, "
+        "the rules checked in code, one paragraph per section asked for.",
         [
-            case("Gemini's write-up of 2026-10-07 passes", (fixtures / "write_up_2026-10-07.md").read_text()),
-            case("the gateway's text of 2026-10-09 carries no heading", (fixtures / "write_up_2026-10-09.md").read_text()),
-            case("a complete answer passes", complete),
-            case("a parent heading holding only its subsections is not empty",
-                 complete.replace("## Detailed Discussion\nWritten.", "## Detailed Discussion")),
-            case("a heading the prompt did not ask for is ignored", "## Overview\nGone since item 159.\n" + complete),
-            case("a heading missing", complete.replace("## Extended Outlook\nWritten.", "")),
-            case("a heading out of order",
-                 text(("## Extended Outlook", "Written."), ("## Today's Forecast", "Written."),
-                      *[(h, "Written.") for h in headings[2:]])),
-            case("a heading with nothing under it",
-                 complete.replace("## Severe Weather / Hazard Potential\nWritten.", "## Severe Weather / Hazard Potential\n")),
-            case("a heading that is not a line of its own", "## Today's ForecastnShowers.n## Extended Outlooknthe week."),
-            case("the headings alone", "\n".join(headings)),
-            case("trailing whitespace and CRLF still count",
-                 complete.replace("## Today's Forecast\n", "## Today's Forecast  \r\n")),
-            case("the record before the Gulf was renamed, under its own list",
-                 text(*[(h, "Written.") for h in old]), old),
-            case("the same text under today's list", text(*[(h, "Written.") for h in old])),
+            prompt_case("every section", SECTIONS),
+            prompt_case("today and the outlook", ("today", "extended")),
+            prompt_case("no secondary point and no met service", ("today", "severe", "confidence"), secondary_name=None, met_service_name=None),
         ],
+    )
+
+    def ask_case(name, enabled, **changes):
+        i = BriefInputs.from_json({**inputs.to_json(), **changes})
+        return {"name": name, "input": {"enabled": list(enabled), "inputs": i.to_json()}, "expected": sections_to_ask(list(enabled), i)}
+
+    write(
+        "sections_to_ask.json",
+        "sections_to_ask",
+        "The enabled sections that apply today: severe only while the convective flag is live, the "
+        "secondary point only where one is named, in the page's order.",
+        [
+            ask_case("every section, thunder live, the Gulf named", SECTIONS),
+            ask_case("no thunder today", SECTIONS, instability={"convective": False}),
+            ask_case("no secondary point", SECTIONS, secondary_name=None),
+            ask_case("the floor's four", ("today", "extended", "severe", "secondary")),
+            ask_case("out of order in config, in order out", ("confidence", "today")),
+        ],
+    )
+
+    absent = next(f"{v / 10:.1f}" for v in range(201, 400) if v / 10 not in __import__("openlocalweather.writer", fromlist=["allowed_numbers"]).allowed_numbers(brief)["c"])
+
+    def audit_case(name, section, text):
+        return {"name": name, "input": {"section": section, "text": text, "brief": brief, "inputs": inputs.to_json()},
+                "expected": audit_section(section, text, brief, inputs)}
+
+    write(
+        "audit_section.json",
+        "audit_section",
+        "The per-section audit: a heading, the word cap, figures not in the brief by unit, a locked "
+        "phrase used in part, a model id, a model name or a pipeline word in a reader's section, a shape "
+        "defect — each a short clause, in that order.",
+        [
+            audit_case("the brief's figures and their conversions pass", "today", "Showers from 13:00, with a high of 31°C / 88°F and gusts to 39 km/h (21 kt)."),
+            audit_case("a figure of its own", "today", f"A high near {absent}°C is likely."),
+            audit_case("rain in both units", "today", "Rainfall near 2.2 mm (0.09 in) with a 82% chance."),
+            audit_case("a table's bare figure written with its unit", "severe", "UKMO builds 3440 J/kg by 17:00."),
+            audit_case("a conversion never lands in its source unit", "today", "Gusts to 21 km/h."),
+            audit_case("the wind phrase in part", "today", "Winds to 39 km/h (21 kt), turning southwest by midday and south into the evening."),
+            audit_case("the thunder phrase whole", "today", "Thunder possible from midday, peaking this afternoon. Dry otherwise."),
+            audit_case("a model named in today", "today", "GFS runs warm today."),
+            audit_case("a model named in the outlook, as code's own does", "extended", "Only GFS, ECMWF and ICON reach past Sunday."),
+            audit_case("a model id", "confidence", "The gfs_seamless model is warm."),
+            audit_case("a pipeline word", "today", "The calibrated gust is 39 km/h (21 kt)."),
+            audit_case("a heading", "today", "## Today\nDry."),
+            audit_case("empty", "today", ""),
+            audit_case("over the cap", "secondary", " ".join(["calm"] * 96)),
+            audit_case("a shape defect", "today", "Showers, with , and thunder."),
+            audit_case("in as a word, not inches", "today", "Showers from 13:00 in the afternoon, 2 in all."),
+        ],
+    )
+
+    def compose_case(name, answers, verdicts, code, enabled, **kw):
+        kw = {"secondary_name": "Winam Gulf", "model_name": "Gemini 3.6 Flash", "sign_off_line": "Written by code; a discussion follows when a model answers.", **kw}
+        markdown, sources = compose_write_up(answers, verdicts, code, list(enabled), **kw)
+        return {"name": name, "input": {"answers": answers, "verdicts": verdicts, "code_sections": code, "enabled": list(enabled), **kw},
+                "expected": {"markdown": markdown, "sources": sources}}
+
+    write(
+        "compose_write_up.json",
+        "compose_write_up",
+        "The page under the operator's rule: the model's section where it answered and passed, code's "
+        "where code writes one, absent otherwise; the discussion heading once over its two subsections; "
+        "the sign-off naming what the model wrote.",
+        [
+            compose_case("the model's today, code's rest", {"today": "Model's today.", "extended": "Model's week with 99 of them."},
+                         {"today": [], "extended": ["figures not in the brief: 99"]},
+                         {"today": "Code's today.", "extended": "Code's week.", "secondary": "Code's gulf."}, ("today", "extended", "secondary")),
+            compose_case("the discussion opens once", {"synoptic": "Lower pressure lies north.", "confidence": "The record is settled."},
+                         {"synoptic": [], "confidence": []}, {}, ("synoptic", "confidence"), secondary_name=None),
+            compose_case("nothing from the model keeps the floor's sign-off", {}, {}, {"today": "Code's today."}, ("today", "severe"), secondary_name=None),
+            compose_case("every section the model's", {s: f"Model's {s}." for s in SECTIONS}, {s: [] for s in SECTIONS}, {}, SECTIONS, model_name="dots-3-note-preview"),
+        ],
+    )
+
+    write(
+        "model_display_name.json",
+        "model_display_name",
+        "The sign-off's name for a model id.",
+        [{"name": m, "input": {"model_id": m}, "expected": model_display_name(m)}
+         for m in ("gemini-3.6-flash", "gemini-3.8-flash", "dots-studio/dots-3-note-preview:free", "nex-agi/nex-n2.5-pro:free", "llama3")],
     )
 
 
@@ -7273,7 +7343,7 @@ def main() -> None:
     export_code_call()
     export_floor()
     export_extended_outlook()
-    export_write_up_audit()
+    export_writer()
     export_brief()
     print("\nDone. Commit the result — the vectors are the contract.")
 

@@ -27349,9 +27349,17 @@ knots: a unit's set is every brief figure plus the conversions INTO that
 unit, so a conversion never lands in Celsius, km/h or millimetres. What it
 cannot do is tell one quantity's figure from another's: 19 of 26 mutated
 figures caught, the misses all values present in the brief as some other
-figure (35 as ICON's 34.6 km/h rounded, 37 as a PM10 reading). The Dart
-port, the app's `writeUpForecast` on the brief and the vectors follow in
-(b2); the heading gate of 10-09 stays until then.
+figure (35 as ICON's 34.6 km/h rounded, 37 as a PM10 reading).
+
+**(b2), the same day: the Dart port.** `olw_core/writer.dart` mirrors
+`writer.py`; `WriteUpResponse` and its two schema dialects are declared
+by hand and pinned by `llm_schema_write_up.json`; the run carries its
+`floorInputs` and a `briefEntry`, and `writeUpForecast` parses the brief
+from the run's own prompt, audits each answered field and composes the
+page, returning the Markdown, the sources and the model. Pinned by
+`writer_prompt.json`, `sections_to_ask.json`, `audit_section.json`,
+`compose_write_up.json` and `model_display_name.json`. The heading gate
+of 10-09 is retired on both sides: per-section fields made it redundant.
 
 **The gate — the audit's first line, shipped early 2026-10-09.** Four
 mornings running (10-05, 10-06, 10-08, 10-09) the gateway's free model

@@ -1697,17 +1697,74 @@ void main() {
     });
   });
 
-  group('the write-up gate', () {
-    // Upstream 2026-10-09: an answer missing the headings it was asked for
-    // is not a write-up; the defects, named in the prompt's order.
-    test('write_up_audit', () {
-      for (final c in casesOf('write_up_audit.json')) {
-        final input = c['input'] as Map<String, Object?>;
-        final got = auditWriteUp(
-          input['markdown'] as String,
-          List<String>.from(input['headings'] as List),
+  group('the writer', () {
+    // Upstream item 191 step (b): the prompt per section set, which sections
+    // apply today, the per-section audit, the composition, the sign-off's
+    // model names, and the answer's two schema dialects.
+    test('llm_schema_write_up', () {
+      final cases = {for (final c in casesOf('llm_schema_write_up.json')) c['name'] as String: c};
+      expect((cases['gemini']!['input'] as Map)['model'], 'WriteUpResponse');
+      expect((cases['strict']!['input'] as Map)['model'], 'WriteUpResponse');
+      expect(geminiWriteUpSchema(), equals(cases['gemini']!['expected']));
+      expect(strictWriteUpSchema(), equals(cases['strict']!['expected']));
+    });
+
+    test('writer_prompt', () {
+      for (final c in casesOf('writer_prompt.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final got = buildWriterPrompt(
+          List<String>.from(i['sections'] as List),
+          place: i['place'] as String,
+          secondaryName: i['secondary_name'] as String?,
+          metServiceName: i['met_service_name'] as String?,
         );
         expect(got, c['expected'], reason: c['name'] as String);
+      }
+    });
+
+    test('sections_to_ask', () {
+      for (final c in casesOf('sections_to_ask.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final got = sectionsToAsk(
+          List<String>.from(i['enabled'] as List),
+          BriefInputs.fromJson((i['inputs'] as Map).cast<String, Object?>()),
+        );
+        expect(got, c['expected'], reason: c['name'] as String);
+      }
+    });
+
+    test('audit_section', () {
+      for (final c in casesOf('audit_section.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final got = auditSection(
+          i['section'] as String,
+          i['text'] as String,
+          i['brief'] as String,
+          BriefInputs.fromJson((i['inputs'] as Map).cast<String, Object?>()),
+        );
+        expect(got, c['expected'], reason: c['name'] as String);
+      }
+    });
+
+    test('compose_write_up', () {
+      for (final c in casesOf('compose_write_up.json')) {
+        final i = c['input'] as Map<String, Object?>;
+        final (markdown, sources) = composeWriteUp(
+          (i['answers'] as Map).cast<String, String?>(),
+          {for (final e in (i['verdicts'] as Map).entries) e.key as String: List<String>.from(e.value as List)},
+          (i['code_sections'] as Map).cast<String, String>(),
+          List<String>.from(i['enabled'] as List),
+          secondaryName: i['secondary_name'] as String?,
+          modelName: i['model_name'] as String?,
+          signOffLine: i['sign_off_line'] as String,
+        );
+        expect({'markdown': markdown, 'sources': sources}, c['expected'], reason: c['name'] as String);
+      }
+    });
+
+    test('model_display_name', () {
+      for (final c in casesOf('model_display_name.json')) {
+        expect(modelDisplayName((c['input'] as Map)['model_id'] as String), c['expected'], reason: c['name'] as String);
       }
     });
   });
@@ -2400,7 +2457,12 @@ void main() {
       'floor.json',
       'extended_days.json',
       'extended_outlook.json',
-      'write_up_audit.json',
+      'llm_schema_write_up.json',
+      'writer_prompt.json',
+      'sections_to_ask.json',
+      'audit_section.json',
+      'compose_write_up.json',
+      'model_display_name.json',
       'brief_inputs.json',
       'brief.json',
       'rain_label.json',

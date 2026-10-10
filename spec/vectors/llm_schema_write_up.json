@@ -1,0 +1,100 @@
+{
+  "vector_format_version": 1,
+  "function": "to_gemini_schema(WriteUpResponse) | to_strict_json_schema(WriteUpResponse)",
+  "description": "The writer's answer \u2014 ROADMAP item 191 step (b): one Markdown string per section, each optional, in both provider dialects. A port declares these by hand; this pins them.",
+  "cases": [
+    {
+      "name": "gemini",
+      "input": {
+        "model": "WriteUpResponse"
+      },
+      "expected": {
+        "type": "OBJECT",
+        "properties": {
+          "today": {
+            "type": "STRING",
+            "nullable": true
+          },
+          "extended": {
+            "type": "STRING",
+            "nullable": true
+          },
+          "severe": {
+            "type": "STRING",
+            "nullable": true
+          },
+          "secondary": {
+            "type": "STRING",
+            "nullable": true
+          },
+          "synoptic": {
+            "type": "STRING",
+            "nullable": true
+          },
+          "confidence": {
+            "type": "STRING",
+            "nullable": true
+          }
+        },
+        "description": "One Markdown passage per section asked for, each optional."
+      }
+    },
+    {
+      "name": "strict",
+      "input": {
+        "model": "WriteUpResponse"
+      },
+      "expected": {
+        "type": "object",
+        "properties": {
+          "today": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "extended": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "severe": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "secondary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "synoptic": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "confidence": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "today",
+          "extended",
+          "severe",
+          "secondary",
+          "synoptic",
+          "confidence"
+        ],
+        "additionalProperties": false,
+        "description": "One Markdown passage per section asked for, each optional."
+      }
+    }
+  ]
+}

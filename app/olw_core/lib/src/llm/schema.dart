@@ -799,6 +799,70 @@ const judgmentShape = ResponseShape<JudgmentResponse>(
   fromJson: JudgmentResponse.fromJson,
 );
 
+/// The writer's answer — upstream `WriteUpResponse`, item 191 step (b):
+/// one Markdown string per section, each optional. A missing field is the
+/// section the page writes itself.
+class WriteUpResponse {
+  const WriteUpResponse({this.today, this.extended, this.severe, this.secondary, this.synoptic, this.confidence});
+
+  final String? today;
+  final String? extended;
+  final String? severe;
+  final String? secondary;
+  final String? synoptic;
+  final String? confidence;
+
+  factory WriteUpResponse.fromJson(Map<String, Object?> j) => WriteUpResponse(
+        today: j['today'] as String?,
+        extended: j['extended'] as String?,
+        severe: j['severe'] as String?,
+        secondary: j['secondary'] as String?,
+        synoptic: j['synoptic'] as String?,
+        confidence: j['confidence'] as String?,
+      );
+
+  String? section(String name) => switch (name) {
+        'today' => today,
+        'extended' => extended,
+        'severe' => severe,
+        'secondary' => secondary,
+        'synoptic' => synoptic,
+        _ => confidence,
+      };
+}
+
+const List<String> _writeUpFields = ['today', 'extended', 'severe', 'secondary', 'synoptic', 'confidence'];
+const _writeUpDescription = 'One Markdown passage per section asked for, each optional.';
+
+/// Generated from Python's `to_gemini_schema(WriteUpResponse)`; pinned by
+/// `llm_schema_write_up.json`.
+Map<String, Object?> geminiWriteUpSchema() => {
+      'type': 'OBJECT',
+      'properties': {for (final f in _writeUpFields) f: {'type': 'STRING', 'nullable': true}},
+      'description': _writeUpDescription,
+    };
+
+/// Generated from Python's `to_strict_json_schema(WriteUpResponse)`.
+Map<String, Object?> strictWriteUpSchema() => {
+      'type': 'object',
+      'properties': {
+        for (final f in _writeUpFields)
+          f: {
+            'type': ['string', 'null']
+          }
+      },
+      'required': _writeUpFields,
+      'additionalProperties': false,
+      'description': _writeUpDescription,
+    };
+
+const writeUpShape = ResponseShape<WriteUpResponse>(
+  name: 'write_up',
+  geminiSchema: geminiWriteUpSchema,
+  strictSchema: strictWriteUpSchema,
+  fromJson: WriteUpResponse.fromJson,
+);
+
 const narrativeShape = ResponseShape<NarrativeResponse>(
   name: 'narrative',
   geminiSchema: geminiNarrativeSchema,

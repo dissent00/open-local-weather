@@ -205,20 +205,20 @@ class GeminiNarrativeResponse(BaseModel):
     today_narrative: str
 
 
+# THE WRITER'S ANSWER — ROADMAP item 191, step (b), 2026-10-10: ONE MARKDOWN
+# STRING PER SECTION, each optional. One document in one string was the
+# 10-05 shape. Per section instead because the operator's rule composes the
+# page section by section: a section is the model's where it answered and
+# the audit passed, code's otherwise. A missing or empty field IS the
+# fallback, with no parsing; the audit judges each field alone; a free model
+# that stops early still lands the sections it finished. The schema is
+# enforced on every route this project has. Headings are the page's, never
+# the model's. Nothing here is scored, as with GeminiNarrativeResponse.
+#
+# The docstring is short on purpose: it is the schema's description, sent
+# with every request and declared by hand in the Dart port.
 class WriteUpResponse(BaseModel):
-    """The writer's answer — ROADMAP item 191, step (b), 2026-10-10: ONE
-    MARKDOWN STRING PER SECTION, each optional.
-
-    One document in one string was the 10-05 shape. Per section instead
-    because the operator's rule composes the page section by section: a
-    section is the model's where it answered and the audit passed, code's
-    otherwise. A missing or empty field IS the fallback, with no parsing;
-    the audit judges each field alone; a free model that stops early still
-    lands the sections it finished. The schema is enforced on every route
-    this project has. Headings are the page's, never the model's.
-
-    Nothing here is scored, as with GeminiNarrativeResponse.
-    """
+    """One Markdown passage per section asked for, each optional."""
 
     today: str | None = None
     extended: str | None = None
