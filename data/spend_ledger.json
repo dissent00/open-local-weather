@@ -405,6 +405,15 @@
       "elapsed_s": 141.684,
       "served_model": "dots-studio/dots-3-note-preview:free",
       "audit": "refused: missing ## Today's Forecast; missing ## Extended Outlook; missing ## Severe Weather / Hazard Potential; missing ## Winam Gulf \u2014 Conditions for Boaters; missing ## Detailed Discussion; missing ### Synoptic Overview; missing ### Forecaster Confidence Notes"
+    },
+    {
+      "at": "2026-10-10T04:24:18.982245+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 47.182,
+      "audit": "passed"
     }
   ]
 }
