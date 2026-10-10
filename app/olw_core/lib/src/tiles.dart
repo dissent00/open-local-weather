@@ -160,10 +160,21 @@ String? skyWord(double? coverPct) {
 /// rule `describeWindShift` follows. The test is "is any of it still ahead",
 /// not "drop what has passed": a morning reader still wants to know the day
 /// started clear.
+/// A METAR reports cover in eighths of the sky.
+const oktas = 8;
+
+/// The `source` an anchor carries when the station, not the models, gave it.
+const skySourceStation = 'station';
+
+/// The sky at each anchor hour — mirrors `tiles.cloud_anchors`. An anchor
+/// the station has already reported on takes the station's sky, in eighths,
+/// marked `source: station` — the right-now rule, upstream 2026-10-10.
 List<Map<String, String>> cloudAnchors(
   Map<String, Object?> hourly,
   List<String> models, {
   required int issuedHour,
+  double? observedOktas,
+  int? observedThroughHour,
 }) {
   final out = <Map<String, String>>[];
   final hours = <int>[];
@@ -183,9 +194,13 @@ List<Map<String, String>> cloudAnchors(
     // one of skyWord's boundaries, where it flips the published word. Written
     // with `reduce` on 2026-09-21 and corrected the same day; no vector case
     // had caught it, because the fixtures' covers sum exactly.
-    final label = skyWord(mean(covers.cast<double?>()));
+    var label = skyWord(mean(covers.cast<double?>()));
+    final reported = observedOktas != null && observedThroughHour != null && hour <= observedThroughHour;
+    if (reported) {
+      label = skyWord(observedOktas / oktas * 100);
+    }
     if (label != null) {
-      out.add({'when': tileAnchorWords[i], 'cover': label});
+      out.add({'when': tileAnchorWords[i], 'cover': label, if (reported) 'source': skySourceStation});
       hours.add(hour);
     }
   }

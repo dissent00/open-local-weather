@@ -1339,6 +1339,8 @@ void main() {
           (i['hourly_multi_model'] as Map).cast<String, Object?>(),
           (i['models'] as List).cast<String>(),
           issuedHour: i['issued_hour'] as int,
+          observedOktas: (i['observed_oktas'] as num?)?.toDouble(),
+          observedThroughHour: i['observed_through_hour'] as int?,
         );
         expectMatches(got, c['expected'], c['name'] as String);
       }

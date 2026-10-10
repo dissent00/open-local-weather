@@ -850,7 +850,10 @@ def test_vectors_cloud_anchors():
 
     for case in load("cloud_anchors.json")["cases"]:
         i = case["input"]
-        got = cloud_anchors(i["hourly_multi_model"], i["models"], issued_hour=i["issued_hour"])
+        got = cloud_anchors(
+            i["hourly_multi_model"], i["models"], issued_hour=i["issued_hour"],
+            observed_oktas=i.get("observed_oktas"), observed_through_hour=i.get("observed_through_hour"),
+        )
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 

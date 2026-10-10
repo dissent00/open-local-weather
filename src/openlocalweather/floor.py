@@ -32,11 +32,20 @@ from openlocalweather.code_blend import blend_inputs
 from openlocalweather.comparison import describe_day_rain
 from openlocalweather.daypart import onset_word
 from openlocalweather.defaults import BLEND_MODEL_ID, CODE_BLEND_MODEL_ID
+from openlocalweather.disagreement import (
+    DISAGREEMENT_GUST_EXCEEDED,
+    DISAGREEMENT_HIGH_EXCEEDED,
+    DISAGREEMENT_ONSET_ALREADY_PASSED,
+    DISAGREEMENT_RAIN_WHILE_DRY,
+    StandingCall,
+    notable_disagreements,
+)
 from openlocalweather.instability import convective_tier
-from openlocalweather.models import DailyLogEntry, ModelPrediction
+from openlocalweather.models import DailyLogEntry, DeviationBands, ModelPrediction, format_temp_c
+from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.phrasing import phrase_defect
 from openlocalweather.scales import aqi_band, uv_band
-from openlocalweather.tiles import KMH_PER_KNOT
+from openlocalweather.tiles import KMH_PER_KNOT, SKY_SOURCE_STATION
 from openlocalweather.verify.scoring import mean, scored_predictions
 
 # Who wrote `narrative_markdown` — stored as `narrative_source` so the record
@@ -104,6 +113,19 @@ class FloorInputs:
     secondary_name: str | None = None
     model_configured: bool = True
 
+    # THE RIGHT-NOW RULE — 2026-10-10, the operator's: "when a local source is
+    # available for right now and the models disagree, we always have to
+    # trust the local right now." The station's line closes Today's
+    # Forecast, and a reading that contradicts the served call is said right
+    # after the opener, from `station_codes` — `notable_disagreements`
+    # judged against the SERVED call, not the previous issuance's, because
+    # the page is read against what it shows. The scored row stays as issued
+    # (item 140: an observation scored as a forecast would enter as skill).
+    observed_line: str | None = None
+    observed: dict = field(default_factory=dict)
+    station_name: str | None = None
+    station_codes: list[str] = field(default_factory=list)
+
     def to_json(self) -> dict:
         return asdict(self)
 
@@ -118,12 +140,19 @@ class FloorInputs:
         *,
         secondary_name: str | None = None,
         model_configured: bool = True,
+        station_name: str | None = None,
+        bands: DeviationBands | None = None,
     ) -> "FloorInputs":
         """The inputs as a stored entry holds them."""
         rows = entry.prediction_rows[0] if entry.prediction_rows else None
         comparison = rows.day_over_day if rows is not None else None
         scored = scored_predictions(entry)
         served = (entry.served_call or {}).get("today_properties") or {}
+        observed = entry.observed_so_far
+        standing = StandingCall(
+            rain=served.get("rain"), temp_high_c=served.get("temp_high_c"), onset_hour=served.get("onset_hour"),
+            temp_low_c=served.get("temp_low_c"), peak_gust_kmh=served.get("peak_wind_primary_kmh"),
+        )
         return cls(
             date=entry.date.isoformat(),
             temp_high_low_display=entry.temp_high_low_display,
@@ -138,7 +167,10 @@ class FloorInputs:
             uv_index=entry.uv_index,
             air_quality_index=entry.air_quality_index,
             ground_aqi=[{"name": r.name, "aqi": r.aqi} for r in (entry.ground_aqi or []) if r.aqi is not None],
-            served_today={k: served.get(k) for k in ("rain", "onset_hour", "precip_mm")},
+            served_today={
+                **{k: served.get(k) for k in ("rain", "onset_hour", "precip_mm")},
+                "high_c": served.get("temp_high_c"),
+            },
             extended_calls=[c for c in (_lead_call(entry, scored.for_lead(lead), lead) for lead in EXTENDED_LEADS) if c],
             highs_by_lead={
                 str(lead): [p.high_c for p in scored.for_lead(lead) if p.model in blend_inputs() and p.high_c is not None]
@@ -149,6 +181,14 @@ class FloorInputs:
             extended_outlook=entry.extended_outlook,
             secondary_name=secondary_name,
             model_configured=model_configured,
+            observed_line=describe_observed_so_far(observed, as_of=entry.meta.issued_local_time),
+            observed=asdict(observed) if observed is not None else {},
+            station_name=station_name,
+            station_codes=(
+                notable_disagreements(standing, observed, low_is_settled=None, bands=bands)
+                if observed is not None and station_name
+                else []
+            ),
         )
 
 
@@ -176,11 +216,19 @@ def compose_floor(inputs: FloorInputs) -> str:
 
 
 def compose_floor_for_entry(
-    entry: DailyLogEntry, *, secondary_name: str | None = None, model_configured: bool = True
+    entry: DailyLogEntry,
+    *,
+    secondary_name: str | None = None,
+    model_configured: bool = True,
+    station_name: str | None = None,
+    bands: DeviationBands | None = None,
 ) -> str:
     """The floor for one stored day — `olw floor`, and the run itself."""
     return compose_floor(
-        FloorInputs.from_entry(entry, secondary_name=secondary_name, model_configured=model_configured)
+        FloorInputs.from_entry(
+            entry, secondary_name=secondary_name, model_configured=model_configured,
+            station_name=station_name, bands=bands,
+        )
     )
 
 
@@ -204,12 +252,46 @@ def _sentence(text: str | None) -> str | None:
 def _today_parts(i: FloorInputs) -> list[str | None]:
     return [
         _opener(i),
+        *_station_parts(i),
         _sentence(i.temp_high_low_display),
         _sky(i.cloud_anchors),
         _wind(i.wind_anchors, i.peak_wind_primary_kmh),
         _uv(i.uv_index),
         _air_quality(i),
+        _sentence(i.observed_line),
     ]
+
+
+def _station_parts(i: FloorInputs) -> list[str | None]:
+    """One sentence per code the station's readings fired against the served
+    call, in the codes' order: what was measured, beside what was called.
+    A code whose numbers are missing on either side gets no sentence."""
+    if not i.station_name or not i.station_codes:
+        return []
+    o = i.observed
+    served = i.served_today
+    parts: list[str | None] = []
+    for code in i.station_codes:
+        if code == DISAGREEMENT_ONSET_ALREADY_PASSED and o.get("precipitation_onset") and served.get("onset_hour"):
+            parts.append(
+                f"Rain began at {i.station_name} from {o['precipitation_onset']}, ahead of the "
+                f"{served['onset_hour']} called."
+            )
+        elif code == DISAGREEMENT_RAIN_WHILE_DRY and o.get("precipitation"):
+            parts.append(
+                f"{i.station_name} has already reported rain today, against a dry call; the day is not dry."
+            )
+        elif code == DISAGREEMENT_HIGH_EXCEEDED and o.get("high_c") is not None and served.get("high_c") is not None:
+            parts.append(
+                f"{i.station_name} has already recorded {format_temp_c(o['high_c'], decimals=1)}, above the "
+                f"{format_temp_c(served['high_c'], decimals=1)} called."
+            )
+        elif code == DISAGREEMENT_GUST_EXCEEDED and o.get("peak_gust_kmh") is not None and i.peak_wind_primary_kmh is not None:
+            parts.append(
+                f"{i.station_name} has already gusted to {_kmh_and_kt(o['peak_gust_kmh'])}, above the "
+                f"{_kmh_and_kt(i.peak_wind_primary_kmh)} called."
+            )
+    return [_sentence(p) for p in parts]
 
 
 def _opener(i: FloorInputs) -> str | None:
@@ -234,15 +316,23 @@ def _opener(i: FloorInputs) -> str | None:
 def _sky(anchors: list[dict]) -> str | None:
     """"Sky mostly cloudy early, partly cloudy at midday and mostly cloudy in
     the evening." One word for the whole day when every anchor agrees."""
-    present = [(a.get("when"), a.get("cover")) for a in anchors if a.get("when") in _ANCHOR_WHEN and a.get("cover")]
+    present = [
+        (a.get("when"), a.get("cover"), a.get("source") == SKY_SOURCE_STATION)
+        for a in anchors if a.get("when") in _ANCHOR_WHEN and a.get("cover")
+    ]
     if not present:
         return None
 
-    covers = {cover for _, cover in present}
-    if len(covers) == 1 and len(present) == len(_ANCHOR_WHEN):
+    covers = {cover for _, cover, _ in present}
+    if len(covers) == 1 and len(present) == len(_ANCHOR_WHEN) and not any(r for _, _, r in present):
         return f"Sky {present[0][1].lower()} through the day."
 
-    return f"Sky {_join([f'{cover.lower()} {_ANCHOR_WHEN[when]}' for when, cover in present])}."
+    # "as reported": the station's sky for an hour already lived (the
+    # right-now rule), where the rest is the models' word.
+    return "Sky " + _join([
+        f"{cover.lower()} {_ANCHOR_WHEN[when]}{' as reported' if reported else ''}"
+        for when, cover, reported in present
+    ]) + "."
 
 
 def _wind(anchors: list[dict], gust_kmh: float | None) -> str | None:

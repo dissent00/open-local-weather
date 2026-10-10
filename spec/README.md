@@ -104,7 +104,7 @@ absent values are `null`, never omitted keys.
 | `extended_trend.json` | `describe_extended_trend` | 41 |
 | `phrase_defect.json` | `phrase_defect` | 18 |
 | `overlong_display_values.json` | `overlong_display_values` | 11 |
-| `cloud_anchors.json` | `cloud_anchors` | 7 |
+| `cloud_anchors.json` | `cloud_anchors` | 12 |
 | `sky_by_day.json` | `sky_by_day` | 7 |
 | `period_summary.json` | `summarize_periods` | 9 |
 | `wind_anchors.json` | `wind_anchors` | 9 |

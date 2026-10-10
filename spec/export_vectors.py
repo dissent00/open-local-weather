@@ -446,16 +446,31 @@ def export_cloud_anchors() -> None:
         ("the summation method decides the word at a band edge",
          block([(5.8, 6.0, 6.1, 6.4, 6.95)] * 24), 0),
     ]
+    # The right-now rule, 2026-10-10: an anchor the station has reported on
+    # takes the station's sky, in eighths.
+    station = [
+        ("an anchor already reported takes the station's sky", block(shape), 6, 2.0, 5),
+        ("reports that stop before the anchor leave the models' word", block(shape), 6, 7.0, 2),
+        ("2.5 eighths is the band edge, and the edge is partly cloudy", block(shape), 6, 2.5, 5),
+        ("an afternoon run with two anchors reported", block(shape), 14, 6.0, 13),
+        ("no sky reading, the models stand", block(shape), 6, None, 5),
+    ]
     write(
         "cloud_anchors.json",
         "cloud_anchors",
         "ROADMAP item 159. The sky at each anchor hour, in time order, for the "
         "at-a-glance tiles. Read from the WHOLE DAY the wind shift reads, at "
         "the same anchors, so the two tiles describe the same three moments. "
-        "Empty when every anchor is behind the reader -- item 118's rule.",
+        "Empty when every anchor is behind the reader -- item 118's rule. An "
+        "anchor the station has already reported on takes the station's sky, "
+        "marked source: station -- the right-now rule, 2026-10-10.",
         [{"name": n, "input": {"hourly_multi_model": h, "models": list(MODELS),
                                "issued_hour": i},
-          "expected": cloud_anchors(h, MODELS, issued_hour=i)} for n, h, i in cases],
+          "expected": cloud_anchors(h, MODELS, issued_hour=i)} for n, h, i in cases]
+        + [{"name": n, "input": {"hourly_multi_model": h, "models": list(MODELS), "issued_hour": i,
+                                 "observed_oktas": o, "observed_through_hour": t},
+            "expected": cloud_anchors(h, MODELS, issued_hour=i, observed_oktas=o, observed_through_hour=t)}
+           for n, h, i, o, t in station],
     )
 
     covers = [0.0, 6.2, 6.25, 31.24, 31.25, 56.24, 56.25, 93.74, 93.75, 100.0]
@@ -6560,6 +6575,24 @@ def export_floor() -> None:
                      {"lead_time_days": 3, "rain": True, "rain_probability_pct": None},
                      {"lead_time_days": 7, "rain": False, "rain_probability_pct": None}]),
             case("no issue time, no stamp", issued_local_time=None),
+            # The right-now rule, 2026-10-10: the station's line and its words.
+            case("the station's line closes today's forecast",
+                 observed_line="As of 06:01, reports through 05:00: no rain; no thunder; sky 2/8."),
+            case("rain began before the onset called", station_name="Kisumu Airport",
+                 station_codes=["onset_already_passed"], served_today={"rain": True, "onset_hour": "16:00", "precip_mm": 6.9, "high_c": 29.6},
+                 observed={"precipitation": True, "precipitation_onset": "14:00"}),
+            case("rain reported against a dry call", station_name="Kisumu Airport",
+                 station_codes=["rain_observed_while_dry_called"], observed={"precipitation": True}),
+            case("the high already exceeded", station_name="Kisumu Airport",
+                 station_codes=["high_already_exceeded"], served_today={"rain": False, "onset_hour": None, "precip_mm": 0.2, "high_c": 31.5},
+                 observed={"high_c": 33.1}),
+            case("a gust already exceeded", station_name="Kisumu Airport",
+                 station_codes=["gust_already_exceeded"], observed={"peak_gust_kmh": 46.3}),
+            case("a code without its numbers says nothing", station_name="Kisumu Airport",
+                 station_codes=["high_already_exceeded"], observed={}),
+            case("an anchor the station reported says so",
+                 cloud_anchors=[{"when": "early", "cover": "Mostly clear", "source": "station"},
+                                {"when": "midday", "cover": "Partly cloudy"}, {"when": "evening", "cover": "Mostly cloudy"}]),
             case("the outlook composed in code replaces the trend and the lead lines",
                  extended_outlook=(
                      "Temperatures and winds much the same through Thursday, with rain possible from Thursday. "

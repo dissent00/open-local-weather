@@ -20681,7 +20681,33 @@ day is this*).
 
 ---
 
-## 138. An onset that has already happened is still forecast as future · **Shape 1 SHIPPED 2026-09-16; shapes 2 and 3 Planned**
+## 138. An onset that has already happened is still forecast as future · **Shape 1 SHIPPED 2026-09-16; shapes 2 and 3 SHIPPED 2026-10-10 as the right-now rule**
+
+> **THE RIGHT-NOW RULE, 2026-10-10, the operator's:** *"when a local source
+> is available for right now and the models (often already 8+ hours old)
+> disagree, we always have to trust the local right now."* Raised when the
+> 10-10 page said "early, mostly cloudy" from a 03:00 model mean while the
+> airport had reported 2/8 and CAVOK at 05:00, and the operator was under a
+> mostly clear sky. What the audit found: detection existed and was stored
+> (shape 1), the floor carried none of the station's line, code's served
+> call had never read a station, and the sky words had never used one.
+>
+> Shipped, both languages, pinned by `floor.json` and `cloud_anchors.json`:
+> the floor closes Today's Forecast with the station's line (`observed_line`,
+> the same sentence the writer gets) and says, right after the opener, one
+> sentence per code the station's readings fire AGAINST THE SERVED CALL
+> (`FloorInputs.station_codes`, `notable_disagreements` on a StandingCall
+> built from the served call, so the page is read against what it shows):
+> "Rain began at Kisumu Airport from 14:00, ahead of the 16:00 called";
+> "has already reported rain today, against a dry call; the day is not
+> dry"; the high and the gust already exceeded. `cloud_anchors` takes the
+> station's sky, in eighths, for an anchor hour its reports reach, marked
+> `source: station`, which the floor renders "as reported". The scored row
+> stays as issued, item 140's rule. Not done: the low (it has its own note
+> path), and the station's sky is the day's mean of its reports, the one
+> reading stored, so an afternoon run's midday anchor gets the morning's
+> mean too — a stored latest-report sky would sharpen it.
+
 
 > **`ONSET_ALREADY_PASSED` ships.** `observation_disagreements` now fires when
 > the station's measured onset is at least `ONSET_CONTRADICTION_MARGIN_MIN`

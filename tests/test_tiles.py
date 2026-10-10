@@ -397,3 +397,45 @@ def test_the_wind_and_the_sky_describe_the_same_moments():
     sky = cloud_anchors(block, MODELS, issued_hour=0)
     wind = wind_anchors(block, MODELS, issued_hour=0)
     assert [a["when"] for a in sky] == [a["when"] for a in wind]
+
+
+# The right-now rule, 2026-10-10: an anchor hour the station has already
+# reported on takes the station's sky, not the models' mean for it.
+
+
+def test_an_anchor_already_reported_takes_the_stations_sky():
+    from openlocalweather.defaults import MODELS
+    from openlocalweather.tiles import cloud_anchors
+
+    said = cloud_anchors(day_block(CLEAR_TO_OVERCAST), MODELS, issued_hour=6, observed_oktas=2.0, observed_through_hour=5)
+
+    assert said[0] == {"when": "early", "cover": "Mostly clear", "source": "station"}
+    assert said[1] == {"when": "midday", "cover": "Mostly cloudy"}
+
+
+def test_the_station_does_not_reach_an_anchor_still_ahead_of_its_reports():
+    from openlocalweather.defaults import MODELS
+    from openlocalweather.tiles import cloud_anchors
+
+    said = cloud_anchors(day_block(CLEAR_TO_OVERCAST), MODELS, issued_hour=6, observed_oktas=7.0, observed_through_hour=2)
+
+    assert said[0] == {"when": "early", "cover": "Clear"}, "reports through 02:00 do not cover the 03:00 anchor"
+
+
+def test_without_a_sky_reading_the_models_stand():
+    from openlocalweather.defaults import MODELS
+    from openlocalweather.tiles import cloud_anchors
+
+    assert cloud_anchors(day_block(CLEAR_TO_OVERCAST), MODELS, issued_hour=6, observed_oktas=None, observed_through_hour=5) == \
+        cloud_anchors(day_block(CLEAR_TO_OVERCAST), MODELS, issued_hour=6)
+
+
+def test_the_eighths_meet_the_band_edge():
+    """2.5 oktas is 31.25%, the edge between mostly clear and partly cloudy,
+    and the edge is not included — the same reading as `sky_word`."""
+    from openlocalweather.defaults import MODELS
+    from openlocalweather.tiles import cloud_anchors
+
+    said = cloud_anchors(day_block(CLEAR_TO_OVERCAST), MODELS, issued_hour=6, observed_oktas=2.5, observed_through_hour=5)
+
+    assert said[0]["cover"] == "Partly cloudy"

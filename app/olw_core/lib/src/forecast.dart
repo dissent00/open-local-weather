@@ -20,6 +20,7 @@ import 'write_up.dart' as write_up;
 import 'instability.dart';
 import 'llm/forecast_call.dart';
 import 'llm/prompt.dart';
+import 'disagreement.dart' show StandingCall, notableDisagreements;
 import 'observed.dart';
 import 'llm/provider.dart';
 import 'wind.dart';
@@ -401,6 +402,11 @@ Future<ForecastRun> generateForecast({
   /// differently — see [describeObservedSoFar].
   ObservedSoFar? observedSoFar,
 
+  /// The station's name for the floor's right-now sentences (upstream
+  /// 2026-10-10); none means the station is not named and no sentence is
+  /// composed from its readings.
+  String? stationName,
+
   /// Where this run sits in the day — see `daypart` in the Python pipeline.
   ///
   /// Left null on the normal path: this function derives it, mirroring what
@@ -648,7 +654,10 @@ Future<ForecastRun> generateForecast({
   // Composed once, for the prompt and the floor (upstream item 190), so the
   // two cannot describe different weather. The trend's shape check records
   // a degradation when it fails, which is why it runs here and not twice.
-  final anchorsSky = cloudAnchors(hourly, models, issuedHour: issuedHourOf(resolvedIssuance));
+  final anchorsSky = cloudAnchors(
+    hourly, models, issuedHour: issuedHourOf(resolvedIssuance),
+    observedOktas: observedSoFar?.cloudOktas, observedThroughHour: _hourOf(observedSoFar?.reportedThrough),
+  );
   final anchorsWind = windAnchors(hourly, models, issuedHour: issuedHourOf(resolvedIssuance));
   final extendedTrendPhrase = _soundPhrase('extended_trend', extendedTrend, degradations);
   // THE OUTLOOK IN CODE — upstream item 190 step 3: the day table for Day+1
@@ -848,7 +857,7 @@ Future<ForecastRun> generateForecast({
     // The app computes no UV figure yet and has no secondary point.
     airQualityIndex: tp.airQualityAqi,
     groundAqi: _groundReadingsOf(groundAqiReadings),
-    servedToday: {'rain': tp.rain, 'onset_hour': tp.onsetHour, 'precip_mm': tp.precipMm},
+    servedToday: {'rain': tp.rain, 'onset_hour': tp.onsetHour, 'precip_mm': tp.precipMm, 'high_c': tp.tempHighC},
     extendedCalls: [
       for (final e in served.judgment.extendedProperties)
         {'lead_time_days': e.leadTimeDays, 'rain': e.rain, 'rain_probability_pct': e.rainProbabilityPct},
@@ -861,6 +870,30 @@ Future<ForecastRun> generateForecast({
     extendedTrend: extendedTrendPhrase,
     extendedOutlook: outlookText,
     modelConfigured: llm != null,
+    observedLine: describeObservedSoFar(observedSoFar, asOf: _localTimeOf(resolvedIssuance)),
+    observed: observedSoFar == null
+        ? const {}
+        : {
+            'precipitation': observedSoFar.precipitation,
+            'precipitation_onset': observedSoFar.precipitationOnset,
+            'high_c': observedSoFar.highC,
+            'low_c': observedSoFar.lowC,
+            'peak_wind_kmh': observedSoFar.peakWindKmh,
+            'peak_gust_kmh': observedSoFar.peakGustKmh,
+            'cloud_oktas': observedSoFar.cloudOktas,
+            'thunder': observedSoFar.thunder,
+            'reported_through': observedSoFar.reportedThrough,
+          },
+    stationName: stationName,
+    stationCodes: observedSoFar == null || stationName == null
+        ? const []
+        : notableDisagreements(
+            StandingCall(
+              rain: tp.rain, tempHighC: tp.tempHighC, onsetHour: tp.onsetHour,
+              tempLowC: tp.tempLowC, peakGustKmh: tp.peakWindPrimaryKmh,
+            ),
+            observedSoFar,
+          ),
   ));
 
   final response = ForecastResponse(
@@ -1124,4 +1157,10 @@ DateTime? _clockOn(DateTime day, String? hhmm) {
   if (hour == null || minute == null) return null;
 
   return DateTime(day.year, day.month, day.day, hour, minute);
+}
+
+/// The hour of a local "HH:MM", or null — mirrors pipeline `_hour_of`.
+int? _hourOf(String? hhmm) {
+  if (hhmm == null || !hhmm.contains(':')) return null;
+  return int.tryParse(hhmm.split(':').first);
 }

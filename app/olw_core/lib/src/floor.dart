@@ -13,11 +13,12 @@ import 'comparison.dart' show describeDayRain;
 import 'dates.dart';
 import 'daypart.dart' show onsetWord;
 import 'instability.dart' show convectiveTier;
+import 'models.dart' show formatTempC, disagreementRainWhileDry, disagreementHighExceeded, disagreementOnsetAlreadyPassed, disagreementGustExceeded;
 import 'phrasing.dart';
 import 'rounding.dart';
 import 'scales.dart';
 import 'scoring.dart' show mean;
-import 'tiles.dart' show kmhPerKnot;
+import 'tiles.dart' show kmhPerKnot, skySourceStation;
 
 /// Who wrote the narrative — stored beside it as `narrative_source`.
 const String narrativeSourceCode = 'code';
@@ -67,6 +68,10 @@ class FloorInputs {
     this.extendedOutlook,
     this.secondaryName,
     this.modelConfigured = true,
+    this.observedLine,
+    this.observed = const {},
+    this.stationName,
+    this.stationCodes = const [],
   });
 
   /// ISO date, the day the floor is about.
@@ -95,6 +100,15 @@ class FloorInputs {
   final String? secondaryName;
   final bool modelConfigured;
 
+  /// The right-now rule, upstream 2026-10-10: the station's line closes
+  /// Today's Forecast, and a reading that contradicts the served call is
+  /// said right after the opener, from [stationCodes] — the notable
+  /// disagreements judged against the SERVED call. The scored row stays.
+  final String? observedLine;
+  final Map<String, Object?> observed;
+  final String? stationName;
+  final List<String> stationCodes;
+
   factory FloorInputs.fromJson(Map<String, Object?> j) => FloorInputs(
         date: j['date'] as String,
         tempHighLowDisplay: j['temp_high_low_display'] as String,
@@ -122,6 +136,10 @@ class FloorInputs {
         extendedOutlook: j['extended_outlook'] as String?,
         secondaryName: j['secondary_name'] as String?,
         modelConfigured: (j['model_configured'] as bool?) ?? true,
+        observedLine: j['observed_line'] as String?,
+        observed: ((j['observed'] as Map?) ?? const {}).cast<String, Object?>(),
+        stationName: j['station_name'] as String?,
+        stationCodes: [for (final c in (j['station_codes'] as List?) ?? const []) c as String],
       );
 
   static List<Map<String, Object?>> _maps(Object? raw) => [
@@ -164,12 +182,46 @@ String? _sentence(String? text) {
 
 List<String?> _todayParts(FloorInputs i) => [
       _opener(i),
+      ..._stationParts(i),
       _sentence(i.tempHighLowDisplay),
       _sky(i.cloudAnchors),
       _wind(i.windAnchors, i.peakWindPrimaryKmh),
       _uv(i.uvIndex),
       _airQuality(i),
+      _sentence(i.observedLine),
     ];
+
+/// One sentence per code the station's readings fired against the served
+/// call, in the codes' order — mirrors `floor._station_parts`.
+List<String?> _stationParts(FloorInputs i) {
+  final station = i.stationName;
+  if (station == null || station.isEmpty || i.stationCodes.isEmpty) return const [];
+  final o = i.observed;
+  final served = i.servedToday;
+  final parts = <String>[];
+  for (final code in i.stationCodes) {
+    final onset = o['precipitation_onset'];
+    final calledOnset = served['onset_hour'];
+    if (code == disagreementOnsetAlreadyPassed && _truthy(onset) && _truthy(calledOnset)) {
+      parts.add('Rain began at $station from $onset, ahead of the $calledOnset called.');
+    } else if (code == disagreementRainWhileDry && o['precipitation'] == true) {
+      parts.add('$station has already reported rain today, against a dry call; the day is not dry.');
+    } else if (code == disagreementHighExceeded && o['high_c'] != null && served['high_c'] != null) {
+      parts.add(
+        '$station has already recorded ${formatTempC((o['high_c'] as num).toDouble(), decimals: 1)}, '
+        'above the ${formatTempC((served['high_c'] as num).toDouble(), decimals: 1)} called.',
+      );
+    } else if (code == disagreementGustExceeded && o['peak_gust_kmh'] != null && i.peakWindPrimaryKmh != null) {
+      parts.add(
+        '$station has already gusted to ${_kmhAndKt((o['peak_gust_kmh'] as num).toDouble())}, '
+        'above the ${_kmhAndKt(i.peakWindPrimaryKmh!)} called.',
+      );
+    }
+  }
+  return [for (final p in parts) _sentence(p)];
+}
+
+bool _truthy(Object? value) => value != null && '$value'.isNotEmpty && value != false;
 
 String? _opener(FloorInputs i) {
   if (i.overviewComparison != null && i.overviewComparison!.isNotEmpty) {
@@ -189,15 +241,20 @@ String? _sky(List<Map<String, Object?>> anchors) {
   final present = [
     for (final a in anchors)
       if (_anchorWhen.containsKey(a['when']) && (a['cover'] as String?)?.isNotEmpty == true)
-        (a['when'] as String, a['cover'] as String),
+        (a['when'] as String, a['cover'] as String, a['source'] == skySourceStation),
   ];
   if (present.isEmpty) return null;
 
-  final covers = {for (final (_, cover) in present) cover};
-  if (covers.length == 1 && present.length == _anchorWhen.length) {
+  final covers = {for (final (_, cover, _) in present) cover};
+  final anyReported = present.any((p) => p.$3);
+  if (covers.length == 1 && present.length == _anchorWhen.length && !anyReported) {
     return 'Sky ${present.first.$2.toLowerCase()} through the day.';
   }
-  return 'Sky ${_join([for (final (at, cover) in present) '${cover.toLowerCase()} ${_anchorWhen[at]}'])}.';
+  // "as reported": the station's sky for an hour already lived.
+  return 'Sky ${_join([
+        for (final (at, cover, reported) in present)
+          '${cover.toLowerCase()} ${_anchorWhen[at]}${reported ? ' as reported' : ''}'
+      ])}.';
 }
 
 String? _wind(List<Map<String, Object?>> anchors, double? gustKmh) {

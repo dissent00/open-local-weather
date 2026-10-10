@@ -162,6 +162,10 @@ SKY_COVER_BANDS_PCT = (
     (93.75, "Mostly cloudy"),
 )
 OVERCAST_LABEL = "Overcast"
+# A METAR reports cover in eighths of the sky.
+OKTAS = 8
+# The `source` an anchor carries when the station, not the models, gave it.
+SKY_SOURCE_STATION = "station"
 
 # What a tile calls each anchor hour, positionally paired with
 # `wind.SHIFT_ANCHORS`. Separate from that tuple's own labels because those
@@ -189,8 +193,19 @@ def cloud_anchors(
     models: list[str],
     *,
     issued_hour: int,
+    observed_oktas: float | None = None,
+    observed_through_hour: int | None = None,
 ) -> list[dict[str, str]]:
     """The sky at each anchor hour, as a tile's lines, in time order.
+
+    THE RIGHT-NOW RULE — 2026-10-10, the operator's: an anchor hour the
+    station has already reported on takes the station's sky, in eighths,
+    not the models' mean for it. On 2026-10-10 the tile said "early, mostly
+    cloudy" from a 03:00 model mean while the airport had reported 2/8 and
+    CAVOK at 05:00; the reader at breakfast saw the airport's sky. Marked
+    `source: station` so the page can say "as reported". The oktas are the
+    day's mean of the station's reports so far, the one reading stored; an
+    anchor is taken only when the reports reach past its hour.
 
     A DAY'S SHAPE, NOT ITS MEAN, and 2026-09-21 is the argument. The models'
     Day+0 mean that day was 45% with a 14-to-64 spread, while the day ran
@@ -223,8 +238,11 @@ def cloud_anchors(
         # A spread is a real fact about a sky and belongs in the discussion,
         # where there is room to name which model said what.
         label = sky_word(sum(covers) / len(covers))
+        reported = observed_oktas is not None and observed_through_hour is not None and hour <= observed_through_hour
+        if reported:
+            label = sky_word(observed_oktas / OKTAS * 100)
         if label is not None:
-            out.append({"when": word, "cover": label})
+            out.append({"when": word, "cover": label, **({"source": SKY_SOURCE_STATION} if reported else {})})
             hours.append(hour)
 
     if not out or all(hour <= issued_hour for hour in hours):

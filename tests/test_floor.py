@@ -119,7 +119,7 @@ def test_a_thin_day_still_signs_off():
     entry = _entry("2026-09-30").model_copy(update={
         "prediction_rows": [], "served_call": None, "cloud_anchors": None, "wind_anchors": None,
         "uv_index": None, "air_quality_index": None, "ground_aqi": [], "peak_wind_primary_kmh": None,
-        "peak_wind_secondary_kmh": None,
+        "peak_wind_secondary_kmh": None, "observed_so_far": None,
     })
 
     text = compose_floor_for_entry(entry, secondary_name="Winam Gulf")
@@ -155,3 +155,76 @@ def test_the_inputs_round_trip_as_json():
         {"lead_time_days": 3, "rain": False, "rain_probability_pct": 28},
         {"lead_time_days": 7, "rain": True, "rain_probability_pct": 82},
     ]
+
+
+# ---------------------------------------------------------------------------
+# The right-now rule — 2026-10-10, the operator's: when a local source has a
+# reading for hours already lived and the models disagree, the page says what
+# was measured. The scored row stays as issued (item 140).
+# ---------------------------------------------------------------------------
+
+
+def _station_inputs(**changes) -> FloorInputs:
+    base = dict(
+        date="2026-10-10", temp_high_low_display="30°C / 86°F high, 20°C / 68°F low",
+        issued_local_time="06:01", sunrise="06:24", sunset="18:31",
+        served_today={"rain": True, "onset_hour": "16:00", "precip_mm": 6.9, "high_c": 29.6},
+        peak_wind_primary_kmh=38.9, station_name="Kisumu Airport", model_configured=False,
+    )
+    return FloorInputs(**{**base, **changes})
+
+
+def _today(text: str) -> str:
+    body = text.split("## Today's Forecast\n", 1)[1].split("\n## ", 1)[0]
+    return body.split("\n\nFigures issued", 1)[0].strip()
+
+
+def test_the_stations_line_closes_todays_forecast():
+    line = "As of 06:01, reports through 05:00: no rain; no thunder; sky 2/8."
+    text = compose_floor(_station_inputs(observed_line=line))
+
+    assert _today(text).endswith(line)
+    assert "As of" not in _today(compose_floor(_station_inputs()))
+
+
+@pytest.mark.parametrize("code, observed, sentence", [
+    ("onset_already_passed", {"precipitation": True, "precipitation_onset": "14:00"},
+     "Rain began at Kisumu Airport from 14:00, ahead of the 16:00 called."),
+    ("rain_observed_while_dry_called", {"precipitation": True},
+     "Kisumu Airport has already reported rain today, against a dry call; the day is not dry."),
+    ("high_already_exceeded", {"high_c": 31.4},
+     "Kisumu Airport has already recorded 31.4°C / 88.5°F, above the 29.6°C / 85.3°F called."),
+    ("gust_already_exceeded", {"peak_gust_kmh": 46.3},
+     "Kisumu Airport has already gusted to 46 km/h (25 kt), above the 39 km/h (21 kt) called."),
+])
+def test_a_reading_that_contradicts_the_call_is_said_right_after_the_opener(code, observed, sentence):
+    served = {"rain": False, "onset_hour": None, "precip_mm": 0.0, "high_c": 29.6} if code == "rain_observed_while_dry_called" else None
+    inputs = _station_inputs(station_codes=[code], observed=observed, **({"served_today": served} if served else {}))
+    today = _today(compose_floor(inputs))
+
+    assert sentence in today
+    assert today.index(sentence) < today.index("30°C / 86°F high"), "before the figures, right after the opener"
+    assert phrase_defect(sentence) is None
+
+
+def test_a_code_without_its_numbers_gets_no_sentence():
+    today = _today(compose_floor(_station_inputs(station_codes=["high_already_exceeded"], observed={})))
+
+    assert "already" not in today
+
+
+def test_an_anchor_the_station_reported_says_so():
+    anchors = [
+        {"when": "early", "cover": "Mostly clear", "source": "station"},
+        {"when": "midday", "cover": "Partly cloudy"},
+        {"when": "evening", "cover": "Mostly cloudy"},
+    ]
+    today = _today(compose_floor(_station_inputs(cloud_anchors=anchors)))
+
+    assert "Sky mostly clear early as reported, partly cloudy at midday and mostly cloudy in the evening." in today
+
+
+def test_the_station_inputs_round_trip_as_json():
+    inputs = _station_inputs(observed={"precipitation": True, "precipitation_onset": "14:00"}, station_codes=["onset_already_passed"], observed_line="So far today: rain.")
+
+    assert FloorInputs.from_json(inputs.to_json()) == inputs

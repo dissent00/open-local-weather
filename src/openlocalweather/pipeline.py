@@ -2153,6 +2153,16 @@ def _ground_aqi_prompt_payload(guidance: ForwardGuidance) -> list[dict]:
     ]
 
 
+def _hour_of(hhmm: str | None) -> int | None:
+    """The hour of a local "HH:MM", or None when there is none."""
+    if not hhmm or ":" not in hhmm:
+        return None
+    try:
+        return int(hhmm.split(":", 1)[0])
+    except ValueError:
+        return None
+
+
 def _standing_call(entry: DailyLogEntry | None) -> StandingCall:
     """What the previous issuance committed to — ROADMAP item 104, C2.
 
@@ -2776,8 +2786,12 @@ def _compose_log_entry(
         # anchors the wind shift takes, so the two tiles describe the same
         # three moments. See the wind shift's call site for why that
         # distinction is worth stating.
+        # THE RIGHT-NOW RULE, 2026-10-10: an anchor the station has already
+        # reported on shows the station's sky. See `cloud_anchors`.
         cloud_anchors=cloud_anchors(
-            guidance.primary_hourly, MODELS, issued_hour=_issued_hour(guidance.issuance)
+            guidance.primary_hourly, MODELS, issued_hour=_issued_hour(guidance.issuance),
+            observed_oktas=observed_so_far.cloud_oktas if observed_so_far is not None else None,
+            observed_through_hour=_hour_of(observed_so_far.reported_through) if observed_so_far is not None else None,
         ),
         wind_anchors=wind_anchors(
             guidance.primary_hourly, MODELS, issued_hour=_issued_hour(guidance.issuance)
@@ -4033,6 +4047,8 @@ def _issue_forecast(
         log_entry,
         secondary_name=secondary.name if secondary.enabled and secondary.name else None,
         model_configured=deps.llm_provider is not None,
+        station_name=deps.location.metar_station_name or deps.location.metar_station_icao or None,
+        bands=deviation_bands(deps.location),
     )
     log_entry.narrative_source = NARRATIVE_SOURCE_CODE
 
