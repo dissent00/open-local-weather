@@ -166,7 +166,7 @@ def test_every_link_may_write_under_the_live_config(tmp_path, wired):
     _run(tmp_path)
 
     [providers] = wired["providers"]
-    assert [getattr(p, "kind", p) for p in providers] == ["gemini", "gemini", "openai"]
+    assert [getattr(p, "kind", p) for p in providers] == ["gemini", "gemini", "openai", "openai"]
 
 
 def test_a_thin_answer_is_refused_and_the_floor_stays(tmp_path, wired, capsys):

@@ -1,0 +1,79 @@
+# Ask one route to write the brief for the archived days, and audit it.
+#
+# ROADMAP item 191 step (d), the writer backtest. Manual only: it spends the
+# route's allowance and answers a question that does not change daily. Runs
+# here rather than on a laptop because the keys are repository secrets and
+# should stay so. The route is named the way location.yaml names a link:
+# kind, credential prefix, endpoint, model.
+name: Writer probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: "Link kind: openai or gemini"
+        required: true
+        default: openai
+      env_prefix:
+        description: "Credential prefix: the key is {PREFIX}_API_KEY"
+        required: true
+        default: GROQ
+      base_url:
+        description: "Endpoint (openai kind only)"
+        required: false
+        default: https://api.groq.com/openai/v1
+      model:
+        description: "Model id"
+        required: true
+        default: openai/gpt-oss-120b
+      days:
+        description: "Archived days to write, newest first"
+        required: true
+        default: "8"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: pip install -e .
+
+      # The same allowlist the forecast uses — see forecast.yml for why it is
+      # an allowlist rather than a dump of the repository's secrets.
+      - name: Provider credentials
+        env:
+          ALL_VARS: ${{ toJSON(vars) }}
+          ALL_SECRETS: ${{ toJSON(secrets) }}
+        run: |
+          set -o pipefail
+          emit() {
+            jq -r --arg p '^[A-Z0-9_]+_(API_KEY|BASE_URL|MODEL|FALLBACK_MODELS|JSON_MODE|MAX_TOKENS)$' '
+              to_entries[]
+              | select(.key | test($p))
+              | select(.value != null and .value != "")
+              | "\(.key)<<__OLW_ENV__\n\(.value)\n__OLW_ENV__"' <<<"$1"
+          }
+          { emit "$ALL_VARS"; emit "$ALL_SECRETS"; } >> "$GITHUB_ENV"
+
+      - name: Probe
+        run: |
+          set -o pipefail
+          python tools/probe_writer.py \
+            --kind "${{ inputs.kind }}" --env-prefix "${{ inputs.env_prefix }}" \
+            ${{ inputs.base_url && format('--base-url "{0}"', inputs.base_url) || '' }} \
+            --model "${{ inputs.model }}" --days "${{ inputs.days }}" \
+            --out "$RUNNER_TEMP/texts.md" 2>&1 | tee "$RUNNER_TEMP/probe.log"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: writer-probe
+          path: |
+            ${{ runner.temp }}/probe.log
+            ${{ runner.temp }}/texts.md

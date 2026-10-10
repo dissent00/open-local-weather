@@ -203,15 +203,11 @@ def test_the_live_config_can_carry_one(tmp_path):
     src = (Path(__file__).resolve().parents[1] / "config/location.yaml").read_text()
     # The live entry is a mapping since 2026-10-02 (one try per write-up
     # chance); this adds the name, the credential namespace and the cap.
+    # The LAST openai entry is the gateway: the Groq link precedes it since
+    # 2026-10-10 (item 192) and already carries its own name.
     assert "    - kind: openai\n" in src
-    src = src.replace(
-        "    - kind: openai\n",
-        "    - kind: openai\n"
-        "      name: openrouter\n"
-        "      env_prefix: OPENROUTER\n"
-        "      max_calls_per_24h: 50\n",
-        1,
-    )
+    head, marker, tail = src.rpartition("    - kind: openai\n")
+    src = head + marker + "      name: openrouter\n      env_prefix: OPENROUTER\n      max_calls_per_24h: 50\n" + tail
     path = tmp_path / "location.yaml"
     path.write_text(src)
 

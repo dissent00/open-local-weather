@@ -217,6 +217,25 @@ location:
       max_calls_per_run: 1
       # Two mornings of three chances in one rolling day.
       max_calls_per_24h: 6
+    # GROQ, THE WRITE-UP ONLY — ROADMAP item 192, 2026-10-10. Groq's free
+    # tier takes 8K tokens a minute, so the 56K-token judgment never fits
+    # and `calls` keeps it off this link; item 191's brief with the writer
+    # prompt is about 6K tokens in and under 1K out, which fits once. The
+    # survey of 2026-09-30 names gpt-oss-120b as the strongest free writer
+    # after Gemini; its audit pass rate on the brief is unmeasured until
+    # `tools/probe_writer.py` is run against it. INERT UNTIL GROQ_API_KEY
+    # EXISTS: the endpoint and the model are named here, so the key is the
+    # only variable a deployment sets.
+    - kind: openai
+      name: groq
+      env_prefix: GROQ
+      base_url: https://api.groq.com/openai/v1
+      model: openai/gpt-oss-120b
+      calls: [write_up]
+      max_attempts: 1
+      max_calls_per_run: 1
+      # Two mornings of two write-up chances in one rolling day.
+      max_calls_per_24h: 4
     # ROADMAP item 81, 2026-09-21. The second entry is a CHAIN, not a
     # replacement: Gemini answers when it can, and this takes the calls it
     # sheds. Measured over 2026-08-28 to 09-21, the 15:01 slot failed on

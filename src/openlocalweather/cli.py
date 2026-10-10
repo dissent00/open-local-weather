@@ -20,12 +20,13 @@ import sys
 import time
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
+from urllib.parse import urlparse
 
 import requests
 from pathlib import Path
 
 from openlocalweather import __version__
-from openlocalweather.config import LocationConfig, load_location_config
+from openlocalweather.config import JOB_JUDGMENT, JOB_WRITE_UP, LocationConfig, load_location_config
 from openlocalweather.verify.scoring import (
     WINDOW_OPENS_DAYS_BEFORE_ENTRY,
     calendar_scores_by_period,
@@ -241,6 +242,10 @@ class _ProviderEntry:
     # Named in config, or None to read `{PREFIX}_MODEL` — see LLMProviderEntry.
     model: str | None = None
     fallback_models: tuple[str, ...] = ()
+    # Item 192, 2026-10-10: the endpoint named on the entry, and the jobs
+    # it serves (None: every job). See `LLMProviderEntry`.
+    base_url: str | None = None
+    calls: tuple[str, ...] | None = None
 
     # This link's own 24-hour ceiling, or None for the deployment's — item
     # 170. A cap belongs to an ACCOUNT: 20 is Google's free calendar-day
@@ -312,6 +317,8 @@ def _resolve_provider_entries(
                 # A bare string still inherits it, which is the deployment
                 # shape the field was written for.
                 fallback_models=tuple(own or ()),
+                base_url=str(entry.get("base_url") or "").strip() or None,
+                calls=tuple(entry.get("calls")) if entry.get("calls") is not None else None,
                 max_calls_per_24h=entry.get("max_calls_per_24h"),
                 max_calls_per_run=entry.get("max_calls_per_run"),
                 max_attempts=entry.get("max_attempts"),
@@ -430,8 +437,13 @@ def _build_llm_provider(
     providers: list[str] | None = None,
     fallback_models: list[str] | None = None,
     optional: bool = False,
+    job: str | None = None,
 ):
     """Builds the configured LLMProvider.
+
+    `job` is which of the pipeline's calls the chain is for (JOB_JUDGMENT,
+    JOB_WRITE_UP); a link naming `calls` without it is left out. None, for
+    a one-off, takes every link.
 
     Secrets and endpoints come from env vars, never CLI args, for the same
     reason as everything else here — they'd otherwise land in shell history
@@ -501,6 +513,15 @@ def _build_llm_provider(
     # a collision produces a provider that looks configured and fails on the
     # call, which is the most expensive place to find out.
     _reject_colliding_entries(entries)
+
+    # THE LINKS THAT SERVE THIS JOB — item 192. After the checks above, so a
+    # typo or a collision on a link left out here is still fatal.
+    if job is not None:
+        entries = [e for e in entries if e.calls is None or job in e.calls]
+        if not entries:
+            if optional:
+                return None
+            raise SystemExit(f"No llm_providers link serves the {job} call; each names `calls` without it.")
 
     built = []
     unavailable: list[str] = []
@@ -634,18 +655,18 @@ def _build_one_llm_provider(
             api_key=api_key,
             model=model,
             # Only needed for a proxy/gateway; defaults to api.anthropic.com.
-            base_url=entry.env("BASE_URL", DEFAULT_ANTHROPIC_BASE_URL),
+            base_url=entry.base_url or entry.env("BASE_URL", DEFAULT_ANTHROPIC_BASE_URL),
             max_tokens=int(entry.env("MAX_TOKENS", str(DEFAULT_ANTHROPIC_MAX_TOKENS))),
         )
 
     if entry.kind == "openai":
-        base_url = entry.env("BASE_URL")
+        base_url = entry.base_url or entry.env("BASE_URL")
         model = entry.model or entry.env("MODEL")
         if not base_url or not model:
             raise SystemExit(
-                f"llm_providers entry {entry.label!r} (openai) requires "
-                f"{entry.env_prefix}_BASE_URL and a model ({entry.env_prefix}_MODEL, "
-                f"or `model` on the entry), plus {entry.env_prefix}_API_KEY for any "
+                f"llm_providers entry {entry.label!r} (openai) requires an endpoint "
+                f"({entry.env_prefix}_BASE_URL, or `base_url` on the entry) and a model "
+                f"({entry.env_prefix}_MODEL, or `model` on the entry), plus {entry.env_prefix}_API_KEY for any "
                 "hosted endpoint. See QUICKSTART.md for per-service values."
             )
         # The gateway's OWN fallback list — item 81. `LLM_FALLBACK_MODELS`
@@ -660,11 +681,21 @@ def _build_one_llm_provider(
             if configured
             else list(entry.fallback_models)
         )
+        # A HOSTED ENDPOINT NEEDS ITS KEY, checked here rather than on the
+        # first call — 2026-10-10. The Groq link names its endpoint and
+        # model in config, so the key is the only thing a deployment sets,
+        # and without this check a keyless link BUILT: the chain held it,
+        # the health check asked it, and it would have spent a ledger row
+        # refusing every call. A local runtime (Ollama, LM Studio) needs no
+        # key and still builds.
+        api_key = entry.env("API_KEY")
+        if not api_key and not _is_local_endpoint(base_url):
+            raise SystemExit(
+                f"llm_providers entry {entry.label!r} (openai) requires {entry.env_prefix}_API_KEY "
+                f"for the hosted endpoint {base_url}."
+            )
         return OpenAICompatProvider(
-            # Empty is legitimate here: local runtimes like Ollama don't
-            # need a key. Hosted endpoints will fail loudly on the first
-            # call, which is clearer than guessing at intent up front.
-            api_key=entry.env("API_KEY"),
+            api_key=api_key,
             model=model,
             base_url=base_url,
             json_mode=entry.env("JSON_MODE", "json_schema"),
@@ -675,6 +706,14 @@ def _build_one_llm_provider(
     raise SystemExit(
         f"Unknown LLM provider kind {entry.kind!r} — expected one of {', '.join(VALID_LLM_PROVIDERS)}."
     )
+
+
+LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "0.0.0.0"})
+
+
+def _is_local_endpoint(base_url: str) -> bool:
+    host = urlparse(base_url).hostname or ""
+    return host in LOCAL_HOSTS or host.endswith(".local")
 
 
 def _build_pages_publisher(
@@ -728,6 +767,7 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
         fallback_models=location.llm_fallback_models,
         # The forecast is code's since item 189; a model is an upgrade.
         optional=True,
+        job=JOB_JUDGMENT,
     )
     waqi_token = _env("WAQI_TOKEN")
 
@@ -1866,7 +1906,6 @@ def _run_write_up(args) -> int:
     was and exits 0; the next chance is the retry. Nothing here can lose
     a day: the forecast is published before this runs.
     """
-    from openlocalweather.brief import TIER_FULL, BriefInputs, render_brief
     from openlocalweather.config import deviation_bands
     from openlocalweather.floor import FloorInputs, floor_section_texts, sign_off
     from openlocalweather.llm.errors import LLMAnswerRefused, LLMResponseError
@@ -1874,7 +1913,7 @@ def _run_write_up(args) -> int:
     from openlocalweather.spend import SpendCapExceeded, record_audit
     from openlocalweather.write_up import apply_write_up_sections, needs_write_up
     from openlocalweather.writer import (
-        ask_writer, audit_section, build_writer_prompt, compose_write_up, model_display_name, sections_to_ask,
+        ask_writer, audit_section, brief_inputs, compose_write_up, model_display_name, writer_ask,
     )
 
     location = load_location_config(args.config)
@@ -1893,24 +1932,15 @@ def _run_write_up(args) -> int:
     secondary_name = secondary.name if secondary.enabled and secondary.name else None
     station_name = location.metar_station_name or location.metar_station_icao or None
     issuance = json.loads(archive_path.read_text())["issuances"][-1]
-    inputs = BriefInputs.from_user_prompt(
-        issuance["user_prompt"], entry,
-        secondary_name=secondary_name,
-        met_service_name=location.local_bulletin_source_name or None,
-        met_service_model_id=location.local_bulletin_model_id or None,
-    )
+    inputs = brief_inputs(location, entry, issuance["user_prompt"])
     if not inputs.served_call:
         print(f"Write-up not attempted: no served call stored for {day}.", file=sys.stderr)
         return 1
-    sections = sections_to_ask(location.write_up_sections, inputs)
-    if not sections:
+    ask = writer_ask(location, inputs)
+    if ask is None:
         print(f"No section to write for {day}; the day keeps code's write-up.")
         return 0
-    brief = render_brief(inputs, tier=TIER_FULL, sections=sections)
-    system_prompt = build_writer_prompt(
-        sections, place=location.primary_place_name, secondary_name=secondary_name,
-        met_service_name=location.local_bulletin_source_name or None,
-    )
+    sections, brief, system_prompt = ask.sections, ask.brief, ask.system_prompt
 
     if args.wait_s:
         print(f"The write-up for {day} is missing; asking again in {args.wait_s} s.")
@@ -1924,6 +1954,7 @@ def _run_write_up(args) -> int:
         providers=links,
         fallback_models=location.llm_fallback_models,
         optional=True,
+        job=JOB_WRITE_UP,
     )
     if provider is None:
         print(f"No link may write the write-up for {day}; the day keeps code's write-up.")

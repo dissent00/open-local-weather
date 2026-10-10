@@ -161,3 +161,27 @@ def test_nothing_from_the_model_keeps_the_floors_sign_off():
 
     assert markdown == "## Today's Forecast\n\nCode's today.\n\nWritten by code; a discussion follows when a model answers.\n"
     assert sources == {"today": "code"}
+
+
+def test_the_ask_is_the_request_production_sends():
+    """Item 191 step (d): `writer_ask` is what `olw write-up` sends and what
+    `tools/probe_writer.py` measures, so a route's pass rate in the probe
+    is its pass rate on the production request."""
+    from openlocalweather.brief import TIER_FULL
+    from openlocalweather.config import load_location_config
+    from openlocalweather.writer import brief_inputs, writer_ask
+
+    location = load_location_config("config/location.yaml")
+    prompt = (FIXTURES / "user_prompt_2026-10-07.txt").read_text()
+    entry = json.loads((FIXTURES / "brief_entry_2026-10-07.json").read_text())
+
+    inputs = brief_inputs(location, entry, prompt)
+    ask = writer_ask(location, inputs)
+
+    assert inputs.secondary_name == location.secondary_point.name
+    assert ask.sections == sections_to_ask(location.write_up_sections, inputs)
+    assert ask.brief == render_brief(inputs, tier=TIER_FULL, sections=ask.sections)
+    assert ask.system_prompt == build_writer_prompt(
+        ask.sections, place=location.primary_place_name, secondary_name=inputs.secondary_name,
+        met_service_name=location.local_bulletin_source_name,
+    )

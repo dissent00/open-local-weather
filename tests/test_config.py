@@ -404,3 +404,52 @@ def test_no_providers_at_all_is_a_valid_deployment(tmp_path):
     path.write_text(stripped)
 
     assert load_location_config(str(path)).llm_providers == []
+
+
+# ---------------------------------------------------------------------------
+# A link names its endpoint and its jobs — ROADMAP item 192, 2026-10-10
+# ---------------------------------------------------------------------------
+
+
+def test_a_link_may_name_its_endpoint_and_its_jobs():
+    """Like `model` (2026-10-08): named in the config, where a change has a
+    diff, rather than in a variable set in a browser. `calls` is item 192's
+    per-link job: a link that names only the write-up is never handed the
+    56K-token judgment it cannot take."""
+    from openlocalweather.config import JOB_JUDGMENT, JOB_WRITE_UP, LLMProviderEntry
+
+    link = LLMProviderEntry(kind="openai", base_url="https://api.groq.com/openai/v1", calls=["write_up"])
+    assert link.base_url == "https://api.groq.com/openai/v1"
+    assert link.serves(JOB_WRITE_UP) and not link.serves(JOB_JUDGMENT)
+    assert LLMProviderEntry(kind="gemini").serves(JOB_JUDGMENT), "a link naming no job serves every job"
+
+
+@pytest.mark.parametrize("fields, why", [
+    ({"kind": "openai", "calls": []}, "calls"),
+    ({"kind": "openai", "calls": ["narrative"]}, "narrative"),
+    ({"kind": "gemini", "base_url": "https://example.test"}, "base_url"),
+])
+def test_an_endpoint_or_job_that_would_do_nothing_is_rejected(fields, why):
+    from pydantic import ValidationError
+
+    from openlocalweather.config import LLMProviderEntry
+
+    with pytest.raises(ValidationError, match=why):
+        LLMProviderEntry(**fields)
+
+
+def test_the_live_config_holds_an_inert_groq_writer():
+    """Item 192: Groq joins the example once the brief fits its 8K-token-
+    per-minute ceiling, which item 191's brief does and the judgment never
+    will — so the link serves the write-up alone, one try per chance, and
+    is inert until GROQ_API_KEY exists."""
+    from openlocalweather.config import load_location_config
+
+    location = load_location_config("config/location.yaml")
+    [groq] = [e for e in location.llm_providers if not isinstance(e, str) and e.name == "groq"]
+    assert (groq.kind, groq.env_prefix) == ("openai", "GROQ")
+    assert groq.base_url == "https://api.groq.com/openai/v1"
+    assert groq.model == "openai/gpt-oss-120b"
+    assert groq.calls == ["write_up"]
+    assert groq.max_attempts == 1
+    assert groq.fallback_models is None, "Groq is one endpoint; a gateway's in-request order is the gateway's"

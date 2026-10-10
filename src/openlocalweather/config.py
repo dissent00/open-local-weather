@@ -122,6 +122,18 @@ MAX_ATTEMPTS_BY_KIND = {
 QUEUE_KIND = "gemini-interactions"
 
 
+# THE JOBS A LINK MAY SERVE — ROADMAP item 192, 2026-10-10. A link that
+# names only the write-up is never handed the judgment: the judgment is a
+# 56K-token prompt and Groq's free tier takes 8K tokens a minute, so a
+# link that cannot hold it would spend a ledger row and a wait refusing
+# it every morning the links before it did. The brief fits (item 191).
+JOB_JUDGMENT = "judgment"
+JOB_WRITE_UP = "write_up"
+LINK_JOBS = (JOB_JUDGMENT, JOB_WRITE_UP)
+# The kinds whose endpoint varies, so a link may name it.
+ENDPOINT_KINDS = frozenset({"openai", "anthropic"})
+
+
 class LLMProviderEntry(BaseModel):
     """One link in the fallback chain that names its own credentials.
 
@@ -162,6 +174,13 @@ class LLMProviderEntry(BaseModel):
     # different order from this chain. It belongs to the entry because once a
     # chain holds two gateways, a top-level list cannot say which it means.
     fallback_models: list[str] | None = None
+    # The endpoint, for the kinds whose endpoint varies — named here for the
+    # reason `model` is, 2026-10-10: a change has a diff. Unset, the link
+    # reads `{PREFIX}_BASE_URL` as before.
+    base_url: str | None = None
+    # The jobs this link serves, from LINK_JOBS; unset means every job. See
+    # the note above the class.
+    calls: list[str] | None = None
 
     # This link's own 24-hour ceiling — ROADMAP item 170. None means the
     # deployment's `max_llm_calls_per_24h`.
@@ -211,12 +230,23 @@ class LLMProviderEntry(BaseModel):
             )
         return kind
 
+    def serves(self, job: str) -> bool:
+        return self.calls is None or job in self.calls
+
     @model_validator(mode="after")
     def _queue_settings_do_something(self) -> LLMProviderEntry:
         """Each queue setting refused where it would be silently ignored — a
         run that looks configured and behaves otherwise."""
         if self.max_calls_per_run is not None and self.max_calls_per_run < 1:
             raise ValueError(f"max_calls_per_run must be at least 1; got {self.max_calls_per_run}.")
+
+        if self.calls is not None:
+            unknown = [c for c in self.calls if c not in LINK_JOBS]
+            if not self.calls or unknown:
+                raise ValueError(f"calls must name one or more of {list(LINK_JOBS)}; got {self.calls}.")
+
+        if self.base_url is not None and self.kind not in ENDPOINT_KINDS:
+            raise ValueError(f"base_url is for {', '.join(sorted(ENDPOINT_KINDS))}; {self.kind} has one endpoint.")
 
         if self.max_attempts is not None:
             most = MAX_ATTEMPTS_BY_KIND.get(self.kind)

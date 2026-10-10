@@ -426,7 +426,7 @@ def test_the_live_config_is_what_we_think_it_is():
     # when it can and the gateway takes what it sheds. Item 186, 2026-09-30:
     # one run a day, the queue gone, Gemini direct three times per call, 3
     # and 10 minutes apart.
-    direct, newer, gateway = live.llm_providers
+    direct, newer, groq, gateway = live.llm_providers
     assert (direct.kind, direct.max_attempts, direct.retry_delays_s) == ("gemini", 3, [180, 420])
     # PER PROCESS: a write-up's tries; the forecast run sends one request
     # since item 189.
@@ -446,6 +446,8 @@ def test_the_live_config_is_what_we_think_it_is():
     assert newer.env_prefix is None, "one key reaches both"
     assert newer.max_calls_per_run == 1
     assert newer.max_calls_per_24h == 6
+    # GROQ, THE WRITE-UP ONLY — item 192, 2026-10-10; pinned in test_config.
+    assert (groq.name, groq.calls) == ("groq", ["write_up"])
     # THE GATEWAY WRITES, ONE TRY PER CHANCE — 2026-10-02. Its 1700 s
     # deadline times four tries would hold the runner for two hours.
     assert (gateway.kind, gateway.max_attempts) == ("openai", 1)
@@ -673,6 +675,7 @@ def test_two_gateways_each_read_their_own_credentials(monkeypatch):
 def test_a_bare_string_entry_keeps_the_old_variables(monkeypatch):
     """No config file has to change. The 2026-09-15 discipline, again."""
     _clear_llm_env(monkeypatch)
+    monkeypatch.setenv("LLM_API_KEY", "k")
     monkeypatch.setenv("LLM_BASE_URL", "https://example.test/v1")
     monkeypatch.setenv("LLM_MODEL", "legacy-model")
 
@@ -761,6 +764,7 @@ def test_a_named_entry_whose_key_is_absent_is_dropped_by_its_name(monkeypatch, c
     With two `openai` entries, "openai was dropped" does not say which.
     """
     _clear_llm_env(monkeypatch)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "k")
     monkeypatch.setenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
     monkeypatch.setenv("OPENROUTER_MODEL", "or-model")
     monkeypatch.setenv("GEMINI_API_KEY", "g")
@@ -892,3 +896,65 @@ def test_an_optional_build_with_no_keys_warns_and_returns_none(monkeypatch, caps
     assert "no LLM provider holds a key" in capsys.readouterr().err
     with pytest.raises(SystemExit, match="GEMINI_API_KEY"):
         _build_llm_provider(providers=["gemini"])
+
+
+def test_a_link_serves_only_the_jobs_it_names(monkeypatch):
+    """ROADMAP item 192, 2026-10-10: the judgment's chain skips a link that
+    names `calls: [write_up]`, the write-up's holds it, and a caller naming
+    no job gets every link. The endpoint named on the entry reaches the
+    provider without a `GROQ_BASE_URL` variable."""
+    from openlocalweather.config import JOB_JUDGMENT, JOB_WRITE_UP
+
+    _clear_llm_env(monkeypatch)
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    monkeypatch.setenv("GROQ_API_KEY", "k")
+    providers = [
+        "gemini",
+        {"kind": "openai", "name": "groq", "env_prefix": "GROQ", "base_url": "https://api.groq.com/openai/v1/",
+         "model": "openai/gpt-oss-120b", "calls": ["write_up"]},
+    ]
+
+    judgment = _build_llm_provider(providers=providers, job=JOB_JUDGMENT)
+    assert type(judgment).__name__ == "GeminiProvider"
+
+    write_up = _build_llm_provider(providers=providers, job=JOB_WRITE_UP)
+    assert type(write_up).__name__ == "FallbackProvider"
+    assert [type(p).__name__ for p in write_up._providers] == ["GeminiProvider", "OpenAICompatProvider"]
+    assert write_up._providers[1].base_url == "https://api.groq.com/openai/v1"
+
+    assert len(_build_llm_provider(providers=providers)._providers) == 2
+
+
+def test_a_chain_whose_links_all_decline_a_job_is_no_model(monkeypatch):
+    """A deployment whose only link writes but never judges runs the
+    judgment without a model, as a keyless fork does (item 189)."""
+    from openlocalweather.config import JOB_JUDGMENT
+
+    _clear_llm_env(monkeypatch)
+    monkeypatch.setenv("GROQ_API_KEY", "k")
+    only_writes = [{"kind": "openai", "env_prefix": "GROQ", "base_url": "https://api.groq.com/openai/v1",
+                    "model": "openai/gpt-oss-120b", "calls": ["write_up"]}]
+
+    assert _build_llm_provider(providers=only_writes, job=JOB_JUDGMENT, optional=True) is None
+    with pytest.raises(SystemExit, match="judgment"):
+        _build_llm_provider(providers=only_writes, job=JOB_JUDGMENT)
+
+
+def test_a_hosted_openai_link_without_a_key_is_dropped(monkeypatch, capsys):
+    """2026-10-10: the Groq link names its endpoint and model in config, so
+    a key is all a deployment sets — and a keyless link used to BUILD,
+    because the openai kind tolerated an empty key for local runtimes. A
+    hosted endpoint is refused at build; a local one still needs no key."""
+    _clear_llm_env(monkeypatch)
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    hosted = {"kind": "openai", "name": "groq", "env_prefix": "GROQ", "base_url": "https://api.groq.com/openai/v1",
+              "model": "openai/gpt-oss-120b"}
+    local = {"kind": "openai", "name": "ollama", "env_prefix": "OLLAMA", "base_url": "http://localhost:11434/v1",
+             "model": "llama"}
+
+    built = _build_llm_provider(providers=["gemini", hosted, local])
+
+    assert "groq:" in capsys.readouterr().err
+    assert [type(p).__name__ for p in built._providers] == ["GeminiProvider", "OpenAICompatProvider"]
+    with pytest.raises(SystemExit, match="GROQ_API_KEY"):
+        _build_llm_provider(providers=[hosted])

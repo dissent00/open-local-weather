@@ -18,6 +18,7 @@ beside their briefs, and hand-mutated figures.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 from openlocalweather.brief import (
     SECTION_CONFIDENCE,
@@ -27,7 +28,9 @@ from openlocalweather.brief import (
     SECTION_SYNOPTIC,
     SECTION_TODAY,
     SECTIONS,
+    TIER_FULL,
     BriefInputs,
+    render_brief,
 )
 from openlocalweather.floor import (
     BOATERS_HEADING,
@@ -342,6 +345,50 @@ def _join(items: list[str]) -> str:
     if len(items) <= 1:
         return "".join(items)
     return ", ".join(items[:-1]) + f" and {items[-1]}"
+
+
+@dataclass(frozen=True)
+class WriterAsk:
+    """What one stored day puts to the writer: the sections to ask for,
+    the brief, and the prompt that asks for them."""
+
+    sections: list[str]
+    brief: str
+    system_prompt: str
+
+
+def brief_inputs(location, entry, user_prompt: str) -> BriefInputs:
+    """The brief's inputs for one stored day under a deployment's config —
+    the archived user prompt parsed, the secondary point and the met
+    service named as the config names them."""
+    return BriefInputs.from_user_prompt(
+        user_prompt, entry,
+        secondary_name=_secondary_name(location),
+        met_service_name=location.local_bulletin_source_name or None,
+        met_service_model_id=location.local_bulletin_model_id or None,
+    )
+
+
+def writer_ask(location, inputs: BriefInputs) -> WriterAsk | None:
+    """The ask for one day, or None when no enabled section is askable —
+    shared by `olw write-up` and `tools/probe_writer.py`, so the probe
+    measures the request production sends."""
+    sections = sections_to_ask(location.write_up_sections, inputs)
+    if not sections:
+        return None
+    return WriterAsk(
+        sections=sections,
+        brief=render_brief(inputs, tier=TIER_FULL, sections=sections),
+        system_prompt=build_writer_prompt(
+            sections, place=location.primary_place_name, secondary_name=_secondary_name(location),
+            met_service_name=location.local_bulletin_source_name or None,
+        ),
+    )
+
+
+def _secondary_name(location) -> str | None:
+    secondary = location.secondary_point
+    return secondary.name if secondary.enabled and secondary.name else None
 
 
 def ask_writer(provider, system_prompt: str, user_prompt: str, accept) -> WriteUpResponse:

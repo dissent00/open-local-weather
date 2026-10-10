@@ -27202,6 +27202,25 @@ forwards any `*_API_KEY`. What it lacks is written here.
   testing before it is anything else. It is not ported to the app.
 - Per-link jobs replace `llm_fallback_calls`.
 
+**Shipped in part 2026-10-10: a link names its jobs and its endpoint;
+Groq joins the example.** `calls: [write_up]` on a link (`LLMProviderEntry`,
+`serves`) keeps it out of the judgment's chain: `_build_llm_provider(job=)`
+filters after the typo and collision checks, so a mistake on a link left
+out is still fatal, and a chain whose links all decline a job is "no model"
+for that job, as a keyless fork is (item 189). `base_url` on a link names
+its endpoint in config for the reason `model` does, so the Groq link —
+`openai/gpt-oss-120b`, one try per write-up chance, `calls: [write_up]`
+because the 56K-token judgment can never fit 8K tokens a minute — is inert
+until GROQ_API_KEY exists and needs no other variable. Found while adding
+it, by the health check's own test: an OpenAI-compatible link BUILT WITH
+NO KEY, because the kind tolerated an empty key for local runtimes, so a
+keyless Groq link would have joined the chain and spent a ledger row
+refusing every call. A hosted endpoint now needs its key at build; a
+local one (localhost, 127.0.0.1, `.local`) still builds without. Groq's
+pass rate on the brief is unmeasured: `writer_probe.yml` is the
+measurement, below under item 191. Still owed here: the per-link `per_day`
+allowance, the monthly re-ranking from the ledger, the 14-day sweep.
+
 **Changes to the chain.**
 - A link is chosen per job: `calls: [write_up]`, `[judgment]`,
   `[interpretation]` on the entry. `llm_fallback_calls: scored_call` and
@@ -27385,6 +27404,33 @@ sections, 0 divergences, after one caught by reading the diff: Python
 sorts a missing claim as `str(None)`, Dart as "null". Not checked: a
 rendered six-section day read by a reader; the first live one is the
 next 03:01Z run.
+
+**Step (d) on the pipeline side, 2026-10-10: the measurements are tools,
+and one has a baseline.** Three questions, three instruments, no new daily
+job: the chain itself is the sweep now that every morning sends each link
+the judgment and then the brief minutes apart.
+- *Size-blindness* — `tools/measure_routes.py` reads the ledger: per
+  purpose and model, asked, served, the audit's verdicts and the median
+  time; then per model per day the judgment against the write-up as a
+  pair. Baseline read the same day, 2026-10-04 to 10-09, the 122K-character
+  write-up: Gemini 3.6 Flash served the judgment 1 of 7 mornings and the
+  write-up 3 of 26 requests (every refusal a 503, median 18 s); the gateway
+  served 6 of 6 and 7 of 7 but passed the audit 0 of 1 judged. The brief's
+  first morning (10-10) refused both on Gemini and served both on the
+  gateway. Ten mornings of pairs say whether the small call lowers
+  Gemini's own refusals; nothing to build for it.
+- *The writer backtest* — `tools/probe_writer.py` and `writer_probe.yml`:
+  one route, named as location.yaml names a link, asked `writer_ask`'s
+  request (the one `olw write-up` sends; pinned so the probe cannot drift
+  from production) for the newest archived days with a served call (8
+  exist, from 10-02), one try each, every section audited, pass rate per
+  section, GO at 80%, the texts uploaded for reading. Counted under
+  `probe`. Not run yet: it spends the route's allowance and needs the
+  repository's keys, so the operator dispatches it — Groq first, then the
+  gateway's free models, then Gemini.
+- *Groq* — the link, under item 192.
+The app's section toggles are the app's side of this step; the mini tier
+waits on an on-device route (the brief already renders it).
 
 **The gate — the audit's first line, shipped early 2026-10-09.** Four
 mornings running (10-05, 10-06, 10-08, 10-09) the gateway's free model
