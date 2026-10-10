@@ -15,8 +15,8 @@ from openlocalweather import cli
 from openlocalweather.config import load_location_config
 from openlocalweather.dates import today_in_tz
 from openlocalweather.llm.errors import LLMUnavailableError
-from openlocalweather.llm.prompt import build_narrative_prompt, narrative_headings
-from openlocalweather.llm.schema import GeminiNarrativeResponse
+from openlocalweather.llm.prompt import build_narrative_prompt
+from openlocalweather.llm.schema import GeminiNarrativeResponse, WriteUpResponse
 from openlocalweather.models import (
     DEGRADATION_NARRATIVE,
     DailyLogEntry,
@@ -30,14 +30,11 @@ from openlocalweather.store import log_store
 
 CONFIG = "config/location.yaml"
 PLACEHOLDER = "## Write-up unavailable"
-# Every heading the prompt asks for, each with a line under it: what the gate
-# (2026-10-09) accepts. The earlier one-heading fake would now be refused.
-COMPLIANT = "\n\n".join(f"{h}\nWritten." for h in narrative_headings(load_location_config(CONFIG)))
-# The gateway's answer of 2026-10-09, 613 characters and no heading at all.
-THIN = (
-    "Afternoon showers and thunderstorms, with a high of 30.7°C. Thunder possible "
-    "from the morning, peaking this afternoon. Rain develops between 14:00 and 16:00."
-)
+# A section the audit accepts: its figures are the brief's (the stored call's
+# 31/19 and the Fahrenheit code makes of 31). Item 191 step (b).
+TODAY = "Showers likely this afternoon with a high of 31°C / 88°F."
+# A section the audit refuses: 30.7 is nowhere in the brief.
+THIN = "Afternoon showers and thunderstorms, with a high of 30.7°C."
 
 
 class FakeWriter:
@@ -57,9 +54,9 @@ class FakeWriter:
         self.calls.append((system_prompt, user_prompt, response_schema.__name__))
         if self.refuse:
             raise LLMUnavailableError("Gemini request failed after 3 attempts: Gemini returned HTTP 503")
-        return GeminiNarrativeResponse(
-            yesterday_verification="Checked.", today_narrative=THIN if self.thin else COMPLIANT
-        )
+        if response_schema is WriteUpResponse:
+            return WriteUpResponse(today=THIN if self.thin else TODAY)
+        return GeminiNarrativeResponse(yesterday_verification="Checked.", today_narrative=TODAY)
 
 
 def _day():
@@ -72,6 +69,12 @@ def _store(tmp_path, *, missing: bool):
         date=day, rain_expected="Dry / No Rain", temp_high_c=31.0, temp_low_c=19.0,
         temp_high_low_display="31/19", mslp_trend_24h="steady", synoptic_pattern="weak gradient",
         narrative_markdown=PLACEHOLDER if missing else "## Today's Forecast\nWritten.",
+        # The served call the brief is written from — the writer has nothing
+        # to write without one.
+        served_call={"today_properties": {
+            "rain": True, "onset_hour": "14:00", "precip_mm": 4.2, "temp_high_c": 31.0, "temp_low_c": 19.0,
+            "rain_probability_pct": 70, "peak_wind_primary_kmh": 30.0,
+        }, "extended_properties": []},
         meta=LogEntryMeta(
             generated_at_utc=datetime.now(timezone.utc), llm_provider="test", llm_model="test",
             pipeline_version="0",
@@ -141,13 +144,16 @@ def test_a_missing_write_up_is_written_after_the_wait_and_republished(tmp_path, 
 
     entry = log_store.read_log_entry(tmp_path, day)
     assert wired["slept"] == [3600]
-    assert entry.narrative_markdown == COMPLIANT
+    assert f"## Today's Forecast\n\n{TODAY}" in entry.narrative_markdown
+    assert entry.write_up_sources["today"] == "llm", "the model's section, the rest code's"
+    assert entry.narrative_markdown.rstrip().endswith("Today's Forecast by Gemini 3.6 Flash; the rest written by code.")
     assert not [d for d in entry.meta.degradations or [] if d.code == DEGRADATION_NARRATIVE]
     assert entry.meta.narrative_llm_model == "gemini-3.6-flash"
-    assert wired["published"] == [COMPLIANT]
-    [(_, user_prompt, schema)] = wired["writer"].calls
-    assert schema == "GeminiNarrativeResponse"
-    assert user_prompt.startswith("THE ARCHIVED USER PROMPT"), "the archived prompt, with the call appended"
+    assert wired["published"] == [entry.narrative_markdown]
+    [(system_prompt, user_prompt, schema)] = wired["writer"].calls
+    assert schema == "WriteUpResponse"
+    assert "THE CALL" in user_prompt and "31/19" in user_prompt, "the brief, from the stored call"
+    assert '"today"' in system_prompt
 
 
 def test_every_link_may_write_under_the_live_config(tmp_path, wired):
@@ -183,9 +189,9 @@ def test_a_thin_answer_is_refused_and_the_floor_stays(tmp_path, wired, capsys):
     assert entry.meta.narrative_llm_model is None
     assert wired["published"] == []
     err = capsys.readouterr().err
-    assert "refused" in err and "missing ## Extended Outlook" in err
+    assert "refused" in err and "30.7" in err
     [row] = [r for r in read_ledger(tmp_path) if r.purpose == "write-up"]
-    assert row.audit.startswith("refused: missing ## Today's Forecast")
+    assert row.audit.startswith("refused: today (figures not in the brief: 30.7°C")
 
 
 def test_a_thin_first_link_falls_through_to_the_next(tmp_path, wired, monkeypatch, capsys):
@@ -203,13 +209,13 @@ def test_a_thin_first_link_falls_through_to_the_next(tmp_path, wired, monkeypatc
     assert _run(tmp_path) == 0
 
     entry = log_store.read_log_entry(tmp_path, day)
-    assert entry.narrative_markdown == COMPLIANT
+    assert f"## Today's Forecast\n\n{TODAY}" in entry.narrative_markdown
     assert entry.meta.narrative_llm_model == "gemini-3.8-flash"
     assert (len(thin.calls), len(good.calls)) == (1, 1)
     assert "refused" in capsys.readouterr().err
     audits = [(r.model, r.audit) for r in read_ledger(tmp_path) if r.purpose == "write-up"]
-    assert audits[0][0] == "gemini-3.6-flash" and audits[0][1].startswith("refused: missing")
-    assert audits[1] == ("gemini-3.8-flash", "passed")
+    assert audits[0][0] == "gemini-3.6-flash" and audits[0][1].startswith("refused: today")
+    assert audits[1][0] == "gemini-3.8-flash" and audits[1][1].startswith("passed: today; unanswered:")
 
 
 def test_scored_call_keeps_the_write_up_on_the_first_link(tmp_path, wired, monkeypatch):
@@ -241,17 +247,6 @@ def test_a_refused_second_chance_leaves_the_day_as_it_was(tmp_path, wired):
     assert wired["published"] == []
 
 
-def test_a_prompt_that_cannot_be_rebuilt_is_refused_before_the_wait(tmp_path, wired):
-    """An hour does not fix a prompt that changed since the issuance."""
-    day = _store(tmp_path, missing=True)
-    archive = tmp_path / "prompts" / f"{day}.json"
-    archive.write_text(archive.read_text().replace('"narrative_prompt_sha256": "', '"narrative_prompt_sha256": "x'))
-
-    assert _run(tmp_path) == 1
-    assert wired["slept"] == []
-    assert wired["providers"] == []
-
-
 def test_the_write_up_reads_the_stored_call_as_the_forecasters_call(tmp_path, wired):
     """ROADMAP item 189: the entry carries the call as served, so the
     narrative is rendered around exactly what was published rather than a
@@ -269,6 +264,7 @@ def test_the_write_up_reads_the_stored_call_as_the_forecasters_call(tmp_path, wi
     assert cli.main(["write-up", "--config", CONFIG, "--data-dir", str(tmp_path), "--docs-dir", str(tmp_path / "docs"),
                      "--public-url", "https://example.test/", "--wait-s", "0"]) == 0
 
+    # The brief carries the served call as the page shows it — item 191.
     _system, user, _schema = wired["writer"].calls[-1]
-    assert '"rain_expected": "Evening Showers"' in user and '"onset_hour": "17:00"' in user
-    assert '"rain_probability_pct": 71' in user
+    assert "rain: yes, Evening Showers; onset 17:00; 4.4 mm; 71%" in user
+    assert "Day+3" in user and "dry, 30%" in user

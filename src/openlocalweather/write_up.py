@@ -18,14 +18,9 @@ import hashlib
 import itertools
 
 from openlocalweather.defaults import BLEND_MODEL_ID
-from openlocalweather.llm.errors import LLMAnswerRefused
-from openlocalweather.llm.fallback import FallbackProvider
 from openlocalweather.llm.prompt import build_narrative_prompt, build_narrative_user_prompt
-from openlocalweather.llm.provider import provider_identity
-from openlocalweather.llm.schema import GeminiNarrativeResponse
 from openlocalweather.floor import NARRATIVE_SOURCE_LLM
 from openlocalweather.models import DEGRADATION_NARRATIVE
-from openlocalweather.spend import record_audit
 from openlocalweather.verify.scoring import resolve_prediction_rows
 
 # `today_properties`, split by WHERE each field survives: nine are published
@@ -139,6 +134,19 @@ def apply_write_up(entry, narrative, served_model: str) -> None:
     ]
 
 
+def apply_write_up_sections(entry, markdown: str, sources: dict[str, str], served_model: str) -> None:
+    """The composed page onto the entry — item 191 step (b). `narrative_source`
+    stays the record's coarse answer ("llm" once any section is a model's)
+    for the mailer and the app; `write_up_sources` says which."""
+    entry.narrative_markdown = markdown
+    entry.narrative_source = NARRATIVE_SOURCE_LLM
+    entry.write_up_sources = sources
+    entry.meta.narrative_llm_model = served_model
+    entry.meta.degradations = [
+        d for d in (entry.meta.degradations or []) if d.code != DEGRADATION_NARRATIVE
+    ]
+
+
 def _level(heading: str) -> str:
     """The '#' run that opens a heading line."""
     return heading[: len(heading) - len(heading.lstrip("#"))]
@@ -187,35 +195,3 @@ def audit_write_up(markdown: str, headings: list[str]) -> list[str]:
         defects.append(f"empty {heading}")
 
     return defects
-
-
-def write_up_gate(provider, headings: list[str], data_dir):
-    """The chain's `accept` for the write-up: audits the answer, writes the
-    verdict on the answering link's ledger row, and refuses a thin answer
-    so the chain moves on (ROADMAP item 192). `provider_identity` is read
-    INSIDE the call, while the chain still names the link that answered;
-    after it returns the chain has cleared it."""
-
-    def accept(narrative: GeminiNarrativeResponse) -> None:
-        defects = audit_write_up(narrative.today_narrative, headings)
-        name, model = provider_identity(provider)
-        verdict = "passed" if not defects else "refused: " + "; ".join(defects)
-        record_audit(data_dir, provider=name, model=model, verdict=verdict)
-        if defects:
-            raise LLMAnswerRefused(f"the answer is not a write-up: {'; '.join(defects)}")
-
-    return accept
-
-
-def ask_for_write_up(provider, system_prompt: str, user_prompt: str, accept) -> GeminiNarrativeResponse:
-    """One accepted answer from the first link that gives one.
-
-    A chain puts each link's answer to `accept` and moves on past a refusal;
-    a single provider is asked once and its answer put to `accept` here, so
-    the verdict is recorded either way."""
-    if isinstance(provider, FallbackProvider):
-        return provider.generate(system_prompt, user_prompt, GeminiNarrativeResponse, accept=accept)
-
-    narrative = provider.generate(system_prompt, user_prompt, GeminiNarrativeResponse)
-    accept(narrative)
-    return narrative

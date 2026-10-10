@@ -1856,25 +1856,25 @@ def _run_backfill_code_blend(args) -> int:
 
 
 def _run_write_up(args) -> int:
-    """The write-up, asked after the forecast is published — ROADMAP items
-    186 and 189.
+    """The write-up: the brief to a writer, section by section — ROADMAP item
+    191 step (b), 2026-10-10, under the operator's rule: a section is the
+    model's where it answered and the audit passed, code's otherwise.
 
-    One run a day, and it asks for no prose itself. The forecast job runs
-    this twice after its own commit: at once, and an hour later when the
-    first was refused. Each waits `--wait-s`, then asks for the prose alone,
-    on the links allowed to write it, and republishes the day. A day that
-    has its write-up returns at once, without waiting or spending.
-
-    A refusal is not a failure of the job: the forecast is already published
-    and the day stays as it was. A prompt that no longer reproduces the
-    archived hash is, and exits 1, because nothing will fix it by waiting.
+    Rebuilt from the ARCHIVED user prompt and the stored day (`brief.py`),
+    so a later chance reads the same input. `--wait-s` sleeps first. A
+    refused answer, or one with no section passing, leaves the day as it
+    was and exits 0; the next chance is the retry. Nothing here can lose
+    a day: the forecast is published before this runs.
     """
-    from openlocalweather.llm.errors import LLMResponseError
-    from openlocalweather.llm.provider import FallbackCalls, served_identity
-    from openlocalweather.llm.prompt import narrative_headings
-    from openlocalweather.spend import SpendCapExceeded
-    from openlocalweather.write_up import (
-        CannotRewrite, apply_write_up, ask_for_write_up, needs_write_up, write_up_gate, write_up_prompts,
+    from openlocalweather.brief import TIER_FULL, BriefInputs, render_brief
+    from openlocalweather.config import deviation_bands
+    from openlocalweather.floor import FloorInputs, floor_section_texts, sign_off
+    from openlocalweather.llm.errors import LLMAnswerRefused, LLMResponseError
+    from openlocalweather.llm.provider import FallbackCalls, provider_identity, served_identity
+    from openlocalweather.spend import SpendCapExceeded, record_audit
+    from openlocalweather.write_up import apply_write_up_sections, needs_write_up
+    from openlocalweather.writer import (
+        ask_writer, audit_section, build_writer_prompt, compose_write_up, model_display_name, sections_to_ask,
     )
 
     location = load_location_config(args.config)
@@ -1885,26 +1885,37 @@ def _run_write_up(args) -> int:
         print(f"No write-up missing for {day}; nothing to do.")
         return 0
 
-    # Rebuilt BEFORE the wait: a prompt that cannot be rebuilt now will not
-    # be rebuildable in an hour, and the job should say so at once.
     archive_path = data_dir / "prompts" / f"{day}.json"
     if not archive_path.exists():
         print(f"Write-up not attempted: no prompt archive for {day}.", file=sys.stderr)
         return 1
-    try:
-        issuance = json.loads(archive_path.read_text())["issuances"][-1]
-        system_prompt, user_prompt = write_up_prompts(entry, issuance, location)
-    except CannotRewrite as e:
-        print(f"Write-up not attempted: {e}", file=sys.stderr)
+    secondary = location.secondary_point
+    secondary_name = secondary.name if secondary.enabled and secondary.name else None
+    station_name = location.metar_station_name or location.metar_station_icao or None
+    issuance = json.loads(archive_path.read_text())["issuances"][-1]
+    inputs = BriefInputs.from_user_prompt(
+        issuance["user_prompt"], entry,
+        secondary_name=secondary_name,
+        met_service_name=location.local_bulletin_source_name or None,
+        met_service_model_id=location.local_bulletin_model_id or None,
+    )
+    if not inputs.served_call:
+        print(f"Write-up not attempted: no served call stored for {day}.", file=sys.stderr)
         return 1
+    sections = sections_to_ask(location.write_up_sections, inputs)
+    if not sections:
+        print(f"No section to write for {day}; the day keeps code's write-up.")
+        return 0
+    brief = render_brief(inputs, tier=TIER_FULL, sections=sections)
+    system_prompt = build_writer_prompt(
+        sections, place=location.primary_place_name, secondary_name=secondary_name,
+        met_service_name=location.local_bulletin_source_name or None,
+    )
 
     if args.wait_s:
         print(f"The write-up for {day} is missing; asking again in {args.wait_s} s.")
         time.sleep(args.wait_s)
 
-    # The links that may write: every link under `both_calls` (the live
-    # config since 2026-10-02), the first alone under `scored_call` (item
-    # 180's rule, kept for a deployment whose gateway cannot write).
     links = location.llm_providers
     if location.llm_fallback_calls == FallbackCalls.SCORED_CALL:
         links = links[:1]
@@ -1915,28 +1926,59 @@ def _run_write_up(args) -> int:
         optional=True,
     )
     if provider is None:
-        print(f"No link may write the write-up for {day}; the day keeps its placeholder.")
+        print(f"No link may write the write-up for {day}; the day keeps code's write-up.")
         return 0
     verify_spend, _ = attach_spend_cap(
         provider, data_dir, max_calls=location.max_llm_calls_per_24h, purpose="write-up"
     )
-    # THE GATE — 2026-10-09. An answer missing the headings it was asked for
-    # is refused like a 503, and the next link gets the same ask; the day
-    # keeps code's write-up, which carries the Extended Outlook a thin
-    # answer had been replacing. The verdict goes on the ledger row.
+
+    verdicts: dict[str, list[str]] = {}
+
+    # THE GATE, PER SECTION. Each field is audited alone and the verdict goes
+    # on the answering link's ledger row; an answer with no section passing
+    # is refused like a 503 and the next link gets the same ask.
+    def accept(answer) -> None:
+        verdicts.clear()
+        answered = [s for s in sections if (getattr(answer, s) or "").strip()]
+        verdicts.update({s: audit_section(s, getattr(answer, s), brief, inputs) for s in answered})
+        passed = [s for s in answered if not verdicts[s]]
+        refused = [f"{s} ({verdicts[s][0]})" for s in answered if verdicts[s]]
+        unanswered = [s for s in sections if s not in answered]
+        if passed:
+            verdict = "passed: " + ", ".join(passed)
+            if refused:
+                verdict += "; refused: " + "; ".join(refused)
+        else:
+            verdict = "refused: " + ("; ".join(refused) or "nothing answered")
+        if unanswered:
+            verdict += "; unanswered: " + ", ".join(unanswered)
+        name, model = provider_identity(provider)
+        record_audit(data_dir, provider=name, model=model, verdict=verdict)
+        if not passed:
+            raise LLMAnswerRefused(
+                "no section passed the audit: " + ("; ".join(refused) if refused else "nothing answered")
+            )
+
     try:
-        narrative = ask_for_write_up(
-            provider, system_prompt, user_prompt,
-            write_up_gate(provider, narrative_headings(location), data_dir),
-        )
+        answer = ask_writer(provider, system_prompt, brief, accept)
     except (LLMResponseError, SpendCapExceeded) as e:
         print(f"The write-up was refused ({e}); the day keeps code's write-up.", file=sys.stderr)
         return 0
     verify_spend()
 
-    apply_write_up(entry, narrative, served_identity(provider)[1])
+    floor_inputs = FloorInputs.from_entry(
+        entry, secondary_name=secondary_name, model_configured=True,
+        station_name=station_name, bands=deviation_bands(location),
+    )
+    served_model = served_identity(provider)[1]
+    markdown, sources = compose_write_up(
+        {s: getattr(answer, s) for s in sections}, verdicts, floor_section_texts(floor_inputs), sections,
+        secondary_name=secondary_name, model_name=model_display_name(served_model), sign_off_line=sign_off(floor_inputs),
+    )
+    apply_write_up_sections(entry, markdown, sources, served_model)
     write_log_entry(data_dir, entry)
-    print(f"Wrote {len(narrative.today_narrative):,} characters of write-up for {day}.")
+    written = [s for s, src in sources.items() if src == "llm"]
+    print(f"Wrote {len(markdown):,} characters of write-up for {day}: {', '.join(written)} by {served_model}.")
 
     publisher = _build_pages_publisher(location, data_dir, args.docs_dir, args.public_url)
     if publisher is None:

@@ -194,25 +194,47 @@ class FloorInputs:
 
 def compose_floor(inputs: FloorInputs) -> str:
     """The floor as Markdown with the write-up's headings."""
-    sections = []
+    sections = [f"{heading}\n\n{text}" for heading, text in floor_sections(inputs)]
+    sections.append(sign_off(inputs))
+    return "\n\n".join(sections) + "\n"
 
-    today = _sentences(_today_parts(inputs))
-    if today:
-        sections.append(f"{TODAY_HEADING}\n\n{today}")
 
+# The section ids the writer composes by (brief.SECTIONS), for the sections
+# code writes: the floor's three. Item 191 step (c) adds the rest.
+FLOOR_SECTION_IDS = ("today", "extended", "secondary")
+
+
+def floor_sections(inputs: FloorInputs) -> list[tuple[str, str]]:
+    """(heading, text) for each section code writes, in the page's order;
+    a section with nothing under it is absent, never a heading over
+    nothing. `floor_section_texts` keys the same texts by section id for
+    the writer's composition (item 191 step (b))."""
+    out: list[tuple[str, str]] = []
+    for section, heading, text in _floor_section_rows(inputs):
+        if text:
+            out.append((heading, text))
+    return out
+
+
+def floor_section_texts(inputs: FloorInputs) -> dict[str, str]:
+    return {section: text for section, _, text in _floor_section_rows(inputs) if text}
+
+
+def _floor_section_rows(inputs: FloorInputs) -> list[tuple[str, str, str]]:
     # The outlook composed in code (item 190 step 3) is already two checked
     # paragraphs; without it, the trend clause and a line per scored lead.
     extended = inputs.extended_outlook.strip() if inputs.extended_outlook else _sentences(_extended_parts(inputs))
-    if extended:
-        sections.append(f"{EXTENDED_HEADING}\n\n{extended}")
-
     boaters = _sentences(_boaters_parts(inputs)) if inputs.secondary_name else ""
-    if boaters:
-        sections.append(f"{BOATERS_HEADING.format(name=inputs.secondary_name)}\n\n{boaters}")
+    return [
+        ("today", TODAY_HEADING, _sentences(_today_parts(inputs))),
+        ("extended", EXTENDED_HEADING, extended),
+        ("secondary", BOATERS_HEADING.format(name=inputs.secondary_name), boaters),
+    ]
 
-    sections.append(_sentences(_sign_off_parts(inputs)))
 
-    return "\n\n".join(sections) + "\n"
+def sign_off(inputs: FloorInputs) -> str:
+    """The stamp and who wrote it — the floor's own closing line."""
+    return _sentences(_sign_off_parts(inputs))
 
 
 def compose_floor_for_entry(

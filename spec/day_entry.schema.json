@@ -2369,6 +2369,21 @@
       "title": "Wind Anchors",
       "type": "array"
     },
+    "write_up_sources": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Write Up Sources"
+    },
     "yesterday_verification_summary": {
       "anyOf": [
         {

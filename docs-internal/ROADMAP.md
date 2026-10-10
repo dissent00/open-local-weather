@@ -27320,6 +27320,39 @@ basin reduction and both tiers over every section, with exact halves,
 a change rounding to negative zero and whole numbers as strings placed
 on purpose; 0 divergences.
 
+**Step (b) shipped on the pipeline side, 2026-10-10: the writer.**
+`WriteUpResponse` is one Markdown string per section, each optional;
+`writer.py` holds the prompt (`build_writer_prompt`, under 7K characters
+for all six sections, asking only for the sections `sections_to_ask`
+gives: `severe` while the convective flag is live, `secondary` where a
+point is named), the audit (`audit_section`) and the composition
+(`compose_write_up`). `olw write-up` renders the brief from the archived
+prompt and the stored day, asks the chain, audits each answered field
+alone, writes the verdict on the ledger row as "passed: a, b; refused: c
+(why); unanswered: d", refuses an answer with no passing section so the
+next link gets the ask, and composes the page: the model's section where
+it passed, code's where code writes one (the floor's three), absent
+otherwise; `write_up_sources` on the entry says which; the sign-off reads
+"Today's Forecast and Severe Weather by Gemini 3.6 Flash; the rest
+written by code". The operator's word caps, set near the record's 90th
+percentile: today 155, extended 140, severe 90, the Gulf 95, synoptic
+140, confidence 200.
+
+**The audit, measured against the record** (`tools/measure_audit.py`, 22
+Gemini days with an archived prompt). Those write-ups were written from
+the 122K-character prompt, so a figure the brief does not carry is a
+rejection here and an intended one: Today's Forecast was refused on 20 of
+22 days, for figures such as the call's 31.1°C where the brief says
+31°C / 88°F, and for pipeline words ("model guidance") on 9. The number
+check is UNIT-AWARE after a first cut let "35°C" through as some gust's
+knots: a unit's set is every brief figure plus the conversions INTO that
+unit, so a conversion never lands in Celsius, km/h or millimetres. What it
+cannot do is tell one quantity's figure from another's: 19 of 26 mutated
+figures caught, the misses all values present in the brief as some other
+figure (35 as ICON's 34.6 km/h rounded, 37 as a PM10 reading). The Dart
+port, the app's `writeUpForecast` on the brief and the vectors follow in
+(b2); the heading gate of 10-09 stays until then.
+
 **The gate — the audit's first line, shipped early 2026-10-09.** Four
 mornings running (10-05, 10-06, 10-08, 10-09) the gateway's free model
 answered 600 to 800 characters under none or one of the seven headings, and

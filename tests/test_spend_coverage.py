@@ -62,10 +62,10 @@ CAPPED_BY_CALLER = {
         "step 3 live here so the pipeline and the replay cannot disagree "
         "about what a forecast is; both callers attach the cap above it."
     ),
-    "ask_for_write_up": (
-        "Takes the provider as an argument — the write-up gate, 2026-10-09. "
+    "ask_writer": (
+        "Takes the provider as an argument — the writer, item 191 step (b). "
         "`olw write-up` attaches the cap above it and hands it the chain, or "
-        "the single link, with the acceptance test the answer must pass."
+        "the single link, with the per-section audit the answer must pass."
     ),
 }
 

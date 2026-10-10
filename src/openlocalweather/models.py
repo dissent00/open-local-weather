@@ -1878,6 +1878,11 @@ class DailyLogEntry(BaseModel):
     # existed.
     extended_days: list[dict] | None = None
     extended_outlook: str | None = None
+    # WHO WROTE EACH SECTION — item 191 step (b), 2026-10-10. Section id
+    # (brief.SECTIONS) to "llm" or "code": the operator's rule composes the
+    # page section by section, and the record must say which half of it a
+    # model wrote. None before the field existed and on a floor-only day.
+    write_up_sources: dict[str, str] | None = None
     whatsapp_summary: str | None = None
 
     # Every issuance BEFORE the current one, oldest first. The current
