@@ -27416,8 +27416,9 @@ the judgment and then the brief minutes apart.
   write-up: Gemini 3.6 Flash served the judgment 1 of 7 mornings and the
   write-up 3 of 26 requests (every refusal a 503, median 18 s); the gateway
   served 6 of 6 and 7 of 7 but passed the audit 0 of 1 judged. The brief's
-  first morning (10-10) refused both on Gemini and served both on the
-  gateway. Ten mornings of pairs say whether the small call lowers
+  first morning (10-10): Gemini 3.6 refused the judgment and served the
+  write-up on its second chance, 3.8 refused both, the gateway served
+  both. Ten mornings of pairs say whether the small call lowers
   Gemini's own refusals; nothing to build for it.
 - *The writer backtest* — `tools/probe_writer.py` and `writer_probe.yml`:
   one route, named as location.yaml names a link, asked `writer_ask`'s
