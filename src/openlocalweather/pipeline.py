@@ -4090,6 +4090,9 @@ def _issue_forecast(
         model_configured=deps.llm_provider is not None,
         station_name=deps.location.metar_station_name or deps.location.metar_station_icao or None,
         bands=deviation_bands(deps.location),
+        sections=deps.location.write_up_sections,
+        met_service_name=deps.location.local_bulletin_source_name or None,
+        met_service_model_id=deps.location.local_bulletin_model_id or None,
     )
     log_entry.narrative_source = NARRATIVE_SOURCE_CODE
 

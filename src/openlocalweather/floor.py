@@ -43,6 +43,7 @@ from openlocalweather.disagreement import (
 from openlocalweather.instability import convective_tier
 from openlocalweather.models import DailyLogEntry, DeviationBands, ModelPrediction, format_temp_c
 from openlocalweather.observed import describe_observed_so_far
+from openlocalweather.outlook import MODEL_SHORT_NAMES, short_model_name
 from openlocalweather.phrasing import phrase_defect
 from openlocalweather.scales import aqi_band, uv_band
 from openlocalweather.tiles import KMH_PER_KNOT, SKY_SOURCE_STATION
@@ -62,7 +63,26 @@ SIGN_OFF_WITHOUT_MODEL = "Written by code."
 
 TODAY_HEADING = "## Today's Forecast"
 EXTENDED_HEADING = "## Extended Outlook"
+SEVERE_HEADING = "## Severe Weather / Hazard Potential"
 BOATERS_HEADING = "## {name} — Conditions for Boaters"
+# The discussion's two are subsections under one parent, as the page has
+# always read.
+DISCUSSION_HEADING = "## Detailed Discussion"
+SYNOPTIC_HEADING = "### Synoptic Overview"
+CONFIDENCE_HEADING = "### Forecaster Confidence Notes"
+
+# The sections code writes, by brief.SECTIONS' ids, in the page's order.
+# All six since item 191 step (c), 2026-10-10 — the operator's rule: "if the
+# LLM responds, we see that section, if not we get it from code. For all
+# sections." `FloorInputs.enabled_sections` says which a deployment shows.
+FLOOR_SECTION_IDS = ("today", "extended", "severe", "secondary", "synoptic", "confidence")
+DEFAULT_FLOOR_SECTIONS = ("today", "extended", "secondary")
+# Findings the Confidence Notes quote: enough to say what the record knows,
+# few enough to read.
+CONFIDENCE_FINDINGS = 3
+# The basin's three-day change is "near-steady" inside this, the ring's own
+# threshold (synoptic.py), as the brief has it.
+BASIN_STEADY_HPA = 1.5
 
 # The leads the record scores beyond today (item 72's minimal shape).
 EXTENDED_LEADS = (3, 7)
@@ -126,6 +146,23 @@ class FloorInputs:
     station_name: str | None = None
     station_codes: list[str] = field(default_factory=list)
 
+    # THE OTHER THREE SECTIONS — item 191 step (c), 2026-10-10. Severe
+    # Weather from each model's peak CAPE; the Synoptic Overview from the
+    # ring's statements, the basin's pressure and the trend overhead; the
+    # Confidence Notes from the record's lead rankings, the review's
+    # established findings and where the call sits among today's models and
+    # the met service's own call. Which sections a day shows is
+    # `enabled_sections`; `severe` only while thunder is possible.
+    enabled_sections: list[str] = field(default_factory=lambda: list(DEFAULT_FLOOR_SECTIONS))
+    models_today: list[dict] = field(default_factory=list)
+    met_service_name: str | None = None
+    met_service_call: dict | None = None
+    synoptic_statements: list[str] = field(default_factory=list)
+    basin_pressure: dict | None = None
+    mslp_trend_24h: str | None = None
+    review_findings: list[dict] = field(default_factory=list)
+    lead_records: list[dict] = field(default_factory=list)
+
     def to_json(self) -> dict:
         return asdict(self)
 
@@ -142,6 +179,9 @@ class FloorInputs:
         model_configured: bool = True,
         station_name: str | None = None,
         bands: DeviationBands | None = None,
+        sections: list[str] | tuple[str, ...] | None = None,
+        met_service_name: str | None = None,
+        met_service_model_id: str | None = None,
     ) -> "FloorInputs":
         """The inputs as a stored entry holds them."""
         rows = entry.prediction_rows[0] if entry.prediction_rows else None
@@ -189,31 +229,50 @@ class FloorInputs:
                 if observed is not None and station_name
                 else []
             ),
+            enabled_sections=list(sections) if sections is not None else list(DEFAULT_FLOOR_SECTIONS),
+            models_today=[
+                {"model": short_model_name(p.model), "high_c": p.high_c, "rain": p.rain, "wind_kmh": p.wind_kmh,
+                 "peak_cape_jkg": p.peak_cape_jkg}
+                for p in scored.day0 if p.model in blend_inputs()
+            ],
+            met_service_name=met_service_name,
+            met_service_call=next(
+                ({"high_c": p.high_c, "low_c": p.low_c, "rain": p.rain} for p in scored.day0 if p.model == met_service_model_id),
+                None,
+            ) if met_service_model_id else None,
+            synoptic_statements=list(((entry.synoptic_ring or {}).get("summary") or {}).get("statements") or []),
+            basin_pressure=entry.basin_pressure,
+            mslp_trend_24h=entry.mslp_trend_24h or None,
+            review_findings=list(entry.review_findings or []),
+            lead_records=list(entry.lead_records or []),
         )
 
 
 def compose_floor(inputs: FloorInputs) -> str:
-    """The floor as Markdown with the write-up's headings."""
-    sections = [f"{heading}\n\n{text}" for heading, text in floor_sections(inputs)]
-    sections.append(sign_off(inputs))
-    return "\n\n".join(sections) + "\n"
+    """The floor as Markdown with the write-up's headings: the enabled
+    sections code can write, the discussion's heading once over its two
+    subsections, and the sign-off."""
+    parts: list[str] = []
+    discussion_open = False
+    for section, heading, text in floor_sections(inputs):
+        if section in ("synoptic", "confidence") and not discussion_open:
+            parts.append(DISCUSSION_HEADING)
+            discussion_open = True
+        parts.append(f"{heading}\n\n{text}")
+    parts.append(sign_off(inputs))
+    return "\n\n".join(parts) + "\n"
 
 
-# The section ids the writer composes by (brief.SECTIONS), for the sections
-# code writes: the floor's three. Item 191 step (c) adds the rest.
-FLOOR_SECTION_IDS = ("today", "extended", "secondary")
-
-
-def floor_sections(inputs: FloorInputs) -> list[tuple[str, str]]:
-    """(heading, text) for each section code writes, in the page's order;
-    a section with nothing under it is absent, never a heading over
-    nothing. `floor_section_texts` keys the same texts by section id for
-    the writer's composition (item 191 step (b))."""
-    out: list[tuple[str, str]] = []
-    for section, heading, text in _floor_section_rows(inputs):
-        if text:
-            out.append((heading, text))
-    return out
+def floor_sections(inputs: FloorInputs) -> list[tuple[str, str, str]]:
+    """(section, heading, text) for each ENABLED section code writes, in the
+    page's order; a section with nothing under it is absent, never a heading
+    over nothing. `floor_section_texts` keys every section code can write by
+    id, enabled or not, for the writer's composition (item 191 step (b))."""
+    return [
+        (section, heading, text)
+        for section, heading, text in _floor_section_rows(inputs)
+        if text and section in inputs.enabled_sections
+    ]
 
 
 def floor_section_texts(inputs: FloorInputs) -> dict[str, str]:
@@ -228,7 +287,10 @@ def _floor_section_rows(inputs: FloorInputs) -> list[tuple[str, str, str]]:
     return [
         ("today", TODAY_HEADING, _sentences(_today_parts(inputs))),
         ("extended", EXTENDED_HEADING, extended),
+        ("severe", SEVERE_HEADING, _sentences(_severe_parts(inputs))),
         ("secondary", BOATERS_HEADING.format(name=inputs.secondary_name), boaters),
+        ("synoptic", SYNOPTIC_HEADING, _sentences(_synoptic_parts(inputs))),
+        ("confidence", CONFIDENCE_HEADING, _sentences(_confidence_parts(inputs))),
     ]
 
 
@@ -244,12 +306,16 @@ def compose_floor_for_entry(
     model_configured: bool = True,
     station_name: str | None = None,
     bands: DeviationBands | None = None,
+    sections: list[str] | tuple[str, ...] | None = None,
+    met_service_name: str | None = None,
+    met_service_model_id: str | None = None,
 ) -> str:
     """The floor for one stored day — `olw floor`, and the run itself."""
     return compose_floor(
         FloorInputs.from_entry(
             entry, secondary_name=secondary_name, model_configured=model_configured,
-            station_name=station_name, bands=bands,
+            station_name=station_name, bands=bands, sections=sections,
+            met_service_name=met_service_name, met_service_model_id=met_service_model_id,
         )
     )
 
@@ -456,6 +522,125 @@ def _boaters_parts(i: FloorInputs) -> list[str | None]:
         f"Peak gust {_kmh_and_kt(i.peak_wind_secondary_kmh)}.",
         _STORM_GUSTS if _thunder_tier(i) is not None else None,
     ]
+
+
+# --- Severe Weather --- item 191 step (c)
+
+
+def _severe_parts(i: FloorInputs) -> list[str | None]:
+    """Thunder today, per model, with the hazard any thunderstorm brings.
+    Nothing while no model's instability supports thunderstorms: the
+    section is absent, as the prompt's rule for the writer has it."""
+    tier = _thunder_tier(i)
+    if tier is None:
+        return []
+    with_cape = [(m["model"], m["peak_cape_jkg"]) for m in i.models_today if m.get("peak_cape_jkg") is not None]
+    cape = None
+    if with_cape:
+        ranked = sorted(with_cape, key=lambda mc: -mc[1])
+        cape = "Convective instability today: " + _join([f"{m} {int(round(c))} J/kg" for m, c in ranked]) + "."
+    gust = i.peak_wind_primary_kmh
+    hazard = (
+        f"Thunder {tier}; any thunderstorm brings sudden gusts well above the {_kmh_and_kt(gust)} forecast."
+        if gust is not None else f"Thunder {tier}; any thunderstorm brings sudden gusts well above the forecast wind."
+    )
+    return [cape, hazard]
+
+
+# --- Synoptic Overview --- item 191 step (c)
+
+
+def _synoptic_parts(i: FloorInputs) -> list[str | None]:
+    """The ring's statements as the run composed them, the basin's pressure,
+    and the trend overhead. The ring's own last statement says what the
+    sampling can and cannot locate; no approach claim is made here,
+    because nothing checks one (item 103)."""
+    parts: list[str | None] = []
+    if i.synoptic_statements:
+        parts.extend(i.synoptic_statements)
+    else:
+        parts.append("The large-scale pressure ring could not be assessed this run.")
+    b = i.basin_pressure
+    if b and b.get("today_min_hpa") is not None and b.get("today_max_hpa") is not None:
+        change = b.get("change_72h_hpa")
+        if change is None:
+            tendency = ""
+        elif abs(change) < BASIN_STEADY_HPA:
+            tendency = f", near-steady over three days ({change:+.1f} hPa)"
+        else:
+            tendency = f", {'rising' if change > 0 else 'falling'} by {abs(change):.1f} hPa over three days"
+        parts.append(
+            f"Across the basin's {b.get('points')} points, pressure today sits between {b['today_min_hpa']} "
+            f"and {b['today_max_hpa']} hPa{tendency}."
+        )
+    if i.mslp_trend_24h:
+        parts.append(f"Pressure here over the last 24 hours: {i.mslp_trend_24h}.")
+    return parts
+
+
+# --- Forecaster Confidence Notes --- item 191 step (c)
+
+
+def _confidence_parts(i: FloorInputs) -> list[str | None]:
+    """What the record says, in this order: the lead rankings, today's
+    models against the call, the met service's own call, then the review's
+    established findings. Figures only as the record holds them."""
+    parts: list[str | None] = []
+    ranked = [r for r in i.lead_records if r.get("best_model") and r.get("rain_pct") is not None]
+    if ranked:
+        parts.append(
+            "On rain the record ranks "
+            + _join([
+                f"{short_model_name(str(r['best_model']))} first at Day+{r['lead_time_days']}, right "
+                f"{int(round(float(r['rain_pct'])))}% of the last 30 checks"
+                for r in ranked
+            ])
+            + "."
+        )
+    elif i.lead_records:
+        parts.append("The record is too thin to rank the models on rain yet.")
+
+    highs = [(m["model"], m["high_c"]) for m in i.models_today if m.get("high_c") is not None]
+    call_high = i.served_today.get("high_c")
+    if len(highs) >= 2 and call_high is not None:
+        warmest = max(highs, key=lambda mh: mh[1])
+        coolest = min(highs, key=lambda mh: mh[1])
+        if warmest[1] != coolest[1]:
+            where = (
+                "between them" if coolest[1] < call_high < warmest[1]
+                else "at the warm end" if call_high >= warmest[1] else "at the cool end"
+            )
+            parts.append(
+                f"On today's high {warmest[0]} is the warmest model at {warmest[1]:.1f} °C and {coolest[0]} the "
+                f"coolest at {coolest[1]:.1f} °C; the call's {call_high:.1f} °C sits {where}."
+            )
+
+    met = i.met_service_call
+    if i.met_service_name and met:
+        bits = []
+        if met.get("high_c") is not None:
+            bits.append(f"a high of {float(met['high_c']):.1f} °C")
+        if met.get("rain") is not None:
+            bits.append("rain" if met["rain"] else "a dry day")
+        if bits:
+            served_rain = i.served_today.get("rain")
+            agreement = ""
+            if met.get("rain") is not None and served_rain is not None:
+                agreement = ", agreeing with the call on rain" if met["rain"] == served_rain else ", against the call on rain"
+            parts.append(f"{i.met_service_name} calls {_join(bits)}{agreement}.")
+
+    findings = sorted(i.review_findings, key=lambda f: (0 if f.get("kind") == "ranking" else 1, str(f.get("claim"))))
+    for f in findings[:CONFIDENCE_FINDINGS]:
+        claim = _short_names(str(f.get("claim") or ""))
+        if claim:
+            parts.append(claim if claim.endswith(".") else claim + ".")
+    return parts
+
+
+def _short_names(text: str) -> str:
+    for model_id, short in sorted(MODEL_SHORT_NAMES.items(), key=lambda kv: -len(kv[0])):
+        text = text.replace(model_id, short)
+    return text
 
 
 # --- The sign-off ---

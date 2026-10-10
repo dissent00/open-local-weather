@@ -6,17 +6,12 @@
 library;
 
 import 'brief.dart';
-import 'floor.dart' show extendedHeading, todayHeading;
+import 'floor.dart' show confidenceHeading, discussionHeading, extendedHeading, severeHeading, synopticHeading, todayHeading;
 import 'outlook.dart' show modelShortNames;
 import 'phrasing.dart';
 import 'py_text.dart';
 import 'rounding.dart';
 import 'tiles.dart' show kmhPerKnot;
-
-const discussionHeading = '## Detailed Discussion';
-const severeHeading = '## Severe Weather / Hazard Potential';
-const synopticHeading = '### Synoptic Overview';
-const confidenceHeading = '### Forecaster Confidence Notes';
 
 /// Word caps per section, near the record's 90th percentile — see writer.py.
 const Map<String, int> wordCaps = {

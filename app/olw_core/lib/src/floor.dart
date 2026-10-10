@@ -18,6 +18,8 @@ import 'phrasing.dart';
 import 'rounding.dart';
 import 'scales.dart';
 import 'scoring.dart' show mean;
+import 'outlook.dart' show modelShortNames, shortModelName;
+import 'py_text.dart' show comparePython;
 import 'tiles.dart' show kmhPerKnot, skySourceStation;
 
 /// Who wrote the narrative — stored beside it as `narrative_source`.
@@ -30,6 +32,17 @@ const String signOffWithoutModel = 'Written by code.';
 
 const String todayHeading = "## Today's Forecast";
 const String extendedHeading = '## Extended Outlook';
+const String severeHeading = '## Severe Weather / Hazard Potential';
+const String discussionHeading = '## Detailed Discussion';
+const String synopticHeading = '### Synoptic Overview';
+const String confidenceHeading = '### Forecaster Confidence Notes';
+
+/// The sections code writes, in the page's order — all six since upstream
+/// item 191 step (c). [FloorInputs.enabledSections] says which a day shows.
+const List<String> floorSectionIds = ['today', 'extended', 'severe', 'secondary', 'synoptic', 'confidence'];
+const List<String> defaultFloorSections = ['today', 'extended', 'secondary'];
+const _confidenceFindings = 3;
+const _basinSteadyHpa = 1.5;
 
 /// Highs are shown as a range when the models spread more than this.
 const double highRangeSpreadC = 2.0;
@@ -72,6 +85,15 @@ class FloorInputs {
     this.observed = const {},
     this.stationName,
     this.stationCodes = const [],
+    this.enabledSections = defaultFloorSections,
+    this.modelsToday = const [],
+    this.metServiceName,
+    this.metServiceCall,
+    this.synopticStatements = const [],
+    this.basinPressure,
+    this.mslpTrend24h,
+    this.reviewFindings = const [],
+    this.leadRecords = const [],
   });
 
   /// ISO date, the day the floor is about.
@@ -109,6 +131,21 @@ class FloorInputs {
   final String? stationName;
   final List<String> stationCodes;
 
+  /// The other three sections — upstream item 191 step (c): Severe Weather
+  /// from each model's peak CAPE; the Synoptic Overview from the ring's
+  /// statements, the basin's pressure and the trend overhead; the
+  /// Confidence Notes from the record's lead rankings, the review's
+  /// established findings and where the call sits among today's models.
+  final List<String> enabledSections;
+  final List<Map<String, Object?>> modelsToday;
+  final String? metServiceName;
+  final Map<String, Object?>? metServiceCall;
+  final List<String> synopticStatements;
+  final Map<String, Object?>? basinPressure;
+  final String? mslpTrend24h;
+  final List<Map<String, Object?>> reviewFindings;
+  final List<Map<String, Object?>> leadRecords;
+
   factory FloorInputs.fromJson(Map<String, Object?> j) => FloorInputs(
         date: j['date'] as String,
         tempHighLowDisplay: j['temp_high_low_display'] as String,
@@ -140,6 +177,17 @@ class FloorInputs {
         observed: ((j['observed'] as Map?) ?? const {}).cast<String, Object?>(),
         stationName: j['station_name'] as String?,
         stationCodes: [for (final c in (j['station_codes'] as List?) ?? const []) c as String],
+        enabledSections: j['enabled_sections'] == null
+            ? defaultFloorSections
+            : [for (final s in j['enabled_sections'] as List) s as String],
+        modelsToday: _maps(j['models_today']),
+        metServiceName: j['met_service_name'] as String?,
+        metServiceCall: (j['met_service_call'] as Map?)?.cast<String, Object?>(),
+        synopticStatements: [for (final s in (j['synoptic_statements'] as List?) ?? const []) s as String],
+        basinPressure: (j['basin_pressure'] as Map?)?.cast<String, Object?>(),
+        mslpTrend24h: j['mslp_trend_24h'] as String?,
+        reviewFindings: _maps(j['review_findings']),
+        leadRecords: _maps(j['lead_records']),
       );
 
   static List<Map<String, Object?>> _maps(Object? raw) => [
@@ -149,33 +197,190 @@ class FloorInputs {
 
 /// The floor as Markdown with the write-up's headings. Mirrors `compose_floor`.
 String composeFloor(FloorInputs i) {
-  final sections = [for (final (heading, text) in _floorSectionRows(i)) if (text.isNotEmpty) '$heading\n\n$text'];
-  sections.add(signOff(i));
-  return '${sections.join('\n\n')}\n';
+  final parts = <String>[];
+  var discussionOpen = false;
+  for (final (section, heading, text) in _floorSectionRows(i)) {
+    if (text.isEmpty || !i.enabledSections.contains(section)) continue;
+    if ((section == 'synoptic' || section == 'confidence') && !discussionOpen) {
+      parts.add(discussionHeading);
+      discussionOpen = true;
+    }
+    parts.add('$heading\n\n$text');
+  }
+  parts.add(signOff(i));
+  return '${parts.join('\n\n')}\n';
 }
 
-/// The texts code writes, by section id — mirrors `floor_section_texts`,
-/// for the writer's composition (upstream item 191 step (b)).
-Map<String, String> floorSectionTexts(FloorInputs i) {
-  final rows = _floorSectionRows(i);
-  return {
-    for (final (id, (_, text)) in [('today', rows[0]), ('extended', rows[1]), ('secondary', rows[2])])
-      if (text.isNotEmpty) id: text,
-  };
-}
+/// Every text code can write, by section id, enabled or not — mirrors
+/// `floor_section_texts`, for the writer's composition.
+Map<String, String> floorSectionTexts(FloorInputs i) => {
+      for (final (section, _, text) in _floorSectionRows(i))
+        if (text.isNotEmpty) section: text,
+    };
 
 /// The stamp and who wrote it — mirrors `sign_off`.
 String signOff(FloorInputs i) => _sentences(_signOffParts(i));
 
-List<(String, String)> _floorSectionRows(FloorInputs i) {
+List<(String, String, String)> _floorSectionRows(FloorInputs i) {
   final outlook = i.extendedOutlook?.trim();
   final extended = outlook != null && outlook.isNotEmpty ? outlook : _sentences(_extendedParts(i));
   final boaters = i.secondaryName == null ? '' : _sentences(_boatersParts(i));
   return [
-    (todayHeading, _sentences(_todayParts(i))),
-    (extendedHeading, extended),
-    ('## ${i.secondaryName} — Conditions for Boaters', boaters),
+    ('today', todayHeading, _sentences(_todayParts(i))),
+    ('extended', extendedHeading, extended),
+    ('severe', severeHeading, _sentences(_severeParts(i))),
+    ('secondary', '## ${i.secondaryName} — Conditions for Boaters', boaters),
+    ('synoptic', synopticHeading, _sentences(_synopticParts(i))),
+    ('confidence', confidenceHeading, _sentences(_confidenceParts(i))),
   ];
+}
+
+// --- Severe Weather — upstream item 191 step (c)
+
+List<String?> _severeParts(FloorInputs i) {
+  final tier = _thunderTier(i);
+  if (tier == null) return const [];
+  final withCape = [
+    for (final m in i.modelsToday) if (m['peak_cape_jkg'] != null) ('${m['model']}', (m['peak_cape_jkg'] as num).toDouble()),
+  ];
+  String? cape;
+  if (withCape.isNotEmpty) {
+    final indexed = [for (var k = 0; k < withCape.length; k++) (k, withCape[k])];
+    indexed.sort((a, b) => a.$2.$2 != b.$2.$2 ? (b.$2.$2 > a.$2.$2 ? 1 : -1) : a.$1 - b.$1);
+    cape = 'Convective instability today: '
+        '${_join([for (final e in indexed) '${e.$2.$1} ${roundLikePython(e.$2.$2, 0).toInt()} J/kg'])}.';
+  }
+  final gust = i.peakWindPrimaryKmh;
+  final hazard = gust != null
+      ? 'Thunder $tier; any thunderstorm brings sudden gusts well above the ${_kmhAndKt(gust)} forecast.'
+      : 'Thunder $tier; any thunderstorm brings sudden gusts well above the forecast wind.';
+  return [cape, hazard];
+}
+
+// --- Synoptic Overview — upstream item 191 step (c)
+
+List<String?> _synopticParts(FloorInputs i) {
+  final parts = <String?>[];
+  if (i.synopticStatements.isNotEmpty) {
+    parts.addAll(i.synopticStatements);
+  } else {
+    parts.add('The large-scale pressure ring could not be assessed this run.');
+  }
+  final b = i.basinPressure;
+  if (b != null && b['today_min_hpa'] != null && b['today_max_hpa'] != null) {
+    final change = b['change_72h_hpa'] as num?;
+    final String tendency;
+    if (change == null) {
+      tendency = '';
+    } else if (change.abs() < _basinSteadyHpa) {
+      tendency = ', near-steady over three days (${_signed1(change.toDouble())} hPa)';
+    } else {
+      tendency = ", ${change > 0 ? 'rising' : 'falling'} by ${_fixed(change.abs().toDouble(), 1)} hPa over three days";
+    }
+    parts.add(
+      "Across the basin's ${b['points']} points, pressure today sits between ${_str(b['today_min_hpa'])} "
+      'and ${_str(b['today_max_hpa'])} hPa$tendency.',
+    );
+  }
+  if (i.mslpTrend24h != null && i.mslpTrend24h!.isNotEmpty) {
+    parts.add('Pressure here over the last 24 hours: ${i.mslpTrend24h}.');
+  }
+  return parts;
+}
+
+// --- Forecaster Confidence Notes — upstream item 191 step (c)
+
+List<String?> _confidenceParts(FloorInputs i) {
+  final parts = <String?>[];
+  final ranked = [
+    for (final r in i.leadRecords) if (r['best_model'] != null && '${r['best_model']}'.isNotEmpty && r['rain_pct'] != null) r,
+  ];
+  if (ranked.isNotEmpty) {
+    parts.add('On rain the record ranks ${_join([
+          for (final r in ranked)
+            "${shortModelName('${r['best_model']}')} first at Day+${r['lead_time_days']}, right "
+                '${roundLikePython((r['rain_pct'] as num).toDouble(), 0).toInt()}% of the last 30 checks'
+        ])}.');
+  } else if (i.leadRecords.isNotEmpty) {
+    parts.add('The record is too thin to rank the models on rain yet.');
+  }
+
+  final highs = [for (final m in i.modelsToday) if (m['high_c'] != null) ('${m['model']}', (m['high_c'] as num).toDouble())];
+  final callHigh = (i.servedToday['high_c'] as num?)?.toDouble();
+  if (highs.length >= 2 && callHigh != null) {
+    var warmest = highs.first;
+    var coolest = highs.first;
+    for (final h in highs) {
+      if (h.$2 > warmest.$2) warmest = h;
+      if (h.$2 < coolest.$2) coolest = h;
+    }
+    if (warmest.$2 != coolest.$2) {
+      final where = coolest.$2 < callHigh && callHigh < warmest.$2
+          ? 'between them'
+          : callHigh >= warmest.$2
+              ? 'at the warm end'
+              : 'at the cool end';
+      parts.add(
+        "On today's high ${warmest.$1} is the warmest model at ${_fixed(warmest.$2, 1)} °C and ${coolest.$1} the "
+        "coolest at ${_fixed(coolest.$2, 1)} °C; the call's ${_fixed(callHigh, 1)} °C sits $where.",
+      );
+    }
+  }
+
+  final met = i.metServiceCall;
+  if (i.metServiceName != null && met != null) {
+    final bits = <String>[];
+    if (met['high_c'] != null) bits.add('a high of ${_fixed((met['high_c'] as num).toDouble(), 1)} °C');
+    if (met['rain'] != null) bits.add(met['rain'] == true ? 'rain' : 'a dry day');
+    if (bits.isNotEmpty) {
+      final servedRain = i.servedToday['rain'];
+      var agreement = '';
+      if (met['rain'] != null && servedRain != null) {
+        agreement = met['rain'] == servedRain ? ', agreeing with the call on rain' : ', against the call on rain';
+      }
+      parts.add('${i.metServiceName} calls ${_join(bits)}$agreement.');
+    }
+  }
+
+  final indexed = [for (var k = 0; k < i.reviewFindings.length; k++) (k, i.reviewFindings[k])];
+  indexed.sort((a, b) {
+    final ka = a.$2['kind'] == 'ranking' ? 0 : 1;
+    final kb = b.$2['kind'] == 'ranking' ? 0 : 1;
+    if (ka != kb) return ka - kb;
+    // Python sorts `str(None)`, so a missing claim orders as "None".
+    final c = comparePython(_pyStr(a.$2['claim']), _pyStr(b.$2['claim']));
+    return c != 0 ? c : a.$1 - b.$1;
+  });
+  for (final f in indexed.take(_confidenceFindings)) {
+    final claim = _shortNames('${f.$2['claim'] ?? ''}');
+    if (claim.isNotEmpty) parts.add(claim.endsWith('.') ? claim : '$claim.');
+  }
+  return parts;
+}
+
+String _shortNames(String text) {
+  final ids = modelShortNames.keys.toList();
+  final indexed = [for (var k = 0; k < ids.length; k++) (k, ids[k])];
+  indexed.sort((a, b) => b.$2.length != a.$2.length ? b.$2.length - a.$2.length : a.$1 - b.$1);
+  var out = text;
+  for (final e in indexed) {
+    out = out.replaceAll(e.$2, modelShortNames[e.$2]!);
+  }
+  return out;
+}
+
+String _pyStr(Object? value) => value == null ? 'None' : '$value';
+
+/// Python's `f"{x:+.1f}"`: the sign always, a negative zero kept.
+String _signed1(double value) => '${value.isNegative ? '-' : '+'}${_fixed(value.abs(), 1)}';
+
+/// Python's `str(value)` for a figure the basin holds: a double with its
+/// point, an int without.
+String _str(Object? value) {
+  if (value is double) {
+    return value == value.truncateToDouble() && value.abs() < 1e16 ? '${value.toInt()}.0' : '$value';
+  }
+  return '$value';
 }
 
 String _sentences(List<String?> parts) =>

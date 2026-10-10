@@ -16,6 +16,7 @@ import 'cycle.dart';
 import 'extract.dart';
 import 'floor.dart';
 import 'outlook.dart' as outlook;
+import 'outlook.dart' show shortModelName;
 import 'brief.dart';
 import 'py_text.dart';
 import 'writer.dart' as writer;
@@ -894,6 +895,21 @@ Future<ForecastRun> generateForecast({
             'thunder': observedSoFar.thunder,
             'reported_through': observedSoFar.reportedThrough,
           },
+    // The other three sections — upstream item 191 step (c), enabled as the
+    // writer's default; the app has no basin fetch and no met service yet.
+    enabledSections: defaultBriefSections,
+    modelsToday: [
+      for (final p in day0)
+        if (blendInputs().contains(p.model))
+          {'model': shortModelName(p.model), 'high_c': p.highC, 'rain': p.rain, 'wind_kmh': p.windKmh, 'peak_cape_jkg': p.peakCapeJkg},
+    ],
+    synopticStatements: synoptic?.statements ?? const [],
+    mslpTrend24h: tp.mslpTrend24h,
+    reviewFindings: _establishedFindings(reviewContext),
+    leadRecords: [
+      for (final r in leadRecords)
+        {'lead_time_days': r.leadTimeDays, 'best_model': r.bestModel, 'rain_pct': r.rainPct, 'checks': r.checks},
+    ],
     stationName: stationName,
     stationCodes: observedSoFar == null || stationName == null
         ? const []
@@ -1212,4 +1228,17 @@ DateTime? _clockOn(DateTime day, String? hhmm) {
 int? _hourOf(String? hhmm) {
   if (hhmm == null || !hhmm.contains(':')) return null;
   return int.tryParse(hhmm.split(':').first);
+}
+
+/// The review's established findings as kind, checks and claim, off a
+/// review payload shaped as the prompt's (a map with "findings"), or none.
+List<Map<String, Object?>> _establishedFindings(Object? reviewContext) {
+  if (reviewContext is! Map) return const [];
+  final findings = reviewContext['findings'];
+  if (findings is! List) return const [];
+  return [
+    for (final f in findings)
+      if (f is Map && f['confidence'] == 'established')
+        {'kind': f['kind'], 'checks': f['checks'], 'claim': f['claim']},
+  ];
 }

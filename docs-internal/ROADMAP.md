@@ -27361,6 +27361,31 @@ page, returning the Markdown, the sources and the model. Pinned by
 `compose_write_up.json` and `model_display_name.json`. The heading gate
 of 10-09 is retired on both sides: per-section fields made it redundant.
 
+**Step (c) shipped 2026-10-10: code writes all six sections.** The floor
+gains Severe Weather, the Synoptic Overview and the Forecaster Confidence
+Notes (`floor.py` `_severe_parts`, `_synoptic_parts`, `_confidence_parts`;
+`floor.dart` the same), so every section the writer can answer has code's
+text behind it, as the operator's rule requires. `enabled_sections` on the
+floor's inputs, from `write_up_sections`, says which a deployment shows;
+`floor_section_texts` still yields every section for the composition.
+What each says, and no more: Severe Weather names each blend input's peak
+CAPE and the thunder tier, and is absent while no model's instability
+supports thunder; the Synoptic Overview repeats the ring's own statements
+(or says the ring could not be assessed, which is every day before item
+103 point 5 landed), the basin's range and three-day change, and the
+trend overhead, with no approach claim because nothing checks one (item
+103); the Confidence Notes give the record's lead rankings on rain, where
+the call's high sits among today's models, the met service's own call
+against it, and up to three established review findings with model ids
+shortened. `DEFAULT_FLOOR_SECTIONS` stays the three the floor always
+wrote; Kisumu enables all six. The app shows the writer's default four
+and fills no basin or met service. Pinned by `floor.json`, 25 cases;
+swept across the two languages on 1,500 random inputs over the three new
+sections, 0 divergences, after one caught by reading the diff: Python
+sorts a missing claim as `str(None)`, Dart as "null". Not checked: a
+rendered six-section day read by a reader; the first live one is the
+next 03:01Z run.
+
 **The gate — the audit's first line, shipped early 2026-10-09.** Four
 mornings running (10-05, 10-06, 10-08, 10-09) the gateway's free model
 answered 600 to 800 characters under none or one of the seven headings, and

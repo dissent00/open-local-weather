@@ -1968,7 +1968,9 @@ def _run_write_up(args) -> int:
 
     floor_inputs = FloorInputs.from_entry(
         entry, secondary_name=secondary_name, model_configured=True,
-        station_name=station_name, bands=deviation_bands(location),
+        station_name=station_name, bands=deviation_bands(location), sections=location.write_up_sections,
+        met_service_name=location.local_bulletin_source_name or None,
+        met_service_model_id=location.local_bulletin_model_id or None,
     )
     served_model = served_identity(provider)[1]
     markdown, sources = compose_write_up(
@@ -2069,6 +2071,9 @@ def _run_floor(args) -> int:
                 model_configured=bool(location.llm_providers),
                 station_name=location.metar_station_name or location.metar_station_icao or None,
                 bands=deviation_bands(location),
+                sections=location.write_up_sections,
+                met_service_name=location.local_bulletin_source_name or None,
+                met_service_model_id=location.local_bulletin_model_id or None,
             )
         )
 

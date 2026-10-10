@@ -228,3 +228,127 @@ def test_the_station_inputs_round_trip_as_json():
     inputs = _station_inputs(observed={"precipitation": True, "precipitation_onset": "14:00"}, station_codes=["onset_already_passed"], observed_line="So far today: rain.")
 
     assert FloorInputs.from_json(inputs.to_json()) == inputs
+
+
+# ---------------------------------------------------------------------------
+# The other three sections, in code — item 191 step (c), 2026-10-10.
+# ---------------------------------------------------------------------------
+
+ALL = ["today", "extended", "severe", "secondary", "synoptic", "confidence"]
+
+
+def _six_inputs(**changes) -> FloorInputs:
+    base = dict(
+        date="2026-10-10", temp_high_low_display="30°C / 86°F high, 20°C / 68°F low", issued_local_time="06:01",
+        served_today={"rain": True, "onset_hour": "16:00", "precip_mm": 6.9, "high_c": 31.1},
+        peak_wind_primary_kmh=38.9, model_configured=False, enabled_sections=ALL,
+        day0_peak_cape_jkg=[320.0, 2030.0, 1950.0, 3440.0],
+        models_today=[
+            {"model": "GFS", "high_c": 33.5, "rain": False, "wind_kmh": 21.6, "peak_cape_jkg": 320.0},
+            {"model": "ECMWF", "high_c": 29.1, "rain": True, "wind_kmh": 27.7, "peak_cape_jkg": 2030.0},
+            {"model": "ICON", "high_c": 29.6, "rain": True, "wind_kmh": 34.6, "peak_cape_jkg": 1950.0},
+            {"model": "UKMO", "high_c": 31.9, "rain": True, "wind_kmh": 31.0, "peak_cape_jkg": 3440.0},
+        ],
+        met_service_name="Kenya Met", met_service_call={"high_c": 32.0, "low_c": 20.0, "rain": True},
+        synoptic_statements=[
+            "Across roughly 2,600 km, pressure is lowest toward the north (1009 hPa) and highest toward the southeast (1016 hPa) — an 8 hPa spread, a moderate large-scale gradient.",
+            "Pressure overhead is near-steady.",
+            "Sampling is a nine-point ring at 12-degree spacing, so this locates a direction, not a centre or a front.",
+        ],
+        basin_pressure={"points": 5, "today_min_hpa": 1012.8, "today_max_hpa": 1015.0, "change_72h_hpa": 0.1},
+        mslp_trend_24h="+0.5 hPa",
+        review_findings=[
+            {"kind": "bias", "checks": 56, "claim": "At Day+0, gfs_seamless systematically over-forecasts daytime highs here."},
+            {"kind": "ranking", "checks": 45, "claim": "At Day+0, no model is meaningfully better than the others here yet."},
+            {"kind": "bias", "checks": 56, "claim": "At Day+0, ukmo_seamless systematically under-forecasts overnight lows here."},
+            {"kind": "bias", "checks": 56, "claim": "At Day+0, icon_seamless slightly under-forecasts daytime highs here."},
+        ],
+        lead_records=[
+            {"lead_time_days": 0, "best_model": "ecmwf_ifs025", "rain_pct": 83.3, "checks": 56},
+            {"lead_time_days": 3, "best_model": "ecmwf_ifs025", "rain_pct": 76.9, "checks": 53},
+            {"lead_time_days": 7, "best_model": None, "rain_pct": None, "checks": 4},
+        ],
+    )
+    return FloorInputs(**{**base, **changes})
+
+
+def _section(text: str, heading: str) -> str:
+    body = text.split(heading + "\n\n", 1)[1]
+    return body.split("\n\n## ", 1)[0].split("\n\n### ", 1)[0].split("\n\nFigures issued", 1)[0].strip()
+
+
+def test_severe_weather_names_each_models_instability_and_the_gust_hazard():
+    text = compose_floor(_six_inputs())
+    severe = _section(text, "## Severe Weather / Hazard Potential")
+
+    assert severe == (
+        "Convective instability today: UKMO 3440 J/kg, ECMWF 2030 J/kg, ICON 1950 J/kg and GFS 320 J/kg. "
+        "Thunder likely; any thunderstorm brings sudden gusts well above the 39 km/h (21 kt) forecast."
+    )
+    for sentence in severe.split(". "):
+        assert phrase_defect(sentence.rstrip(".") + ".") is None
+
+
+def test_severe_weather_is_absent_while_no_model_supports_thunder():
+    text = compose_floor(_six_inputs(day0_peak_cape_jkg=[100.0, 200.0], models_today=[]))
+
+    assert "Severe Weather" not in text
+
+
+def test_the_synoptic_overview_is_the_ring_the_basin_and_the_trend():
+    text = compose_floor(_six_inputs())
+    synoptic = _section(text, "### Synoptic Overview")
+
+    assert synoptic.startswith("Across roughly 2,600 km, pressure is lowest toward the north")
+    assert "Sampling is a nine-point ring at 12-degree spacing, so this locates a direction, not a centre or a front." in synoptic
+    assert "Across the basin's 5 points, pressure today sits between 1012.8 and 1015.0 hPa, near-steady over three days (+0.1 hPa)." in synoptic
+    assert synoptic.endswith("Pressure here over the last 24 hours: +0.5 hPa.")
+    assert "## Detailed Discussion\n\n### Synoptic Overview" in text and text.count("## Detailed Discussion") == 1
+
+
+def test_without_a_ring_the_overview_says_so():
+    text = compose_floor(_six_inputs(synoptic_statements=[], basin_pressure={"points": 5, "today_min_hpa": 1012.8, "today_max_hpa": 1015.0, "change_72h_hpa": -2.3}))
+    synoptic = _section(text, "### Synoptic Overview")
+
+    assert synoptic.startswith("The large-scale pressure ring could not be assessed this run.")
+    assert "falling by 2.3 hPa over three days" in synoptic
+
+
+def test_the_confidence_notes_read_the_record_and_todays_models():
+    text = compose_floor(_six_inputs())
+    notes = _section(text, "### Forecaster Confidence Notes")
+
+    assert notes.startswith(
+        "On rain the record ranks ECMWF first at Day+0, right 83% of the last 30 checks and ECMWF first at Day+3, right 77% of the last 30 checks."
+    )
+    assert "On today's high GFS is the warmest model at 33.5 °C and ECMWF the coolest at 29.1 °C; the call's 31.1 °C sits between them." in notes
+    assert "Kenya Met calls a high of 32.0 °C and rain, agreeing with the call on rain." in notes
+    # Three findings, rankings first, names as the page's.
+    assert "At Day+0, no model is meaningfully better than the others here yet." in notes
+    assert "At Day+0, GFS systematically over-forecasts daytime highs here." in notes
+    assert "gfs_seamless" not in notes and notes.count("At Day+0,") == 3
+    assert "UKMO systematically under-forecasts" not in notes, "the fourth finding is cut"
+
+
+def test_a_thin_record_says_so_and_a_section_with_nothing_is_absent():
+    text = compose_floor(_six_inputs(lead_records=[{"lead_time_days": 0, "best_model": None, "rain_pct": None, "checks": 4}], models_today=[], met_service_call=None, review_findings=[]))
+    notes = _section(text, "### Forecaster Confidence Notes")
+
+    assert notes == "The record is too thin to rank the models on rain yet."
+    bare = compose_floor(_six_inputs(lead_records=[], models_today=[], met_service_call=None, review_findings=[], synoptic_statements=[], basin_pressure=None, mslp_trend_24h=None))
+    assert "Forecaster Confidence Notes" not in bare and "Detailed Discussion" in bare, "the overview still says the ring was unavailable"
+
+
+def test_only_enabled_sections_are_shown_but_every_text_is_offered_to_the_writer():
+    from openlocalweather.floor import floor_section_texts
+
+    inputs = _six_inputs(enabled_sections=["today", "extended"])
+    text = compose_floor(inputs)
+
+    assert "Severe Weather" not in text and "Detailed Discussion" not in text
+    assert set(floor_section_texts(inputs)) >= {"today", "severe", "synoptic", "confidence"}
+
+
+def test_the_six_inputs_round_trip_as_json():
+    i = _six_inputs()
+    assert FloorInputs.from_json(i.to_json()) == i

@@ -29,19 +29,20 @@ from openlocalweather.brief import (
     SECTIONS,
     BriefInputs,
 )
-from openlocalweather.floor import BOATERS_HEADING, EXTENDED_HEADING, TODAY_HEADING
+from openlocalweather.floor import (
+    BOATERS_HEADING,
+    CONFIDENCE_HEADING,
+    DISCUSSION_HEADING,
+    EXTENDED_HEADING,
+    SEVERE_HEADING,
+    SYNOPTIC_HEADING,
+    TODAY_HEADING,
+)
 from openlocalweather.llm.fallback import FallbackProvider
 from openlocalweather.llm.schema import WriteUpResponse
 from openlocalweather.outlook import MODEL_SHORT_NAMES
 from openlocalweather.phrasing import phrase_defect
 from openlocalweather.tiles import KMH_PER_KNOT
-
-# The page's headings per section. The discussion's two are subsections
-# under one parent, as the page has always read.
-DISCUSSION_HEADING = "## Detailed Discussion"
-SEVERE_HEADING = "## Severe Weather / Hazard Potential"
-SYNOPTIC_HEADING = "### Synoptic Overview"
-CONFIDENCE_HEADING = "### Forecaster Confidence Notes"
 
 # Word caps per section, set near the record's 90th percentile over 46
 # Gemini write-ups (2026-10-10: today p90 154, extended 141, severe 86,
