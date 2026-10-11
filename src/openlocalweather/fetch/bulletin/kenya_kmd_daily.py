@@ -35,7 +35,7 @@ import re
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from io import BytesIO
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 import pdfplumber
 import requests
@@ -51,13 +51,30 @@ from openlocalweather.models import ModelPrediction
 
 SOURCE_NAME = "Kenya Meteorological Department (KMD)"
 REQUEST_TIMEOUT_S = 30
+HTTP_OK = 200
 
 # "VALIDITY: From 9:00 p.m. Tonight to 9:00 p.m. Tomorrow, 19th August" —
 # the bulletin's own 24 hours, local time, closing on the date it names.
 VALIDITY_OPENS_HOUR = 21
 
 _POST_LINK_RE = re.compile(r'href="(/our-products/daily-forecast/daily-weather-forecast[^"]*)"')
-_FIVE_DAY_POST_RE = re.compile(r'href="(/our-products/5-day-forecast/five-day-forecast[^"]*)"')
+# Both slugs KMD has used: "five-day-weather-forecast-..." through September
+# and "5-day-weather-forecast-..." since October 2026. The pattern written
+# on 2026-08-19 looked for "five-day-forecast", which matched neither, so
+# no run before 2026-10-11 ever held a met Day+3 (0 of 60 days).
+_FIVE_DAY_POST_RE = re.compile(r'href="(/our-products/5-day-forecast/(?:five-day|5-day)-[^"]*)"')
+_DOCUMENT_ID_RE = re.compile(r"/documents/(\d+)/")
+# THE UNLINKED PDF — 2026-10-11. Since 2026-10-08 KMD's daily post is a
+# shell: a title, no body, no link. The PDF is still uploaded, one document
+# id further on each day (5246 on the 8th, 5261 on the 11th), and the CMS
+# serves it only under its exact filename, which follows the post's slug.
+# The fetcher probes ids after the last one it saw. Thirty covers a week
+# of uploads at the ~5 a day observed; two to four names per id.
+DOCUMENT_PROBE_SPAN = 30
+# Where a deployment with no stored id starts: the 11th's, dated here.
+DOCUMENT_ID_SEED = 5261
+# Words the filenames keep lowercase.
+_LOWERCASE_WORDS = {"to", "from"}
 _PDF_LINK_RE = re.compile(r'href="([^"]+\.pdf)"', re.IGNORECASE)
 _VALIDITY_RE = re.compile(r"VALIDITY:.*?(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+),?\s+(\d{4})", re.I | re.S)
 
@@ -80,6 +97,9 @@ class MetServiceForecast:
     outlook: CountyOutlook | None
     valid_for: date | None
     five_day_valid_for: date | None = None
+    # The id KMD's CMS gave the daily PDF, linked or found by probing; the
+    # next run's probe starts after it.
+    document_id: int | None = None
 
 
 def find_latest_daily_post_url(landing_html: str, base_url: str) -> str | None:
@@ -91,6 +111,29 @@ def find_latest_daily_post_url(landing_html: str, base_url: str) -> str | None:
 def find_pdf_url(post_html: str, post_url: str) -> str | None:
     match = _PDF_LINK_RE.search(post_html)
     return urljoin(post_url, match.group(1)) if match else None
+
+
+def candidate_filenames(post_url: str) -> list[str]:
+    """The filenames a post's PDF may carry, from its slug: each word
+    title-cased and joined by underscores ("Daily_Weather_Forecast_Valid_
+    11th_October_2026.pdf"), "Valid" then "valid" since the record holds
+    both; a five-day post's name carries "from" after "Valid" (2026-10-02
+    and 10-03), tried first, with the plain form after it."""
+    slug = post_url.rstrip("/").rsplit("/", 1)[-1]
+    words = [w if w in _LOWERCASE_WORDS else w[:1].upper() + w[1:] for w in slug.split("-")]
+    names = []
+    for valid in ("Valid", "valid"):
+        base = [valid if w.lower() == "valid" else w for w in words]
+        if "to" in words and "Valid" in words:
+            at = base.index(valid)
+            names.append("_".join([*base[: at + 1], "from", *base[at + 1 :]]) + ".pdf")
+        names.append("_".join(base) + ".pdf")
+    return names
+
+
+def document_id_of(pdf_url: str) -> int | None:
+    match = _DOCUMENT_ID_RE.search(pdf_url)
+    return int(match.group(1)) if match else None
 
 
 def extract_text_and_tables(pdf_bytes: bytes) -> tuple[str, list]:
@@ -212,8 +255,12 @@ class KenyaKMDDailyFetcher:
         model_id: str = "local_met_service",
         five_day_url: str = "",
         day3_target: date | None = None,
+        document_id_hint: int | None = None,
     ):
         self.landing_url = landing_url
+        # The last document id a run stored, or None; see DOCUMENT_PROBE_SPAN.
+        self.document_id_hint = document_id_hint
+        self.document_id: int | None = None
         self.area_name = area_name
         self.model_id = model_id
         # KMD publishes the five-day bulletin under a sibling path. Derived
@@ -252,13 +299,37 @@ class KenyaKMDDailyFetcher:
 
         post = requests.get(post_url, timeout=REQUEST_TIMEOUT_S, headers=self._headers())
         post.raise_for_status()
-        pdf_url = find_pdf_url(post.text, post_url)
+        pdf_url = find_pdf_url(post.text, post_url) or self._probe_unlinked_pdf(post_url)
         if not pdf_url:
             raise ValueError("post has no PDF link")
+        found = document_id_of(pdf_url)
+        if found is not None:
+            self.document_id = max(found, self.document_id or 0)
 
         pdf = requests.get(pdf_url, timeout=REQUEST_TIMEOUT_S, headers=self._headers())
         pdf.raise_for_status()
         return extract_text_and_tables(pdf.content)
+
+    def _probe_unlinked_pdf(self, post_url: str) -> str | None:
+        """The PDF's URL by document id when the post does not link it —
+        ids after the hint, each under the slug's candidate names."""
+        start = (self.document_id_hint or DOCUMENT_ID_SEED) + 1
+        names = candidate_filenames(post_url)
+        for document_id in range(start, start + DOCUMENT_PROBE_SPAN):
+            for name in names:
+                url = f"{self._site_root(post_url)}/documents/{document_id}/{name}"
+                try:
+                    head = requests.head(url, timeout=REQUEST_TIMEOUT_S, headers=self._headers())
+                except requests.RequestException:
+                    continue
+                if head.status_code == HTTP_OK:
+                    return url
+        return None
+
+    @staticmethod
+    def _site_root(url: str) -> str:
+        parts = urlsplit(url)
+        return f"{parts.scheme}://{parts.netloc}"
 
     def _fetch_five_day(self) -> tuple[ModelPrediction | None, list, date | None]:
         """The Day+3 half. Failures here are silent by design: the five-day
@@ -283,6 +354,7 @@ class KenyaKMDDailyFetcher:
             return MetServiceForecast(
                 text=f"{SOURCE_NAME}: {message}",
                 prediction=None, prediction_day3=None, outlook=None, valid_for=None,
+                document_id=self.document_id,
             )
 
         try:
@@ -315,6 +387,7 @@ class KenyaKMDDailyFetcher:
             prediction_day3=day3_prediction,
             outlook=outlook,
             valid_for=valid_for,
+            document_id=self.document_id,
             five_day_valid_for=five_day_valid_for,
         )
 

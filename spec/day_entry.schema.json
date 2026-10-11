@@ -1070,6 +1070,18 @@
     "LocalBulletinRecord": {
       "description": "The local met service's own bulletin, stored verbatim as fetched.\n\nKept for two reasons. First, auditability: this text materially shapes\nthe day's synthesis, and a record that omits one of its inputs can't\nhonestly claim to be reconstructible.\n\nSecond, and the reason it can't wait: a met service's forecast is a\nPREDICTION, and predictions are not recoverable after the fact. Actuals\ncan always be re-fetched from the archive, but nobody publishes what\nKenya Met said last Tuesday once the week rolls over \u2014 their weekly PDF\nis replaced, not archived per-day. Every run that discards this text\ndestroys the only chance to ever score that forecast. Storing it now\nmeans a scoring pass added later can be backfilled across the whole\nrecord instead of starting from zero on the day it ships.\n\n`text` is stored exactly as the fetcher returned it, including the\nexplanatory \"unavailable\" strings \u2014 deliberately NOT normalised or\nfiltered here, because whether a given bulletin is usable is a judgment\nfor the extraction step, and a heuristic applied at write time would\nsilently discard the evidence needed to revisit it.",
       "properties": {
+        "document_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Document Id"
+        },
         "fetched_at_utc": {
           "format": "date-time",
           "title": "Fetched At Utc",

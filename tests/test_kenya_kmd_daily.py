@@ -69,9 +69,12 @@ def test_an_unreadable_pdf_degrades_instead_of_raising():
 
 
 def test_missing_pdf_link_is_reported_not_guessed():
+    """Since 2026-10-11 an unlinked PDF is probed for by document id
+    first; when the probe finds nothing the day says so."""
     with requests_mock.Mocker() as m:
         m.get(LANDING, text=_landing_html())
         m.get(POST, text="<p>Post with no attachment yet</p>")
+        m.head(requests_mock.ANY, status_code=404)
         result = KenyaKMDDailyFetcher(LANDING, "Kisumu", "kenya_met").fetch_forecast()
     assert result.prediction is None
     assert "no PDF link" in result.text
@@ -171,3 +174,84 @@ def test_the_bulletins_window_opens_at_nine_the_evening_before():
     fetcher = KenyaKMDDailyFetcher("https://meteo.go.ke/our-products/daily-forecast")
 
     assert fetcher.validity_window_opens(date(2026, 8, 19)) == datetime(2026, 8, 18, 21, 0)
+
+
+# ---------------------------------------------------------------------------
+# The unlinked PDF — 2026-10-11
+# ---------------------------------------------------------------------------
+
+POST_11TH = LANDING + "daily-weather-forecast-valid-11th-october-2026/"
+UNLINKED_PDF = "https://meteo.go.ke/documents/5261/Daily_Weather_Forecast_Valid_11th_October_2026.pdf"
+
+
+def test_candidate_filenames_follow_the_slug():
+    """KMD's CMS serves a document only under its exact filename, which
+    follows the post's slug title-cased: "Valid" on 2026-10-07 and 10-11,
+    "valid" on 08-19, so both cases are tried; a five-day post's name
+    carries "from" and a lowercase "to"."""
+    from openlocalweather.fetch.bulletin.kenya_kmd_daily import candidate_filenames
+
+    assert candidate_filenames(POST_11TH) == [
+        "Daily_Weather_Forecast_Valid_11th_October_2026.pdf",
+        "Daily_Weather_Forecast_valid_11th_October_2026.pdf",
+    ]
+    five_day = "https://meteo.go.ke/our-products/5-day-forecast/5-day-weather-forecast-valid-11th-to-15th-october-2026/"
+    assert candidate_filenames(five_day) == [
+        "5_Day_Weather_Forecast_Valid_from_11th_to_15th_October_2026.pdf",
+        "5_Day_Weather_Forecast_Valid_11th_to_15th_October_2026.pdf",
+        "5_Day_Weather_Forecast_valid_from_11th_to_15th_October_2026.pdf",
+        "5_Day_Weather_Forecast_valid_11th_to_15th_October_2026.pdf",
+    ]
+
+
+def test_an_unlinked_pdf_is_found_by_document_id():
+    """Since 2026-10-08 KMD's daily post is a shell — a title, no body, no
+    link — while the PDF is uploaded as before, one document id further
+    on each day. The fetcher probes ids after the last one it saw, under
+    the slug's filename, and records the id it found so the next run
+    starts there."""
+    with requests_mock.Mocker() as m:
+        m.get(LANDING, text='<a href="/our-products/daily-forecast/daily-weather-forecast-valid-11th-october-2026/">x</a>')
+        m.get(POST_11TH, text="<h1>Daily weather forecast valid 11th October 2026</h1>")
+        m.head(requests_mock.ANY, status_code=404)
+        m.head(UNLINKED_PDF, status_code=200)
+        m.get(UNLINKED_PDF, content=b"%PDF-1.4 fake")
+        fetcher = KenyaKMDDailyFetcher(LANDING, "Kisumu", "kenya_met", document_id_hint=5255)
+        result = fetcher.fetch_forecast()
+
+        probed = [r.url for r in m.request_history if r.method == "HEAD"]
+    assert "no PDF link" not in result.text
+    assert result.document_id == 5261
+    assert probed[0].startswith("https://meteo.go.ke/documents/5256/"), "the probe starts after the hint"
+    assert probed[-1] == UNLINKED_PDF
+
+
+def test_a_linked_pdf_still_records_its_document_id():
+    with requests_mock.Mocker() as m:
+        _mock_full_fetch(m)
+        result = KenyaKMDDailyFetcher(LANDING, "Kisumu", "kenya_met").fetch_forecast()
+    assert result.document_id == 4690
+    assert not any(r.method == "HEAD" for r in m.request_history), "nothing to probe when the post links its PDF"
+
+
+def test_the_probe_gives_up_after_its_span():
+    from openlocalweather.fetch.bulletin.kenya_kmd_daily import DOCUMENT_PROBE_SPAN
+
+    with requests_mock.Mocker() as m:
+        m.get(LANDING, text='<a href="/our-products/daily-forecast/daily-weather-forecast-valid-11th-october-2026/">x</a>')
+        m.get(POST_11TH, text="<h1>shell</h1>")
+        m.head(requests_mock.ANY, status_code=404)
+        result = KenyaKMDDailyFetcher(LANDING, "Kisumu", "kenya_met", document_id_hint=5255).fetch_forecast()
+        heads = sum(1 for r in m.request_history if r.method == "HEAD")
+    assert result.prediction is None and "no PDF link" in result.text
+    assert heads == DOCUMENT_PROBE_SPAN * 2
+
+
+def test_the_five_day_post_pattern_matches_both_slugs():
+    """0 of 60 days held a met Day+3 by 2026-10-11: the pattern of 08-19
+    looked for "five-day-forecast" and KMD slugs the posts
+    "five-day-weather-forecast-..." and, since October, "5-day-weather-forecast-..."."""
+    from openlocalweather.fetch.bulletin.kenya_kmd_daily import _FIVE_DAY_POST_RE
+
+    for slug in ("five-day-weather-forecast-3rd-to-7th-october-2026", "5-day-weather-forecast-valid-11th-to-15th-october-2026"):
+        assert _FIVE_DAY_POST_RE.search(f'<a href="/our-products/5-day-forecast/{slug}/">x</a>'), slug

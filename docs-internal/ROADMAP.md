@@ -2760,6 +2760,24 @@ global model has, and until now this pipeline consumed its bulletin as
 narrative context without ever asking whether it was right. It is now
 scored alongside GFS/ECMWF/ICON/UKMO, at zero marginal cost.
 
+**2026-10-11: KMD's post stopped linking its PDF, and the five-day never
+matched.** The met row vanished on 2026-10-08. The site had not moved: the
+daily post became a shell — a title, no body, no link, 73 KB where the
+7th's was 89 KB — while the PDF is still uploaded each day under its old
+name, one CMS document id further on (5246 on the 8th, 5261 on the 11th,
+5263 for the 12th), served only under the exact filename. The fetcher now
+probes ids after the last one it stored (`LocalBulletinRecord.document_id`,
+read back by the run; `DOCUMENT_PROBE_SPAN` 30 at about five uploads a
+day) under the slug's candidate names ("Valid" and "valid" both occur in
+the record; a five-day name carries "from"). Found while looking: the
+five-day pattern of 08-19 matched neither slug KMD has used, so no day in
+60 ever held a met Day+3; fixed, and the live run found the five-day PDF
+too. Not checked: the five-day parse itself returned an empty Day+3 row
+for 2026-10-14 on that run (every field None) — the parser has never seen
+a live table, so that is the next thing to look at. The 8th to the 11th
+are lost to the scored record: the row is a prediction and the run that
+would have stored it has passed.
+
 ### Why it needs no LLM call
 
 KMD's prose looks like free text but is a **controlled vocabulary the

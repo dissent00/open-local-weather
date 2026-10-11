@@ -1628,6 +1628,10 @@ class LocalBulletinRecord(BaseModel):
     source_name: str
     text: str
     fetched_at_utc: datetime
+    # The id the met service's CMS gave the day's PDF, where the fetcher
+    # knows one — 2026-10-11, the seed for the next run's probe when the
+    # post stops linking it (fetch/bulletin/kenya_kmd_daily).
+    document_id: int | None = None
 
 
 class DailyLogEntry(BaseModel):

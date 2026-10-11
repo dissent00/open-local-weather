@@ -451,6 +451,9 @@ class ForwardGuidance:
     # `reconcile_now` may already have overridden. Carried rather than
     # recomputed, for the same reason `issuance` itself is.
     issued_at_local: datetime | None = None
+    # The id the met service's CMS gave the day's PDF — 2026-10-11.
+    bulletin_document_id: int | None = None
+
 
 
 
@@ -1939,10 +1942,12 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
     met_valid_for = None
     met_day3 = None
     met_day3_valid_for = None
+    bulletin_document_id = None
     fetch_forecast = getattr(deps.bulletin_fetcher, "fetch_forecast", None)
     if callable(fetch_forecast):
         met_forecast = fetch_forecast()
         bulletin_text = met_forecast.text
+        bulletin_document_id = getattr(met_forecast, "document_id", None)
         met_prediction = met_forecast.prediction
         met_valid_for = met_forecast.valid_for
         met_day3 = getattr(met_forecast, "prediction_day3", None)
@@ -2006,6 +2011,7 @@ def _fetch_forward_guidance(deps: PipelineDeps) -> ForwardGuidance:
         ground_aqi_summary=ground_aqi_summary,
         aqi_fetch_time=aqi_fetch_time,
         bulletin_text=bulletin_text,
+        bulletin_document_id=bulletin_document_id,
         guidance_cycle=guidance_cycle,
         synoptic=synoptic,
         synoptic_ring=synoptic_ring,
@@ -2905,6 +2911,7 @@ def _compose_log_entry(
             source_name=location.local_bulletin_source_name,
             text=guidance.bulletin_text,
             fetched_at_utc=datetime.now(timezone.utc),
+            document_id=guidance.bulletin_document_id,
         )
         if location.local_bulletin_source_name
         else None,

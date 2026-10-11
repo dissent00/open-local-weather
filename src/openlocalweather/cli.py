@@ -182,7 +182,18 @@ def _github_repo_slug() -> str:
     return ""
 
 
-def _build_bulletin_fetcher(location) -> BulletinFetcher:
+def _last_bulletin_document_id(data_dir, today: date, days_back: int = 14) -> int | None:
+    """The newest stored bulletin document id before `today`, or None."""
+    from openlocalweather.dates import add_days
+
+    for back in range(1, days_back + 1):
+        entry = read_log_entry(data_dir, add_days(today, -back))
+        if entry is not None and entry.local_bulletin is not None and entry.local_bulletin.document_id is not None:
+            return entry.local_bulletin.document_id
+    return None
+
+
+def _build_bulletin_fetcher(location, data_dir=None, today: date | None = None) -> BulletinFetcher:
     local_bulletin_url = location.local_bulletin_url
     if not local_bulletin_url:
         return NullBulletinFetcher()
@@ -192,13 +203,16 @@ def _build_bulletin_fetcher(location) -> BulletinFetcher:
     if "daily-forecast" in local_bulletin_url:
         from openlocalweather.dates import add_days
 
+        today = today or today_in_tz(location.timezone)
         return KenyaKMDDailyFetcher(
             local_bulletin_url,
             area_name=location.local_bulletin_area_name,
             model_id=location.local_bulletin_model_id,
             # The Day+3 slot this run will try to fill. Passed in so the
             # fetcher does no clock or timezone reasoning of its own.
-            day3_target=add_days(today_in_tz(location.timezone), 3),
+            day3_target=add_days(today, 3),
+            # Where the probe for an unlinked PDF starts — 2026-10-11.
+            document_id_hint=_last_bulletin_document_id(data_dir, today) if data_dir is not None else None,
         )
     # This repo currently ships exactly one reference bulletin
     # implementation (Kenya Meteorological Department). A fork with a
@@ -795,7 +809,7 @@ def _build_pipeline_deps(config_path: str, data_dir: str, docs_dir: str, public_
         llm_provider=llm_provider,
         public_webpage_url=public_webpage_url,
         waqi_token=waqi_token,
-        bulletin_fetcher=_build_bulletin_fetcher(location),
+        bulletin_fetcher=_build_bulletin_fetcher(location, data_path),
         # GitHub sets this; empty for a local run, which is itself accurate.
         trigger_source=_env("TRIGGER_SOURCE"),
         publisher=publisher,

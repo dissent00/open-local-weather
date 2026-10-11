@@ -958,3 +958,30 @@ def test_a_hosted_openai_link_without_a_key_is_dropped(monkeypatch, capsys):
     assert [type(p).__name__ for p in built._providers] == ["GeminiProvider", "OpenAICompatProvider"]
     with pytest.raises(SystemExit, match="GROQ_API_KEY"):
         _build_llm_provider(providers=[hosted])
+
+
+def test_the_bulletin_fetcher_starts_its_probe_at_the_last_stored_document_id(tmp_path):
+    """2026-10-11: the id KMD gives each day's PDF is stored on the
+    bulletin record, and the next run's fetcher probes from there."""
+    from datetime import date, datetime, timezone
+
+    from openlocalweather.cli import _build_bulletin_fetcher, _last_bulletin_document_id
+    from openlocalweather.config import load_location_config
+    from openlocalweather.models import DailyLogEntry, LocalBulletinRecord, LogEntryMeta
+    from openlocalweather.store import log_store
+
+    meta = LogEntryMeta(generated_at_utc=datetime.now(timezone.utc), llm_provider="t", llm_model="t", pipeline_version="0")
+    for day, doc in ((date(2026, 10, 9), 5250), (date(2026, 10, 10), None), (date(2026, 10, 11), 5261)):
+        log_store.write_log_entry(tmp_path, DailyLogEntry(
+            date=day, rain_expected="Dry / No Rain", temp_high_c=30.0, temp_low_c=19.0, temp_high_low_display="30/19",
+            mslp_trend_24h="steady", synoptic_pattern="", narrative_markdown="", meta=meta,
+            local_bulletin=LocalBulletinRecord(source_name="KMD", text="", fetched_at_utc=meta.generated_at_utc, document_id=doc),
+        ))
+
+    assert _last_bulletin_document_id(tmp_path, date(2026, 10, 12)) == 5261
+    assert _last_bulletin_document_id(tmp_path, date(2026, 10, 11)) == 5250, "today's own entry is not yet written"
+    assert _last_bulletin_document_id(tmp_path / "empty", date(2026, 10, 12)) is None
+
+    location = load_location_config("config/location.yaml")
+    fetcher = _build_bulletin_fetcher(location, tmp_path, today=date(2026, 10, 12))
+    assert fetcher.document_id_hint == 5261
