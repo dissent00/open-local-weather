@@ -914,7 +914,7 @@
   "model_predictions": null,
   "verification": {
     "day0": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     },
@@ -1117,6 +1117,11 @@
     }
   ],
   "extended_outlook": "Temperatures and winds much the same through Tuesday, with showers and thunderstorms likely each day. Skies mostly cloudy throughout. Tuesday's call: rain, 100%, with all four models wet; highs 29 to 33 °C. At this lead ECMWF has the best record, right 77% of the time over 56 checks.\n\nFurther out, cooling through Saturday, with showers and thunderstorms likely Wednesday and Thursday, and rain and thunderstorms possible Friday and Saturday. Only GFS, ECMWF and ICON reach past Thursday. GFS, ECMWF and ICON are the wetter solutions from Wednesday to Saturday; UKMO keeps it drier. Saturday's call: rain, 100%, with both models wet; highs 25 to 30 °C. At this lead ECMWF has the best record, right 80% of the time over 53 checks.",
+  "write_up_sources": null,
+  "synoptic_ring": null,
+  "basin_pressure": null,
+  "review_findings": null,
+  "lead_records": null,
   "whatsapp_summary": null,
   "earlier_issuances": [],
   "morning_issuance": null,
