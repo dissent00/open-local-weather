@@ -928,8 +928,8 @@
     "fetched_at_utc": "2026-10-11T03:01:47.063663Z"
   },
   "yesterday_verification_summary": "Day+0 for 2026-10-10: gfs_seamless, ecmwf_ifs025, icon_seamless, ukmo_seamless and best_match called the rain right. Day+3 for 2026-10-07: gfs_seamless, ecmwf_ifs025, icon_seamless, ukmo_seamless and best_match called the rain right.",
-  "narrative_markdown": "## Today's Forecast\n\nCloudier than yesterday; temperatures and winds little changed. Showery from the afternoon, with thunder possible, peaking this evening. 30°C / 86°F high, 20°C / 68°F low. Sky partly cloudy early as reported, partly cloudy at midday and overcast in the evening. Wind N early and SW at midday; gusts to 41 km/h (22 kt). UV index 9.4 (very high). Air quality 63 (moderate) at Dunga Beach, the highest of 3 stations. As of 06:01, reports through 05:00: no rain; no thunder; high so far 22°C / 72°F; low so far 20°C / 68°F; peak sustained 6 km/h; sky 4/8.\n\n## Extended Outlook\n\nTemperatures and winds much the same through Wednesday, with showers and thunderstorms likely each day. Skies mostly cloudy Monday, then partly cloudy Tuesday and Wednesday. Rain loses support through Wednesday, from all four models Monday to one of four models Wednesday. Wednesday's call: dry, 28%, with one of four models wet; highs 30 to 33 °C. At this lead ECMWF has the best record, right 77% of the time over 57 checks.\n\nFurther out, temperatures and winds much the same through Sunday, with showers and thunderstorms likely Thursday, showers and thunderstorms possible Friday, showers and thunderstorms likely Saturday, and rain and thunderstorms possible Sunday. Only GFS, ECMWF and ICON reach past Friday. GFS is the wetter solution from Thursday to Sunday; ECMWF, ICON and UKMO keep it drier. Sunday's call: rain, 100%, with both models wet; highs around 30 °C. At this lead ECMWF has the best record, right 80% of the time over 53 checks.\n\n## Severe Weather / Hazard Potential\n\nConvective instability today: UKMO 3670 J/kg, ECMWF 2230 J/kg, ICON 1450 J/kg and GFS 640 J/kg. Thunder likely; any thunderstorm brings sudden gusts well above the 41 km/h (22 kt) forecast.\n\n## Winam Gulf — Conditions for Boaters\n\nPeak gust 29 km/h (15 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.\n\n## Detailed Discussion\n\n### Synoptic Overview\n\nAcross roughly 2,600 km, pressure is lowest toward the north (1008 hPa) and highest toward the southeast (1015 hPa) — an 8 hPa spread, a moderate large-scale gradient. The lower pressure to the north is filling over the next three days. Pressure overhead is near-steady. Sampling is a nine-point ring at 12-degree spacing, so this locates a direction, not a centre or a front. Across the basin's 5 points, pressure today sits between 1012.3 and 1014.2 hPa, near-steady over three days (+0.3 hPa). Pressure here over the last 24 hours: +0.7 hPa.\n\n### Forecaster Confidence Notes\n\nOn rain the record ranks ECMWF first at Day+3, right 77% of the last 30 checks and ECMWF first at Day+7, right 80% of the last 30 checks. On today's high GFS is the warmest model at 32.2 °C and ICON the coolest at 27.8 °C; the call's 30.0 °C sits between them. At Day+0, no model is meaningfully better than the others here yet. At Day+7, ECMWF is the strongest rain caller here and GFS the weakest. At Day+0, Best Match slightly under-forecasts peak wind here.\n\nFigures issued 06:01. Written by code; a discussion follows when a model answers.\n",
-  "narrative_source": "code",
+  "narrative_markdown": "## Today's Forecast\n\nMostly cloudy early, with a high of 30°C (86°F). The sky becomes partly cloudy by midday and overcast in the evening. thunder possible, peaking this evening. northerly overnight, turning southwest by midday. Gusts to 41 km/h (22 kt) are expected. UV index peaks at 9.4. Air quality at Kisumu Airport is 44, at Ochieng' Avenue 37, and at Dunga Beach 63; the model estimate is 74. As of 06:01, reports through 05:00: no rain; no thunder; high so far 22°C / 72°F; low so far 20°C / 68°F; peak sustained 6 km/h; sky 4/8.\n\n## Extended Outlook\n\nNEXT THREE DAYS temperatures and winds much the same through Wednesday, with showers possible Monday and Tuesday, dry Wednesday, and thunderstorms likely each day. Monday will be mostly cloudy, Tuesday partly cloudy, Wednesday partly cloudy. Rain is expected on four of four models on Monday, three of four on Tuesday, and one of four on Wednesday. Thunder is likely each day. The Day+3 call is dry with 28% probability, and the Day+7 call is rain with 100% probability. Highs range from 27–31°C on Monday, 30–32°C on Tuesday, and 30–33°C on Wednesday. ECMWF holds the best rain record at Day+3, right 77% of the last 30 checks.\n\n## Severe Weather / Hazard Potential\n\nThunder is expected today, with peak CAPE values from the models indicating strong updrafts. The main hazard is sudden gusts well above the forecast wind. No severe weather warning has been issued by the meteorological service.\n\n## Winam Gulf — Conditions for Boaters\n\nPeak gust 29 km/h (15 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.\n\n## Detailed Discussion\n\n### Synoptic Overview\n\nAcross roughly 2,600 km, pressure is lowest toward the north (1008 hPa) and highest toward the southeast (1015 hPa) — an 8 hPa spread, a moderate large-scale gradient. The lower pressure to the north is filling over the next three days. Pressure overhead is near-steady. Sampling is a nine-point ring at 12-degree spacing, so this locates a direction, not a centre or a front. across 5 points, today's mean sea-level pressure sits between 1012.3 and 1014.2 hPa; near-steady over three days (+0.3 hPa). trend +0.7 hPa; Moderate large-scale gradient, lowest pressure toward the north\n\n### Forecaster Confidence Notes\n\nReview shows that at Day+0 no model is meaningfully better than the others, with ECMWF slightly over‑forecasting overnight lows and under‑forecasting daytime highs, GFS systematically over‑forecasting daytime highs and under‑forecasting peak wind, and Best Match slightly under‑forecasting peak wind. The record indicates ECMWF is the best rain caller at Day+0, correct 83% of the last 30 checks. The call’s high of 30°C lies within the model spread, while its peak gust of 41 km/h exceeds all models except Best Match. GFS is on the wrong side of its own record, over‑forecasting daytime highs. Kenya Meteorological Department (KMD) has not issued a bulletin. Data sufficiency is adequate with 60 checks at Day+0, though coverage is uneven.\n\nToday's Forecast, Extended Outlook, Severe Weather / Hazard Potential, Synoptic Overview and Forecaster Confidence Notes by dots-3-note-preview; the rest written by code.\n",
+  "narrative_source": "llm",
   "extended_trend": "temperatures and winds much the same through Wednesday, with showers possible Monday and Tuesday, dry Wednesday, and thunderstorms likely each day",
   "extended_days": [
     {
@@ -1110,7 +1110,14 @@
     }
   ],
   "extended_outlook": "Temperatures and winds much the same through Wednesday, with showers and thunderstorms likely each day. Skies mostly cloudy Monday, then partly cloudy Tuesday and Wednesday. Rain loses support through Wednesday, from all four models Monday to one of four models Wednesday. Wednesday's call: dry, 28%, with one of four models wet; highs 30 to 33 °C. At this lead ECMWF has the best record, right 77% of the time over 57 checks.\n\nFurther out, temperatures and winds much the same through Sunday, with showers and thunderstorms likely Thursday, showers and thunderstorms possible Friday, showers and thunderstorms likely Saturday, and rain and thunderstorms possible Sunday. Only GFS, ECMWF and ICON reach past Friday. GFS is the wetter solution from Thursday to Sunday; ECMWF, ICON and UKMO keep it drier. Sunday's call: rain, 100%, with both models wet; highs around 30 °C. At this lead ECMWF has the best record, right 80% of the time over 53 checks.",
-  "write_up_sources": null,
+  "write_up_sources": {
+    "today": "llm",
+    "extended": "llm",
+    "severe": "llm",
+    "secondary": "code",
+    "synoptic": "llm",
+    "confidence": "llm"
+  },
   "synoptic_ring": {
     "summary": {
       "centre_mslp_hpa": 1012.4,
@@ -1585,7 +1592,7 @@
     "generated_at_utc": "2026-10-11T03:01:47.063698Z",
     "llm_provider": "GeminiProvider",
     "llm_model": "gemini-3.6-flash",
-    "narrative_llm_model": null,
+    "narrative_llm_model": "dots-studio/dots-3-note-preview:free",
     "llm_call_outcome": "served",
     "pipeline_version": "0.1.0",
     "system_prompt_sha256": "cb57f8dbbe0fe44ba844f62ba359caa3b423a911c9c7fbc2962489dff5a77bcd",
@@ -1664,12 +1671,6 @@
     "trigger_source": "workflow_dispatch",
     "issued_local_time": "06:01",
     "observations_local_time": "06:01",
-    "degradations": [
-      {
-        "code": "narrative_unavailable",
-        "summary": "Today's figures are decided and published. The written discussion follows when a model answers; the numbers are the same ones this forecast is scored on.",
-        "detail": "The write-up is asked for after the forecast is committed and published (ROADMAP item 189), by `olw write-up`, from the archived prompts and the stored call. Until it lands the entry carries the placeholder."
-      }
-    ]
+    "degradations": []
   }
 }
