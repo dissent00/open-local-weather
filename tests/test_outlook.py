@@ -36,7 +36,8 @@ def test_a_steady_week_reads_as_steady_in_both_spans():
 
     near, far = text.split("\n\n")
     assert near == "Conditions much the same through Thursday. Skies mostly cloudy throughout."
-    assert far == "Further out, conditions much the same through Monday."
+    # The unscored days say the same thing, so they say it once.
+    assert far == "Further out, conditions much the same through Monday. Friday to Sunday: no model wet, highs much the same."
     for paragraph in (near, far):
         for sentence in paragraph.split(". "):
             assert phrase_defect(sentence if sentence.endswith(".") else sentence + ".") is None, sentence
@@ -99,10 +100,10 @@ def test_the_far_span_is_measured_from_thursday_and_names_who_still_reaches():
            _day(7, high=25.0, models=MODELS[:2])]
 
     text = describe_extended_outlook(_inputs(near + far))
-    _, far_text = text.split("\n\n")
+    _, far_text, end_text = text.split("\n\n")
 
     assert far_text.startswith("Further out, cooling through Monday")
-    assert "Only GFS, ECMWF and ICON reach past Friday." in far_text
+    assert "Only GFS, ECMWF and ICON reach past Friday." in end_text
 
 
 def test_the_wetter_solutions_are_named_only_a_band_apart():
@@ -141,3 +142,48 @@ def test_lead_records_rank_only_models_with_ten_checks():
 
 def test_nothing_to_speak_about_is_none():
     assert describe_extended_outlook(_inputs([])) is None
+
+
+def test_the_unscored_days_are_said_one_by_one():
+    """The operator, 2026-10-11: Day+4 to Day+6 appeared only inside the
+    far trend clause. Each now gets a line of what the table holds — the
+    votes, the week's wettest day, the highs (or "much the same" when the
+    range repeats), and the thunder word when it changes."""
+    near = [_day(1, thunder="likely"), _day(2, thunder="likely"), _day(3, high=31.0, thunder="likely")]
+    far = [
+        _day(4, wet=3, high=31.0, spread=2.0, thunder="likely"),
+        _day(5, wet=4, high=31.0, spread=2.0, thunder="likely"),
+        _day(6, wet=3, models=MODELS[:3], precip=15.3, high=28.0, spread=4.0, thunder="possible"),
+        _day(7, wet=2, models=MODELS[:2], precip=6.0, high=27.0, spread=2.5, thunder="possible"),
+    ]
+
+    text = describe_extended_outlook(_inputs(near + far, served={"7": {"rain": True, "rain_probability_pct": 100}}))
+    _, middle, end = text.split("\n\n")
+
+    assert "Friday: three of four models wet, highs 29 to 33 °C." in middle
+    assert "Saturday: all four models wet, highs much the same." in middle
+    assert ("Sunday: all three models that reach it wet, the week's wettest day at 15 mm on average, "
+            "highs 24 to 32 °C, thunder possible rather than likely.") in middle
+    assert "Monday:" not in middle, "the scored day has its call instead"
+    assert end.startswith("Only GFS, ECMWF and ICON reach past Saturday.")
+    assert "Monday's call: rain, 100%, with both models wet; highs 24 to 30 °C." in end
+    assert phrase_defect(middle) is None
+
+
+def test_the_wetter_solutions_compare_only_days_every_model_reaches():
+    """2026-10-11: UKMO stopped after Thursday and the sentence read it
+    as the drier solution, because totals ran over days it never
+    forecast. Only days every model reaches count, and the span says so."""
+    near = [_day(1), _day(2), _day(3)]
+    even = {m: 1.0 for m in MODELS}
+    three = {m: 5.0 for m in MODELS[:3]}
+    far = [_day(4, by_model=even), _day(5, by_model=even),
+           _day(6, models=MODELS[:3], by_model=three), _day(7, models=MODELS[:3], by_model=three)]
+    assert "solution" not in describe_extended_outlook(_inputs(near + far))
+
+    apart = {"gfs_seamless": 0.5, "ecmwf_ifs025": 6.0, "icon_seamless": 5.5, "ukmo_seamless": 0.2}
+    far = [_day(4, by_model=apart), _day(5, by_model=apart),
+           _day(6, models=MODELS[:3], by_model=three), _day(7, models=MODELS[:3], by_model=three)]
+    assert "ECMWF and ICON are the wetter solutions from Friday to Saturday; GFS and UKMO keep it drier." in (
+        describe_extended_outlook(_inputs(near + far))
+    )

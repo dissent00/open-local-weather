@@ -6482,12 +6482,14 @@ def export_extended_outlook() -> None:
     write(
         "extended_outlook.json",
         "describe_extended_outlook",
-        "Two paragraphs over the day table: the trend clause through Day+3 with the sky, rain's "
+        "Three paragraphs over the day table: the trend clause through Day+3 with the sky, rain's "
         "support among the models moving one way, a day standing out for wind, the scored call with "
         "the models' votes and the met service's word, the record's best model or its absence; then "
-        "the same trend measured from Day+3, which models still reach, the wetter solutions, the "
-        "Day+7 call and its record. The numbers are the table's; the only probability printed is "
-        "the served call's.",
+        "the same trend measured from Day+3 with a line per unscored day (votes, the week's wettest "
+        "day, highs or 'much the same', the thunder word when it changes; unchanged days merge); then "
+        "which models still reach the week's end, the wetter solutions over the days every model "
+        "reaches, the Day+7 call and its record. The numbers are the table's; the only probability "
+        "printed is the served call's.",
         [
             case("the stored day: a windier Wednesday, rain gaining support, two models past Saturday"),
             case("no far days: one paragraph", days=near_only),

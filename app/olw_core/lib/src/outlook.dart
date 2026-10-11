@@ -255,7 +255,13 @@ String? describeExtendedOutlook(OutlookInputs i) {
   final far = [for (final n in farLeads) if (byLead.containsKey(n)) byLead[n]!];
   if (near.isEmpty) return null;
 
-  final paragraphs = [_paragraph(_nearParts(i, near, far)), _paragraph(_farParts(i, near, far))];
+  // Three since 2026-10-11: the far trend with a line per unscored day,
+  // then the week's end — mirrors `describe_extended_outlook`.
+  final paragraphs = [
+    _paragraph(_nearParts(i, near, far)),
+    _paragraph(_farParts(i, near, far)),
+    _paragraph(_endParts(i, near, far)),
+  ];
   final text = [for (final p in paragraphs) if (p.isNotEmpty) p].join('\n\n');
   return text.isEmpty ? null : text;
 }
@@ -383,14 +389,66 @@ List<String?> _farParts(OutlookInputs i, List<ExtendedDay> near, List<ExtendedDa
     dayThunder: [for (final d in far) d.thunder],
     dayAfterPrecipMm: null,
   );
+  return [trend == null ? null : _sentence('further out, $trend'), ..._dayLines(i, near, far)];
+}
+
+List<String?> _endParts(OutlookInputs i, List<ExtendedDay> near, List<ExtendedDay> far) {
+  if (far.isEmpty) return const [];
   final last = far.last;
   return [
-    trend == null ? null : _sentence('further out, $trend'),
     _reach(near, far),
     _solutions(far),
     _call(i, last),
     _record(i, last.leadTimeDays),
   ];
+}
+
+/// One line per far day the record does not score — mirrors `_day_lines`:
+/// the votes, the week's wettest day, the highs or "much the same", the
+/// thunder word when it changes; days saying the same thing merge.
+List<String> _dayLines(OutlookInputs i, List<ExtendedDay> near, List<ExtendedDay> far) {
+  final byLead = {for (final d in i.days) d.leadTimeDays: d};
+  final amounts = [for (final d in i.days) if (d.precipMm != null) d.precipMm!];
+  final wettest = amounts.isEmpty ? null : amounts.reduce((a, b) => a > b ? a : b);
+  final runs = <(List<String>, List<String>)>[];
+  for (final day in far) {
+    if (scoredLeads.contains(day.leadTimeDays)) continue;
+    final previous = byLead[day.leadTimeDays - 1];
+    final bits = [_wetVotes(day, near.first.models)];
+    final standsOut = wettest != null && wettest != 0 && day.precipMm == wettest &&
+        amounts.where((a) => a == wettest).length == 1;
+    if (standsOut) bits.add("the week's wettest day at ${_fixed(wettest, 0)} mm on average");
+    final highs = _highs(day);
+    if (highs != null) {
+      bits.add(previous != null && _highs(previous) == highs ? 'highs much the same' : highs);
+    }
+    if (previous != null && day.thunder != previous.thunder) bits.add(_thunderChange(day.thunder, previous.thunder));
+    final sameAsBefore = previous != null &&
+        highs == _highs(previous) &&
+        day.thunder == previous.thunder &&
+        _wetVotes(day, near.first.models) == _wetVotes(previous, near.first.models);
+    if (runs.isNotEmpty && sameAsBefore && !standsOut && !runs.last.$2.any((b) => b.contains('wettest'))) {
+      runs.last.$1.add(day.dayName);
+      continue;
+    }
+    runs.add(([day.dayName], bits));
+  }
+  return [for (final (names, bits) in runs) '${_nameRun(names)}: ${bits.join(', ')}.'];
+}
+
+String _wetVotes(ExtendedDay day, List<String> full) {
+  final total = day.models.length;
+  if (total == 0) return 'no model reaches it';
+  if (1 < total && total < full.length && day.wetVotes == total) {
+    return 'all ${_number(total)} models that reach it wet';
+  }
+  return '${_votes(day.wetVotes, total)} wet';
+}
+
+String _thunderChange(String? now, String? before) {
+  if (now == null) return 'no thunder';
+  if (before == null) return 'thunder $now';
+  return 'thunder $now rather than $before';
 }
 
 String? _reach(List<ExtendedDay> near, List<ExtendedDay> far) {
@@ -411,10 +469,15 @@ String? _reach(List<ExtendedDay> near, List<ExtendedDay> far) {
 }
 
 String? _solutions(List<ExtendedDay> far) {
+  // Summed only over the days every model of the span's first day still
+  // reaches (2026-10-11) — mirrors `_solutions`.
+  final models = far.first.models;
+  final shared = [for (final d in far) if (models.every(d.precipByModel.containsKey)) d];
+  if (shared.isEmpty) return null;
   final totals = <String, double>{};
-  for (final d in far) {
-    for (final e in d.precipByModel.entries) {
-      totals[e.key] = (totals[e.key] ?? 0.0) + e.value;
+  for (final d in shared) {
+    for (final model in models) {
+      totals[model] = (totals[model] ?? 0.0) + d.precipByModel[model]!;
     }
   }
   if (totals.length < 2) return null;
@@ -424,7 +487,7 @@ String? _solutions(List<ExtendedDay> far) {
   final midpoint = (hi + lo) / 2;
   final wetter = [for (final e in totals.entries) if (e.value >= midpoint) shortModelName(e.key)];
   final drier = [for (final e in totals.entries) if (e.value < midpoint) shortModelName(e.key)];
-  final span = far.length > 1 ? 'from ${far.first.dayName} to ${far.last.dayName}' : far.first.dayName;
+  final span = shared.length > 1 ? 'from ${shared.first.dayName} to ${shared.last.dayName}' : shared.first.dayName;
   return '${_join(wetter)} ${wetter.length == 1 ? 'is' : 'are'} the wetter '
       '${wetter.length == 1 ? 'solution' : 'solutions'} $span; '
       '${_join(drier)} ${drier.length == 1 ? 'keeps' : 'keep'} it drier.';

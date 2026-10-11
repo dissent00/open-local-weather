@@ -188,14 +188,23 @@ def lead_records(entries, *, visible_models: list[str], leads=SCORED_LEADS) -> l
 
 
 def describe_extended_outlook(i: OutlookInputs) -> str | None:
-    """The outlook as two paragraphs, or None with no day to speak about."""
+    """The outlook as three paragraphs, or None with no day to speak
+    about: the near term through the Day+3 call; the far trend with a
+    line per unscored day (the operator, 2026-10-11: Day+4 to Day+6 had
+    appeared only inside the trend clause); then the week's end — who
+    still reaches it, the wetter solutions, the Day+7 call and its
+    record."""
     by_lead = {d.lead_time_days: d for d in i.days}
     near = [by_lead[n] for n in NEAR_LEADS if n in by_lead]
     far = [by_lead[n] for n in FAR_LEADS if n in by_lead]
     if not near:
         return None
 
-    paragraphs = [_paragraph(_near_parts(i, near, far)), _paragraph(_far_parts(i, near, far))]
+    paragraphs = [
+        _paragraph(_near_parts(i, near, far)),
+        _paragraph(_far_parts(i, near, far)),
+        _paragraph(_end_parts(i, near, far)),
+    ]
     text = "\n\n".join(p for p in paragraphs if p)
     return text or None
 
@@ -333,14 +342,72 @@ def _far_parts(i: OutlookInputs, near: list[ExtendedDay], far: list[ExtendedDay]
         day_thunder=[d.thunder for d in far],
         day_after_precip_mm=None,
     )
+    return [_sentence(f"further out, {trend}") if trend else None, *_day_lines(i, near, far)]
+
+
+def _end_parts(i: OutlookInputs, near: list[ExtendedDay], far: list[ExtendedDay]) -> list[str | None]:
+    if not far:
+        return []
     last = far[-1]
     return [
-        _sentence(f"further out, {trend}") if trend else None,
         _reach(near, far),
         _solutions(far),
         _call(i, last),
         _record(i, last.lead_time_days),
     ]
+
+
+def _day_lines(i: OutlookInputs, near: list[ExtendedDay], far: list[ExtendedDay]) -> list[str]:
+    """One line per far day the record does not score: "Friday: three of
+    four models wet, highs 29 to 33 °C." The votes always; the week's
+    wettest day where it falls here; the highs, or "much the same" when
+    the range repeats the day before's; the thunder word when it changes.
+    Figures are the table's and no more."""
+    by_lead = {d.lead_time_days: d for d in i.days}
+    amounts = [d.precip_mm for d in i.days if d.precip_mm is not None]
+    wettest = max(amounts) if amounts else None
+    # Days saying the same thing as the day before merge into one line
+    # ("Friday to Sunday: no model wet, highs much the same."), so a steady
+    # week is not three identical sentences.
+    runs: list[tuple[list[str], list[str]]] = []
+    for day in far:
+        if day.lead_time_days in SCORED_LEADS:
+            continue
+        previous = by_lead.get(day.lead_time_days - 1)
+        bits = [_wet_votes(day, near[0].models)]
+        stands_out = bool(wettest) and day.precip_mm == wettest and amounts.count(wettest) == 1
+        if stands_out:
+            bits.append(f"the week's wettest day at {wettest:.0f} mm on average")
+        highs = _highs(day)
+        if highs:
+            bits.append("highs much the same" if previous is not None and _highs(previous) == highs else highs)
+        if previous is not None and day.thunder != previous.thunder:
+            bits.append(_thunder_change(day.thunder, previous.thunder))
+        same_as_before = previous is not None and highs == _highs(previous) and day.thunder == previous.thunder and (
+            _wet_votes(day, near[0].models) == _wet_votes(previous, near[0].models)
+        )
+        if runs and same_as_before and not stands_out and not any("wettest" in b for b in runs[-1][1]):
+            runs[-1][0].append(day.day_name)
+            continue
+        runs.append(([day.day_name], bits))
+    return [f"{_name_run(names)}: {', '.join(bits)}." for names, bits in runs]
+
+
+def _wet_votes(day: ExtendedDay, full: list[str]) -> str:
+    total = len(day.models)
+    if total == 0:
+        return "no model reaches it"
+    if 1 < total < len(full) and day.wet_votes == total:
+        return f"all {_number(total)} models that reach it wet"
+    return f"{_votes(day.wet_votes, total)} wet"
+
+
+def _thunder_change(now: str | None, before: str | None) -> str:
+    if now is None:
+        return "no thunder"
+    if before is None:
+        return f"thunder {now}"
+    return f"thunder {now} rather than {before}"
 
 
 def _reach(near: list[ExtendedDay], far: list[ExtendedDay]) -> str | None:
@@ -359,11 +426,18 @@ def _reach(near: list[ExtendedDay], far: list[ExtendedDay]) -> str | None:
 
 def _solutions(far: list[ExtendedDay]) -> str | None:
     """"ECMWF and ICON are the wetter solutions from Friday to Monday; GFS
-    keeps it drier." Named only when the models' totals sit a band apart."""
+    keeps it drier." Named only when the models' totals sit a band apart,
+    and summed only over the days every model of the span's first day
+    still reaches: on 2026-10-10 UKMO stopped after Thursday and read as
+    the drier solution for days it never forecast."""
+    models = far[0].models
+    shared = [d for d in far if all(m in d.precip_by_model for m in models)]
+    if not shared:
+        return None
     totals: dict[str, float] = {}
-    for d in far:
-        for model, mm in d.precip_by_model.items():
-            totals[model] = totals.get(model, 0.0) + mm
+    for d in shared:
+        for model in models:
+            totals[model] = totals.get(model, 0.0) + d.precip_by_model[model]
     if len(totals) < 2:
         return None
     lo, hi = min(totals.values()), max(totals.values())
@@ -372,7 +446,7 @@ def _solutions(far: list[ExtendedDay]) -> str | None:
     midpoint = (hi + lo) / 2
     wetter = [short_model_name(m) for m, t in totals.items() if t >= midpoint]
     drier = [short_model_name(m) for m, t in totals.items() if t < midpoint]
-    span = f"from {far[0].day_name} to {far[-1].day_name}" if len(far) > 1 else far[0].day_name
+    span = f"from {shared[0].day_name} to {shared[-1].day_name}" if len(shared) > 1 else shared[0].day_name
     return (
         f"{_join(wetter)} {'is' if len(wetter) == 1 else 'are'} the wetter "
         f"{'solution' if len(wetter) == 1 else 'solutions'} {span}; "

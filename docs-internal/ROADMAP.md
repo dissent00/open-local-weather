@@ -27556,6 +27556,24 @@ Related: items 112, 174, 176, 180, 182, 164, 147, 158, 186, 196; Ensemble items 
 
 ## 190. The floor: a code-written write-up replaces the placeholder · **Shipped 2026-10-04; step 3, the outlook in code, 2026-10-05**
 
+**2026-10-11, after the operator's read: the unscored days, and a
+false "drier".** Day+4 to Day+6 appeared only inside the far trend clause;
+the outlook is three paragraphs now. The middle one is the far trend with
+a line per unscored day from the table alone — the votes ("all three
+models that reach it wet" when the set has thinned), the week's wettest
+day where it falls there, the highs or "much the same" when the range
+repeats the day before's, the thunder word when it changes — and days
+saying the same thing merge ("Friday to Sunday: no model wet, highs much
+the same"). The last is the week's end: who reaches it, the wetter
+solutions, the Day+7 call and record. The solutions sentence had summed
+each model's rain over the whole far span, so on 10-10 UKMO, which stops
+after Thursday, read as "keeps it drier" for days it never forecast; it
+now sums only the days every model of the span's first day reaches and
+names that span. Swept across the two languages on 2,000 random outlooks,
+0 divergences. Seen on the 10-11 render and left alone: the trend clause
+itself lists thunder day by day when it alternates ("likely Thursday,
+possible Friday, likely Saturday"), which the new lines now also say.
+
 **Step 3, 2026-10-05: the Extended Outlook in code.** The operator's ask on
 reading the floor: not a line per day but the trends — "rain likely
 through Thursday, increasing chance, windier on Wednesday", then the longer
