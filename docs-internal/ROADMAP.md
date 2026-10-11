@@ -26998,6 +26998,49 @@ hidden scored row.
 
 ---
 
+## 197. Clouds by height, and what the airport saw overhead · **Planned; raised 2026-10-11**
+
+The operator, on reading the floor: can the page say more about the
+clouds — names, altitudes, types? What the sources hold, read 2026-10-11:
+
+- **Open-Meteo** serves hourly cover in three height bands beside the
+  total: `cloud_cover_low` (below about 2 km), `cloud_cover_mid` (2 to
+  6 km), `cloud_cover_high` (above 6 km). The hourly fetch asks for the
+  total only (`fetch/open_meteo.py`).
+- **The METAR** carries each layer's cover and base height in hundreds of
+  feet, and flags cumulonimbus (`CB`) and towering cumulus (`TCU`):
+  `FEW020 SCT040CB BKN100`. `fetch/metar.py` reads the layers for the
+  oktas and discards the heights and the flags.
+- Neither names a genus beyond those two flags. Stratus, cirrus and the
+  rest are not available from anything the pipeline fetches; nothing
+  here should invent them from a height band.
+
+**What to build, in order, each a seam:**
+
+1. **The three bands fetched and stored**, hourly, beside the total, and
+   the day's daily means with them. No reader yet; a month of them in the
+   record before any sentence is written from them, as item 103 does for
+   the ring.
+2. **The METAR layers kept**: per report, the list of (cover word, base
+   feet, CB/TCU flag), stored on the observed record; the oktas unchanged.
+3. **The sky anchors say the band**, from the stored series, only where
+   it is clear-cut: "low cloud through the morning, high cloud only by
+   afternoon" when one band holds most of the cover; the plain word as now
+   otherwise. Thresholds measured from the month in step 1, against the
+   record, not the samples in front of us (AGENTS.md). The floor, the
+   brief, and the writer's vocabulary for the section; the audit's number
+   check unchanged, since heights are not printed.
+4. **The airport's convective flag on the page**: a `CB` or `TCU` in a
+   report is the one cloud type the station names, and it is the thunder
+   signal the models cannot give for an hour already lived. The right-now
+   rule (item 138, 2026-10-10) applies: a reported CB outranks the models'
+   tier for that hour.
+
+Not in scope: cloud names from height alone, or any altitude figure in
+the prose. Related: items 95, 103, 138, 158, 191.
+
+---
+
 ## 196. The OpenClaw skill, made trustworthy · **Planned — after item 191; raised 2026-10-05**
 
 The operator's question: OpenClaw users already pay for model calls and
