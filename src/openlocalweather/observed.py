@@ -32,6 +32,7 @@ from openlocalweather.disagreement import (
 )
 from openlocalweather.models import LowDivergence, SOURCE_STATION, DailyActual, ObservedSoFar
 from openlocalweather.models import format_temp_c
+from openlocalweather.tiles import OKTAS, sky_word
 
 
 def describe_observed_so_far(
@@ -150,9 +151,11 @@ def _sky(oktas: float | None) -> str | None:
     if oktas is None:
         return None
 
-    # Eighths, which is how a METAR reports cover and how the mean of a day's
-    # reports stays comparable with a single one.
-    return f"sky {round(oktas)}/8"
+    # The sky anchors' own word, not the eighths — the operator, 2026-10-11:
+    # "4/8 isn't useful, we need a name for each option". The METAR mean in
+    # oktas is put through the same bands the models' cover is, so the page
+    # speaks one vocabulary for what was forecast and what was seen.
+    return f"sky {sky_word(oktas / OKTAS * 100).lower()}"
 
 
 # The dimensions today's own observations can honestly baseline a forecast

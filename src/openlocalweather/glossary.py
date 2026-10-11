@@ -80,7 +80,7 @@ GLOSSARY: tuple[GlossaryEntry, ...] = (
         "How much of the sky is covered, as a percentage. Forecasts give it "
         "that way; observers measure it in EIGHTHS of the sky, so 0/8 is "
         "clear, 1-2/8 mostly clear, 3-4/8 partly cloudy, 5-7/8 mostly cloudy "
-        "and 8/8 cloudy. One eighth is the smallest change worth calling a "
+        "and 8/8 overcast. One eighth is the smallest change worth calling a "
         "change, which is why a sky has to shift by more than that here "
         "before the forecast says it did.",
         NWS_GLOSSARY,

@@ -23,7 +23,7 @@ def test_every_dimension_reported_in_the_contract_order():
     )
     assert describe_observed_so_far(observed, as_of="14:00") == (
         "As of 14:00: rain from 13:00; thunder; high so far 27°C / 81°F; "
-        "low so far 18°C / 65°F; peak sustained 31 km/h; sky 6/8."
+        "low so far 18°C / 65°F; peak sustained 31 km/h; sky mostly cloudy."
     )
 
 
@@ -78,10 +78,16 @@ def test_gust_ties_go_half_to_even(kmh, expected):
     assert got == f"So far today: peak gust {expected} km/h."
 
 
-@pytest.mark.parametrize("oktas,expected", [(5.5, 6), (6.5, 6), (0.5, 0)])
-def test_sky_ties_go_half_to_even(oktas, expected):
+@pytest.mark.parametrize("oktas,expected", [
+    (0.4, "clear"), (0.5, "mostly clear"), (2.5, "partly cloudy"), (4.5, "mostly cloudy"), (6.5, "mostly cloudy"),
+    (7.5, "overcast"),
+])
+def test_sky_is_the_anchors_word_for_the_eighths(oktas, expected):
+    """2026-10-11: the station's mean in oktas is said in the sky anchors'
+    words, through the same bands the models' cover is — the boundaries
+    fall at 0.5, 2.5, 4.5 and 7.5 oktas, each the start of the next word."""
     got = describe_observed_so_far(ObservedSoFar(cloud_oktas=oktas))
-    assert got == f"So far today: sky {expected}/8."
+    assert got == f"So far today: sky {expected}."
 
 
 # ---------------------------------------------------------------------------

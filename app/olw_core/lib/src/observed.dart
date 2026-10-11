@@ -22,6 +22,7 @@ library;
 import 'disagreement.dart';
 import 'models.dart';
 import 'rounding.dart';
+import 'tiles.dart' as tiles;
 
 /// One finished sentence for what has been measured today, or null when
 /// nothing has.
@@ -116,9 +117,9 @@ String? _gust(double? kmh) {
 String? _sky(double? oktas) {
   if (oktas == null) return null;
 
-  // Eighths, which is how a METAR reports cover and how the mean of a day's
-  // reports stays comparable with a single one.
-  return 'sky ${roundLikePython(oktas, 0).toInt()}/8';
+  // The sky anchors' own word for the station's mean in eighths — one
+  // vocabulary for what was forecast and what was seen (2026-10-11).
+  return 'sky ${tiles.skyWord(oktas / tiles.oktas * 100)!.toLowerCase()}';
 }
 
 /// The overnight-low footnote, or null when there is nothing to footnote —

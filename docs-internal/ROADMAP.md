@@ -27556,6 +27556,14 @@ Related: items 112, 174, 176, 180, 182, 164, 147, 158, 186, 196; Ensemble items 
 
 ## 190. The floor: a code-written write-up replaces the placeholder · **Shipped 2026-10-04; step 3, the outlook in code, 2026-10-05**
 
+**2026-10-11, the operator's read of the floor: "4/8 isn't useful, we
+need a name for each option".** The observed-so-far line said the
+station's sky in eighths; it says the sky anchors' word now, the mean in
+oktas put through the same bands the models' cover is (`sky_word`), so
+the page uses one vocabulary for what was forecast and what was seen.
+The glossary's "8/8 cloudy" reads "overcast", the label the bands use.
+Both languages; the floor, brief and prompt vectors re-pinned.
+
 **2026-10-11, after the operator's read: the unscored days, and a
 false "drier".** Day+4 to Day+6 appeared only inside the far trend clause;
 the outlook is three paragraphs now. The middle one is the far trend with

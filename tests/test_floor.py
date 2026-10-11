@@ -180,7 +180,7 @@ def _today(text: str) -> str:
 
 
 def test_the_stations_line_closes_todays_forecast():
-    line = "As of 06:01, reports through 05:00: no rain; no thunder; sky 2/8."
+    line = "As of 06:01, reports through 05:00: no rain; no thunder; sky mostly clear."
     text = compose_floor(_station_inputs(observed_line=line))
 
     assert _today(text).endswith(line)

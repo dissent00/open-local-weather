@@ -19,7 +19,7 @@
         },
         "as_of": "14:00"
       },
-      "expected": "As of 14:00: rain from 13:00; thunder; high so far 27\u00b0C / 81\u00b0F; low so far 18\u00b0C / 65\u00b0F; peak sustained 31 km/h; sky 6/8."
+      "expected": "As of 14:00: rain from 13:00; thunder; high so far 27\u00b0C / 81\u00b0F; low so far 18\u00b0C / 65\u00b0F; peak sustained 31 km/h; sky mostly cloudy."
     },
     {
       "name": "negatives are reported, absences omitted",
@@ -271,7 +271,7 @@
         },
         "as_of": "15:00"
       },
-      "expected": "As of 15:00: sky 6/8."
+      "expected": "As of 15:00: sky mostly cloudy."
     },
     {
       "name": "sky tie, rounds down to even",
@@ -289,7 +289,7 @@
         },
         "as_of": "15:00"
       },
-      "expected": "As of 15:00: sky 6/8."
+      "expected": "As of 15:00: sky mostly cloudy."
     },
     {
       "name": "overcast",
@@ -307,7 +307,7 @@
         },
         "as_of": "15:00"
       },
-      "expected": "As of 15:00: sky 8/8."
+      "expected": "As of 15:00: sky overcast."
     },
     {
       "name": "clear",
@@ -325,7 +325,7 @@
         },
         "as_of": "15:00"
       },
-      "expected": "As of 15:00: sky 0/8."
+      "expected": "As of 15:00: sky clear."
     },
     {
       "name": "the reach beside the clock",
