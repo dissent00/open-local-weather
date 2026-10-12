@@ -1078,3 +1078,16 @@ def test_narrative_instructions_are_in_the_narrative_prompt():
     # grepping the archives for the field before acting on the claim.
     band = "ANYTHING OLDER THAN THAT belongs in the Forecaster Confidence Notes"
     assert band in narrative and band in judgment
+
+
+def test_the_cloud_bands_do_not_reach_hours_ahead():
+    """Item 197 step 1: the three height bands are fetched for the record
+    and dropped from the prompt like the UV series, so the judgment's
+    56K tokens do not grow for a series nothing in the prompt reads."""
+    from openlocalweather.llm.prompt import _trimmed_forward_hourly
+
+    forward = {"hourly": {
+        "time": ["2026-10-12T06:00"], "cloud_cover_gfs_seamless": [60], "cloud_cover_low_gfs_seamless": [10],
+        "cloud_cover_mid_gfs_seamless": [30], "cloud_cover_high_gfs_seamless": [50], "uv_index_gfs_seamless": [9],
+    }}
+    assert set(_trimmed_forward_hourly(forward)["hourly"]) == {"time", "cloud_cover_gfs_seamless"}

@@ -1900,6 +1900,12 @@ class DailyLogEntry(BaseModel):
     # three-day change. Code's Synoptic Overview reads it off the stored
     # day; the raw points stay in the prompt archive.
     basin_pressure: dict | None = None
+    # The three cloud height bands per model and hour for the day, as
+    # fetched — item 197 step 1, 2026-10-12 (extract.cloud_bands_record).
+    # Nothing reads them yet; the month they accumulate decides what a
+    # sentence may say from them. None before the field, and on a day the
+    # fetch served none.
+    cloud_bands: dict | None = None
     # The review's ESTABLISHED findings at issuance, as kind, checks and
     # claim — what code's Forecaster Confidence Notes are written from on
     # a stored day. The review is recomputed every run from the whole

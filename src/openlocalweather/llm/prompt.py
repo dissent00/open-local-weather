@@ -1024,7 +1024,9 @@ def _without_api_noise(value):
 #: lists UV among the things to reason about "from HOURS AHEAD", which would
 #: have pointed at data no longer there — the failure this project calls a
 #: rule policing a block nothing needed, in reverse.
-FORWARD_HOURLY_DROPPED_PREFIXES = ("uv_index",)
+#: The cloud height bands joined on 2026-10-12 (item 197 step 1): fetched
+#: for the record, read by nothing in the prompt, so not sent.
+FORWARD_HOURLY_DROPPED_PREFIXES = ("uv_index", "cloud_cover_low", "cloud_cover_mid", "cloud_cover_high")
 
 
 def _trimmed_forward_hourly(forward_hourly):

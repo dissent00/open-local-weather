@@ -50,7 +50,13 @@ HOURLY_FORECAST_VARS = (
     # no value. Verified 2026-08-19 against the live API: the current
     # "wind_gusts_10m" name returns real ECMWF data, and identical values to
     # the alias for all other models. Don't "tidy" this back to the alias.
-    "wind_speed_10m,wind_gusts_10m,wind_direction_10m,cape,pressure_msl,uv_index"
+    "wind_speed_10m,wind_gusts_10m,wind_direction_10m,cape,pressure_msl,uv_index,"
+    # The three height bands beside the total — ROADMAP item 197 step 1,
+    # 2026-10-12: low below about 2 km, mid 2 to 6 km, high above. Kept on
+    # the day (`DailyLogEntry.cloud_bands`) and dropped from the prompt
+    # (prompt.FORWARD_HOURLY_DROPPED_PREFIXES); nothing reads them until a
+    # month is in the record.
+    "cloud_cover_low,cloud_cover_mid,cloud_cover_high"
 )
 DAILY_FORECAST_VARS = (
     "temperature_2m_max,temperature_2m_min,precipitation_sum,"

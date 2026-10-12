@@ -163,6 +163,7 @@ from openlocalweather.defaults import (
     CODE_BLEND_MODEL_ID,
 )
 from openlocalweather.extract import (
+    cloud_bands_record,
     extract_window_predictions,
     extract_day0_predictions_from_hourly,
     extract_day_n_predictions_from_daily,
@@ -2840,6 +2841,7 @@ def _compose_log_entry(
         # point 5 and item 191 step (c), 2026-10-10. See the entry's fields.
         synoptic_ring=_synoptic_ring_record(guidance),
         basin_pressure=basin_pressure(_regional_points(guidance.regional_pressure)),
+        cloud_bands=cloud_bands_record(guidance.primary_hourly, MODELS),
         review_findings=review_findings,
         lead_records=lead_records_kept,
         # THE DISPLAY IS COMPOSED HERE, the halves stored beside it. The model

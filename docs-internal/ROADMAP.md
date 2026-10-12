@@ -2772,9 +2772,17 @@ day) under the slug's candidate names ("Valid" and "valid" both occur in
 the record; a five-day name carries "from"). Found while looking: the
 five-day pattern of 08-19 matched neither slug KMD has used, so no day in
 60 ever held a met Day+3; fixed, and the live run found the five-day PDF
-too. Not checked: the five-day parse itself returned an empty Day+3 row
-for 2026-10-14 on that run (every field None) — the parser has never seen
-a live table, so that is the next thing to look at. The 8th to the 11th
+too. The five-day parse then returned an empty Day+3 row for 2026-10-14
+(every field None): the parser had never seen a live table. **Fixed
+2026-10-12:** the first county table of that bulletin extracts with
+eleven columns and Kisumu's with nine, and the dates were taken once
+from the first header, so Kisumu's last two days pointed past its row.
+Each table's rows are read under its own header now; the live bulletin
+is a fixture (`kmd_5day_2026-10-11.json`) and parses all five days. The
+five-day PDF's filename varies more than the daily's ("Valid_from",
+"Valid", a double underscore once) and the 12th-to-16th file was not
+found under any name tried, so the Day+3 row stays a bonus, silent when
+the probe misses. The 8th to the 11th
 are lost to the scored record: the row is a prediction and the run that
 would have stored it has passed.
 
@@ -27017,10 +27025,16 @@ clouds — names, altitudes, types? What the sources hold, read 2026-10-11:
 
 **What to build, in order, each a seam:**
 
-1. **The three bands fetched and stored**, hourly, beside the total, and
-   the day's daily means with them. No reader yet; a month of them in the
-   record before any sentence is written from them, as item 103 does for
-   the ring.
+1. **The three bands fetched and stored**, hourly, beside the total. No
+   reader yet; a month of them in the record before any sentence is
+   written from them, as item 103 does for the ring. **Shipped
+   2026-10-12:** `cloud_cover_low,mid,high` join the hourly fetch;
+   `DailyLogEntry.cloud_bands` keeps them per model and hour as served
+   (`extract.cloud_bands_record`); the prompt drops them like the UV
+   series, so the judgment does not grow. Verified served for all five
+   models, 24 hours each, at Kisumu on 2026-10-12 (ICON 45/35/100 at
+   noon, ECMWF 0/51/3). Daily means are not stored: they derive from the
+   hours. The first stored day is the 13th's run.
 2. **The METAR layers kept**: per report, the list of (cover word, base
    feet, CB/TCU flag), stored on the observed record; the oktas unchanged.
 3. **The sky anchors say the band**, from the stored series, only where

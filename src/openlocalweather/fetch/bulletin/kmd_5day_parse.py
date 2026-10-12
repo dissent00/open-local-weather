@@ -104,21 +104,29 @@ def parse_header_dates(header_row: list) -> dict[int, date]:
     return dates
 
 
-def _flatten_county_rows(tables: list[list[list]]) -> tuple[list[list], dict[int, date]]:
-    """All county-table data rows in document order, headers dropped.
+def _flatten_county_rows(tables: list[list[list]]) -> list[tuple[list, dict[int, date]]]:
+    """All county-table data rows in document order, headers dropped, each
+    row paired with ITS OWN table's column-to-date map.
 
     This is what makes page-straddling blocks reassemble: the stream has no
     notion of which page a row came from.
+
+    Its own header, not the first one's — 2026-10-12. The first live
+    five-day bulletin read (valid 11th to 15th October 2026) extracted its
+    first county table with eleven columns and Kisumu's with nine, so the
+    dates taken once from the first header pointed two columns past
+    Kisumu's last two days and the Day+3 row came out with every field
+    None. Merged cells extract to a varying number of empty columns, as
+    `_row_label` already records for the rows.
     """
-    rows: list[list] = []
+    rows: list[tuple[list, dict[int, date]]] = []
     dates: dict[int, date] = {}
     for table in tables:
         if not _is_county_table(table):
             continue
-        if not dates:
-            dates = parse_header_dates(table[0])
-        rows.extend(table[1:])
-    return rows, dates
+        dates = parse_header_dates(table[0]) or dates
+        rows.extend((row, dates) for row in table[1:])
+    return rows
 
 
 _KNOWN_LABELS = frozenset({*_PERIOD_LABELS, "maximum", "minimum"})
@@ -143,14 +151,14 @@ def _row_label(row: list) -> str:
 
 def parse_county_days(tables: list[list[list]], county: str) -> list[DayOutlook]:
     """Every forecast date available for one county. Empty if not listed."""
-    rows, dates = _flatten_county_rows(tables)
-    if not rows or not dates:
+    rows = _flatten_county_rows(tables)
+    if not rows:
         return []
 
     target = _normalise(county)
-    block: list[list] = []
+    block: list[tuple[list, dict[int, date]]] = []
     collecting = False
-    for row in rows:
+    for row, dates in rows:
         # `or ""` matters: an empty PDF cell arrives as None, and str(None)
         # is "None" — truthy, and enough to read a continuation row as the
         # start of a new county and truncate the block after one row.
@@ -161,38 +169,40 @@ def parse_county_days(tables: list[list[list]], county: str) -> list[DayOutlook]
                 break
             collecting = name == target
         if collecting:
-            block.append(row)
+            block.append((row, dates))
     if not block:
         return []
 
-    periods_by_col: dict[int, list[str]] = {}
-    highs: dict[int, float | None] = {}
-    lows: dict[int, float | None] = {}
-    for row in block:
+    periods_by_date: dict[date, list[str]] = {}
+    highs: dict[date, float | None] = {}
+    lows: dict[date, float | None] = {}
+    seen: set[date] = set()
+    for row, dates in block:
         label = _row_label(row)
-        for col in dates:
+        for col, target_date in dates.items():
+            seen.add(target_date)
             if col >= len(row):
                 continue
             value = str(row[col] or "").replace("\n", " ").strip()
             if not value:
                 continue
             if label in _PERIOD_LABELS:
-                periods_by_col.setdefault(col, []).append(value)
+                periods_by_date.setdefault(target_date, []).append(value)
             elif label == "maximum":
-                highs[col] = _number(value)
+                highs[target_date] = _number(value)
             elif label == "minimum":
-                lows[col] = _number(value)
+                lows[target_date] = _number(value)
 
     outlooks = []
-    for col, target_date in sorted(dates.items(), key=lambda kv: kv[1]):
-        periods = periods_by_col.get(col, [])
+    for target_date in sorted(seen):
+        periods = periods_by_date.get(target_date, [])
         probability, area = decode_rain_terms(periods)
         outlooks.append(
             DayOutlook(
                 target_date=target_date,
                 periods=periods,
-                high_c=highs.get(col),
-                low_c=lows.get(col),
+                high_c=highs.get(target_date),
+                low_c=lows.get(target_date),
                 rain_probability_pct=probability,
                 area_coverage_pct=area,
             )

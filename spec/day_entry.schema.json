@@ -2029,6 +2029,19 @@
       "title": "Cloud Anchors",
       "type": "array"
     },
+    "cloud_bands": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cloud Bands"
+    },
     "comparison": {
       "additionalProperties": {
         "type": "string"

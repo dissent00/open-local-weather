@@ -87,3 +87,44 @@ def test_prediction_carries_no_onset_at_extended_range():
 def test_header_date_parsing_ignores_non_date_columns():
     dates = parse_header_dates(["COUNTY", "Time/\nTemperature", "", "", "THURSDAY\n20 AUGUST 2026"])
     assert dates == {4: date(2026, 8, 20)}
+
+
+# ---------------------------------------------------------------------------
+# Tables of differing widths — 2026-10-12
+# ---------------------------------------------------------------------------
+
+LIVE = json.loads((Path(__file__).parent / "fixtures" / "kmd_5day_2026-10-11.json").read_text())
+
+
+def test_each_table_is_read_under_its_own_header():
+    """The first live five-day bulletin read (valid 11th to 15th October
+    2026): its first county table extracts with eleven columns and
+    Kisumu's with nine, so the dates taken from the first header pointed
+    two columns past Kisumu's last two days, and the Day+3 row came out
+    with every field None. Each table's rows are read under that table's
+    own header now."""
+    days = parse_county_days(LIVE["tables"], "Kisumu")
+    assert [d.target_date for d in days] == [date(2026, 10, d) for d in range(11, 16)]
+    assert [d.high_c for d in days] == [28.0, 27.0, 28.0, 28.0, 27.0]
+    assert [d.low_c for d in days] == [18.0, 19.0, 18.0, 20.0, 18.0]
+    assert all(len(d.periods) == 3 for d in days), [d.periods for d in days]
+
+
+def test_a_date_shared_by_two_headers_keeps_one_column_per_date():
+    """Two pages, two widths, one calendar: the second header's extra empty
+    column must not add a sixth day or shift the fifth."""
+    wide = [
+        ["COUNTY", "Time/\nTemperature", None, None, None, "MONDAY\n12 OCTOBER 2026", "TUESDAY\n13 OCTOBER 2026"],
+        ["Narok", "Morning", None, None, None, "Sunny intervals.", "Light rains."],
+        [None, "Maximum", None, None, None, "24°C", "25°C"],
+    ]
+    narrow = [
+        ["COUNTY", "Time/\nTemperature", None, None, "MONDAY\n12 OCTOBER 2026", "TUESDAY\n13 OCTOBER 2026"],
+        ["Kisumu", "Morning", None, None, "Sunny intervals.", "Light showers."],
+        [None, "Maximum", None, None, "28°C", "27°C"],
+    ]
+    days = parse_county_days([wide, narrow], "Kisumu")
+    assert [(d.target_date, d.high_c, d.periods) for d in days] == [
+        (date(2026, 10, 12), 28.0, ["Sunny intervals."]),
+        (date(2026, 10, 13), 27.0, ["Light showers."]),
+    ]

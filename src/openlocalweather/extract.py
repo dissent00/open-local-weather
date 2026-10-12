@@ -299,3 +299,25 @@ def extract_window_predictions(
         return []
 
     return extract_day0_predictions_from_hourly(window, models, threshold=threshold)
+
+
+CLOUD_BANDS = ("low", "mid", "high")
+
+
+def cloud_bands_record(hourly_json: dict | None, models: list[str]) -> dict | None:
+    """The three cloud height bands per model and hour, as fetched — ROADMAP
+    item 197 step 1, 2026-10-12. A record for later reading, not a derived
+    figure: the hours as the API gives them, a band absent for a model
+    absent here, a model with no band left out. None when no model has
+    one, which is every day before the bands were fetched."""
+    if not hourly_json or not hourly_json.get("hourly"):
+        return None
+    h = hourly_json["hourly"]
+    by_model: dict[str, dict[str, list]] = {}
+    for model in models:
+        bands = {band: h[f"cloud_cover_{band}_{model}"] for band in CLOUD_BANDS if f"cloud_cover_{band}_{model}" in h}
+        if bands:
+            by_model[model] = bands
+    if not by_model:
+        return None
+    return {"times": list(h.get("time") or []), "models": by_model}

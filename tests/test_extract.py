@@ -658,3 +658,27 @@ def test_day_n_carries_the_sustained_wind():
     assert by_model["gfs_seamless"].wind_kmh == pytest.approx(31.0)
     assert by_model["gfs_seamless"].sustained_wind_kmh == pytest.approx(20.0)
     assert by_model["ecmwf_ifs025"].sustained_wind_kmh is None
+
+
+def test_cloud_bands_record_keeps_each_models_three_bands_by_hour():
+    """ROADMAP item 197 step 1, 2026-10-12: the three height bands are
+    fetched beside the total and kept on the day, per model and hour,
+    with nothing reading them yet. A model with no band series is left
+    out; a band absent for a model is absent, not zero."""
+    from openlocalweather.extract import cloud_bands_record
+
+    hourly = {"hourly": {
+        "time": ["2026-10-12T00:00", "2026-10-12T01:00"],
+        "cloud_cover_low_m1": [10, 20], "cloud_cover_mid_m1": [30, None], "cloud_cover_high_m1": [50, 60],
+        "cloud_cover_low_m2": [5, 5],
+        "cloud_cover_m1": [60, 70],
+    }}
+    assert cloud_bands_record(hourly, ["m1", "m2", "m3"]) == {
+        "times": ["2026-10-12T00:00", "2026-10-12T01:00"],
+        "models": {
+            "m1": {"low": [10, 20], "mid": [30, None], "high": [50, 60]},
+            "m2": {"low": [5, 5]},
+        },
+    }
+    assert cloud_bands_record({"hourly": {"time": ["2026-10-12T00:00"], "cloud_cover_m1": [60]}}, ["m1"]) is None
+    assert cloud_bands_record(None, ["m1"]) is None
