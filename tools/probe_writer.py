@@ -73,6 +73,17 @@ def main() -> int:
     if args.base_url:
         entry["base_url"] = args.base_url
     provider = _build_llm_provider(providers=[entry])
+    # The other mode production can be configured with (`{PREFIX}_JSON_MODE`):
+    # the schema described in the prompt, only valid JSON promised. Tried on
+    # a day the schema mode refused, so one run says whether the route is
+    # usable at all and under which mode.
+    fallback = None
+    if args.kind == "openai":
+        import os
+
+        os.environ[f"{args.env_prefix}_JSON_MODE"] = "json_object"
+        fallback = _build_llm_provider(providers=[entry])
+        attach_spend_cap(fallback, data_dir, max_calls=location.max_llm_calls_per_24h, purpose="probe")
     verify_spend, _ = attach_spend_cap(
         provider, data_dir, max_calls=location.max_llm_calls_per_24h, purpose="probe"
     )
@@ -93,14 +104,27 @@ def main() -> int:
             print(f"  {day}: nothing to ask")
             continue
         started = time.monotonic()
+        mode = "json_schema"
         try:
             answer = provider.generate(ask.system_prompt, ask.brief, WriteUpResponse)
         except Exception as e:  # noqa: BLE001 — every failure is a result here
-            refused_days += 1
             print(f"  {day}: REFUSED after {time.monotonic() - started:.0f} s  {type(e).__name__}: {str(e)[:800]}")
-            continue
+            if fallback is None or "HTTP 400" not in str(e):
+                refused_days += 1
+                continue
+            if args.pause_s:
+                time.sleep(args.pause_s)
+            mode = "json_object"
+            started = time.monotonic()
+            try:
+                answer = fallback.generate(ask.system_prompt, ask.brief, WriteUpResponse)
+            except Exception as e2:  # noqa: BLE001
+                refused_days += 1
+                print(f"  {day}: REFUSED in json_object mode too after {time.monotonic() - started:.0f} s  "
+                      f"{type(e2).__name__}: {str(e2)[:800]}")
+                continue
         elapsed = time.monotonic() - started
-        print(f"  {day}: answered in {elapsed:.0f} s, {len(ask.brief):,} characters of brief")
+        print(f"  {day}: answered in {elapsed:.0f} s ({mode}), {len(ask.brief):,} characters of brief")
         for section in ask.sections:
             text = (getattr(answer, section) or "").strip()
             tally = by_section.setdefault(section, [0, 0])
