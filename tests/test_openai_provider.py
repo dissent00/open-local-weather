@@ -252,6 +252,21 @@ def test_error_body_raises_with_message():
             provider().generate("system", "user", GeminiForecastResponse)
 
 
+def test_a_failed_generation_is_quoted_in_the_error():
+    """Groq's 400 for a schema mismatch says "See 'failed_generation'" and
+    carries the model's text under that key; the first probe (2026-10-12)
+    threw it away and left the mismatch unexplained. The text is the
+    evidence, so the error carries its head."""
+    with requests_mock.Mocker() as m:
+        m.post(URL, status_code=400, json={"error": {
+            "message": "Failed to validate JSON. Please adjust your prompt. See 'failed_generation' for more details.",
+            "code": "json_validate_failed",
+            "failed_generation": "{\"today\": \"Showers\", \"extra\": 1}",
+        }})
+        with pytest.raises(LLMResponseError, match=r"failed_generation: \{\"today\": \"Showers\""):
+            provider().generate("system", "user", GeminiForecastResponse)
+
+
 def test_no_choices_raises():
     with requests_mock.Mocker() as m:
         m.post(URL, json={"choices": []})

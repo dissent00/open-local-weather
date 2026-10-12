@@ -61,6 +61,9 @@ def main() -> int:
     parser.add_argument("--data-dir", default=str(ROOT / "data"))
     parser.add_argument("--config", default=str(ROOT / "config/location.yaml"))
     parser.add_argument("--out", default=None, help="Write every answered section here, as Markdown.")
+    # Groq's free tier takes 8K tokens a minute and the request is about 6K,
+    # so the second of two requests inside a minute was a 429 on 2026-10-12.
+    parser.add_argument("--pause-s", type=float, default=0, help="Seconds to wait between days.")
     args = parser.parse_args()
 
     location = load_location_config(args.config)
@@ -79,7 +82,9 @@ def main() -> int:
     asked = passed = refused_days = 0
     by_section: dict[str, list[int]] = {}
     texts: list[str] = []
-    for day in days:
+    for n, day in enumerate(days):
+        if n and args.pause_s:
+            time.sleep(args.pause_s)
         stored = read_log_entry(data_dir, day)
         archive = json.loads((data_dir / "prompts" / f"{day}.json").read_text())
         inputs = brief_inputs(location, stored, archive["issuances"][-1]["user_prompt"])
@@ -92,7 +97,7 @@ def main() -> int:
             answer = provider.generate(ask.system_prompt, ask.brief, WriteUpResponse)
         except Exception as e:  # noqa: BLE001 — every failure is a result here
             refused_days += 1
-            print(f"  {day}: REFUSED after {time.monotonic() - started:.0f} s  {type(e).__name__}: {str(e)[:160]}")
+            print(f"  {day}: REFUSED after {time.monotonic() - started:.0f} s  {type(e).__name__}: {str(e)[:800]}")
             continue
         elapsed = time.monotonic() - started
         print(f"  {day}: answered in {elapsed:.0f} s, {len(ask.brief):,} characters of brief")

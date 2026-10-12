@@ -130,6 +130,8 @@ def _retry_delay(attempt: int) -> int:
 
 
 VALID_JSON_MODES = frozenset({"json_schema", "json_object"})
+# How much of a refused generation an error carries: enough to see the shape.
+FAILED_GENERATION_CHARS = 600
 
 SCHEMA_PROMPT_TEMPLATE = (
     "\n\nReturn ONLY a JSON object conforming exactly to this JSON Schema. "
@@ -473,8 +475,13 @@ class OpenAICompatProvider:
                 if resp.status_code in UNAVAILABLE_STATUS_CODES
                 else LLMResponseError
             )
+            # THE MODEL'S TEXT WHEN THE SCHEMA REFUSED IT — Groq's 400 says
+            # "See 'failed_generation'" and sends it under that key; without
+            # it the first probe (2026-10-12) could not say what was wrong.
+            failed = err.get("failed_generation") if isinstance(err, dict) else None
+            detail = f" failed_generation: {str(failed)[:FAILED_GENERATION_CHARS]}" if failed else ""
             raise error(
-                f"LLM error (HTTP {resp.status_code}): {message or resp.text[:500]}"
+                f"LLM error (HTTP {resp.status_code}): {message or resp.text[:500]}{detail}"
             )
 
         choices = body.get("choices") or []

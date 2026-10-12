@@ -30,6 +30,10 @@ on:
         description: "Archived days to write, newest first"
         required: true
         default: "8"
+      pause_s:
+        description: "Seconds between days (Groq's free tier: 8K tokens a minute)"
+        required: true
+        default: "65"
 
 jobs:
   probe:
@@ -67,7 +71,7 @@ jobs:
           python tools/probe_writer.py \
             --kind "${{ inputs.kind }}" --env-prefix "${{ inputs.env_prefix }}" \
             ${{ inputs.base_url && format('--base-url "{0}"', inputs.base_url) || '' }} \
-            --model "${{ inputs.model }}" --days "${{ inputs.days }}" \
+            --model "${{ inputs.model }}" --days "${{ inputs.days }}" --pause-s "${{ inputs.pause_s }}" \
             --out "$RUNNER_TEMP/texts.md" 2>&1 | tee "$RUNNER_TEMP/probe.log"
 
       - uses: actions/upload-artifact@v4
