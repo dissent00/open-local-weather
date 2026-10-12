@@ -2,63 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-10-04T05:26:39.493524+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 0.519
-    },
-    {
-      "at": "2026-10-04T05:26:40.016361+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 137.462,
-      "served_model": "dots-studio/dots-3-note-preview:free"
-    },
-    {
-      "at": "2026-10-04T05:28:59.280152+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 0.346
-    },
-    {
-      "at": "2026-10-04T05:31:59.627787+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 0.398
-    },
-    {
-      "at": "2026-10-04T05:39:00.027766+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_200",
-      "elapsed_s": 71.686
-    },
-    {
-      "at": "2026-10-05T03:01:36.805013+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 17.712
-    },
-    {
-      "at": "2026-10-05T03:01:56.634314+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 0.574
-    },
-    {
       "at": "2026-10-05T03:04:57.210772+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -464,6 +407,22 @@
       "elapsed_s": 242.011,
       "served_model": "dots-studio/dots-3-note-preview:free",
       "audit": "passed: today, extended, severe, synoptic, confidence; refused: secondary (pipeline words: consensus)"
+    },
+    {
+      "at": "2026-10-12T03:03:43.412644+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 0.775
+    },
+    {
+      "at": "2026-10-12T03:03:44.192081+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 55.632
     }
   ]
 }

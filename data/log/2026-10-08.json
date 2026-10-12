@@ -1082,7 +1082,7 @@
       "note_sign_corrected_on": null
     },
     "day3": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     },
@@ -1095,7 +1095,8 @@
   "local_bulletin": {
     "source_name": "Kenya Meteorological Department (KMD)",
     "text": "Kenya Meteorological Department (KMD): post has no PDF link.",
-    "fetched_at_utc": "2026-10-08T03:03:10.225071Z"
+    "fetched_at_utc": "2026-10-08T03:03:10.225071Z",
+    "document_id": null
   },
   "yesterday_verification_summary": "Yesterday's Day+0 verification saw five of six models correctly call the rain, with GFS the sole miss — and it also failed to flag the thunder the station observed. Every model under-forecast peak wind, with errors from 5 to 18 km/h. Temperature performance was mixed: GFS ran cool on daytime highs while ICON ran notably warm on overnight lows.",
   "narrative_markdown": "A warm day ahead under mostly cloudy skies at dawn, turning partly cloudy by midday, with a high of 30.7°C / 87°F. Thunder possible from the morning, peaking this afternoon. Isolated showers develop from 15:00 to 16:00, bringing 4.1 mm (0.16 in) of rain with a 100% chance of measurable precipitation. North-northeasterly overnight, turning south-southwesterly by midday, with peak gusts reaching 43.6 km/h (24 kt). The UV index peaks at 9.5 — very high — so protection is needed during the strongest sun. Air quality is moderate at AQI 80; the ground sensor at Ochieng' Avenue, Kisumu Central reports the highest reading at 70. Skies turn overcast by evening as the showers move through, and overnight lows settle near 19.3°C / 67°F.",
@@ -1280,6 +1281,11 @@
     }
   ],
   "extended_outlook": "Temperatures and winds much the same through Sunday, with showers and thunderstorms likely each day. Skies mostly cloudy throughout. Sunday's call: rain, 100%, with all four models wet; highs 28 to 32 °C. At this lead ECMWF has the best record, right 77% of the time over 54 checks.\n\nFurther out, temperatures and winds much the same through Thursday, with showers and thunderstorms likely Monday and Tuesday, and showers and thunderstorms possible Wednesday and Thursday. Only GFS, ECMWF and ICON reach past Tuesday. ECMWF is the wetter solution from Monday to Thursday; GFS, ICON and UKMO keep it drier. Thursday's call: rain, 100%, with one of two models wet; highs 24 to 33 °C. At this lead ECMWF has the best record, right 80% of the time over 51 checks.",
+  "write_up_sources": null,
+  "synoptic_ring": null,
+  "basin_pressure": null,
+  "review_findings": null,
+  "lead_records": null,
   "whatsapp_summary": null,
   "earlier_issuances": [],
   "morning_issuance": null,
