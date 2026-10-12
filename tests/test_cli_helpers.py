@@ -985,3 +985,13 @@ def test_the_bulletin_fetcher_starts_its_probe_at_the_last_stored_document_id(tm
     location = load_location_config("config/location.yaml")
     fetcher = _build_bulletin_fetcher(location, tmp_path, today=date(2026, 10, 12))
     assert fetcher.document_id_hint == 5261
+
+
+def test_a_links_request_fields_reach_its_provider(monkeypatch):
+    _clear_llm_env(monkeypatch)
+    monkeypatch.setenv("GROQ_API_KEY", "k")
+    built = _build_llm_provider(providers=[{
+        "kind": "openai", "env_prefix": "GROQ", "base_url": "https://api.groq.com/openai/v1",
+        "model": "openai/gpt-oss-120b", "request_fields": {"reasoning_effort": "low"},
+    }])
+    assert built.extra_request == {"reasoning_effort": "low"}

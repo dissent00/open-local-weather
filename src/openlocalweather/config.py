@@ -181,6 +181,12 @@ class LLMProviderEntry(BaseModel):
     # The jobs this link serves, from LINK_JOBS; unset means every job. See
     # the note above the class.
     calls: list[str] | None = None
+    # A vendor's own request fields, sent as given — 2026-10-12. Groq's
+    # default completion budget is 1,024 tokens and gpt-oss reasons before
+    # it writes, so every probe that day got an empty generation refused by
+    # the schema; `max_completion_tokens` and `reasoning_effort` are Groq's
+    # names for the budget and the reasoning. OpenAI-compatible kinds only.
+    request_fields: dict | None = None
 
     # This link's own 24-hour ceiling — ROADMAP item 170. None means the
     # deployment's `max_llm_calls_per_24h`.
@@ -247,6 +253,9 @@ class LLMProviderEntry(BaseModel):
 
         if self.base_url is not None and self.kind not in ENDPOINT_KINDS:
             raise ValueError(f"base_url is for {', '.join(sorted(ENDPOINT_KINDS))}; {self.kind} has one endpoint.")
+
+        if self.request_fields is not None and self.kind != "openai":
+            raise ValueError(f"request_fields is for openai-compatible links; {self.kind} takes none.")
 
         if self.max_attempts is not None:
             most = MAX_ATTEMPTS_BY_KIND.get(self.kind)

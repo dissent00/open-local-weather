@@ -53,10 +53,11 @@ def archived_days(data_dir: Path, limit: int) -> list[date]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--link", default=None, help="A link named in location.yaml; its kind, endpoint, model and fields.")
     parser.add_argument("--kind", default="openai")
     parser.add_argument("--env-prefix", default="LLM")
     parser.add_argument("--base-url", default=None)
-    parser.add_argument("--model", required=True)
+    parser.add_argument("--model", default=None)
     parser.add_argument("--days", type=int, default=8)
     parser.add_argument("--data-dir", default=str(ROOT / "data"))
     parser.add_argument("--config", default=str(ROOT / "config/location.yaml"))
@@ -68,10 +69,21 @@ def main() -> int:
 
     location = load_location_config(args.config)
     data_dir = Path(args.data_dir)
-    entry = {"kind": args.kind, "name": "probe", "env_prefix": args.env_prefix, "model": args.model,
-             "max_attempts": 1}
-    if args.base_url:
-        entry["base_url"] = args.base_url
+    if args.link:
+        [link] = [e for e in location.llm_providers if not isinstance(e, str) and e.name == args.link]
+        entry = {**link.model_dump(exclude_none=True), "max_attempts": 1, "calls": None}
+        # The link's own daily ceiling is the write-up's (four on Groq); the
+        # probe measures under the deployment's cap and `probe` purpose.
+        entry.pop("max_calls_per_24h", None)
+        entry.pop("max_calls_per_run", None)
+        args.kind, args.env_prefix, args.model = link.kind, link.env_prefix or "LLM", link.model
+        if args.model is None:
+            parser.error(f"link {args.link!r} names no model")
+    else:
+        entry = {"kind": args.kind, "name": "probe", "env_prefix": args.env_prefix, "model": args.model,
+                 "max_attempts": 1}
+        if args.base_url:
+            entry["base_url"] = args.base_url
     provider = _build_llm_provider(providers=[entry])
     # The other mode production can be configured with (`{PREFIX}_JSON_MODE`):
     # the schema described in the prompt, only valid JSON promised. Tried on
@@ -89,7 +101,7 @@ def main() -> int:
     )
 
     days = archived_days(data_dir, args.days)
-    print(f"{args.model} via {args.env_prefix}: {len(days)} archived days, one request each\n")
+    print(f"{args.model} via {args.env_prefix} {entry.get('request_fields') or ''}: {len(days)} archived days, one request each\n")
     asked = passed = refused_days = 0
     by_section: dict[str, list[int]] = {}
     texts: list[str] = []

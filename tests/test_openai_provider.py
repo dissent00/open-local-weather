@@ -252,6 +252,20 @@ def test_error_body_raises_with_message():
             provider().generate("system", "user", GeminiForecastResponse)
 
 
+def test_extra_request_fields_travel_in_the_payload():
+    """A vendor's own knobs — Groq's `max_completion_tokens` and
+    `reasoning_effort` (2026-10-12) — ride in the request as given, and
+    never displace the fields the provider builds."""
+    with requests_mock.Mocker() as m:
+        m.post(URL, json=valid_envelope())
+        provider(extra_request={"max_completion_tokens": 3000, "reasoning_effort": "low", "model": "x"}).generate(
+            "system", "user", GeminiForecastResponse
+        )
+        sent = m.request_history[0].json()
+    assert sent["max_completion_tokens"] == 3000 and sent["reasoning_effort"] == "low"
+    assert sent["model"] == MODEL, "a vendor field cannot override the model the ledger records"
+
+
 def test_a_failed_generation_is_quoted_in_the_error():
     """Groq's 400 for a schema mismatch says "See 'failed_generation'" and
     carries the model's text under that key; the first probe (2026-10-12)

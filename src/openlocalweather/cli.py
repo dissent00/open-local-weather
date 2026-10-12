@@ -260,6 +260,7 @@ class _ProviderEntry:
     # it serves (None: every job). See `LLMProviderEntry`.
     base_url: str | None = None
     calls: tuple[str, ...] | None = None
+    request_fields: dict | None = None
 
     # This link's own 24-hour ceiling, or None for the deployment's — item
     # 170. A cap belongs to an ACCOUNT: 20 is Google's free calendar-day
@@ -333,6 +334,7 @@ def _resolve_provider_entries(
                 fallback_models=tuple(own or ()),
                 base_url=str(entry.get("base_url") or "").strip() or None,
                 calls=tuple(entry.get("calls")) if entry.get("calls") is not None else None,
+                request_fields=dict(entry.get("request_fields")) if entry.get("request_fields") else None,
                 max_calls_per_24h=entry.get("max_calls_per_24h"),
                 max_calls_per_run=entry.get("max_calls_per_run"),
                 max_attempts=entry.get("max_attempts"),
@@ -715,6 +717,7 @@ def _build_one_llm_provider(
             json_mode=entry.env("JSON_MODE", "json_schema"),
             fallback_models=models,
             require_parameters=bool(models),
+            extra_request=entry.request_fields,
         )
 
     raise SystemExit(

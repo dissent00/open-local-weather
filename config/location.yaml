@@ -232,6 +232,14 @@ location:
       base_url: https://api.groq.com/openai/v1
       model: openai/gpt-oss-120b
       calls: [write_up]
+      # Groq's default completion budget is 1,024 tokens, and gpt-oss
+      # reasons before it writes: three probes on 2026-10-12 each got an
+      # empty generation refused by the schema in 7 s. A budget for the
+      # six sections and their reasoning, and the least reasoning Groq
+      # offers; the write-up is prose from a brief, not a proof.
+      request_fields:
+        max_completion_tokens: 3000
+        reasoning_effort: low
       max_attempts: 1
       max_calls_per_run: 1
       # Two mornings of two write-up chances in one rolling day.

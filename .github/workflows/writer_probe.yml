@@ -10,6 +10,10 @@ name: Writer probe
 on:
   workflow_dispatch:
     inputs:
+      link:
+        description: "A link named in location.yaml (its kind, endpoint, model and request fields); blank to name a route below"
+        required: false
+        default: groq
       kind:
         description: "Link kind: openai or gemini"
         required: true
@@ -69,6 +73,7 @@ jobs:
         run: |
           set -o pipefail
           python tools/probe_writer.py \
+            ${{ inputs.link && format('--link "{0}"', inputs.link) || '' }} \
             --kind "${{ inputs.kind }}" --env-prefix "${{ inputs.env_prefix }}" \
             ${{ inputs.base_url && format('--base-url "{0}"', inputs.base_url) || '' }} \
             --model "${{ inputs.model }}" --days "${{ inputs.days }}" --pause-s "${{ inputs.pause_s }}" \

@@ -256,6 +256,7 @@ class OpenAICompatProvider:
         fallback_models: list[str] | None = None,
         require_parameters: bool = False,
         temperature: float | None = None,
+        extra_request: dict | None = None,
         before_attempt: Callable[[], None] | None = None,
         after_attempt: AfterAttempt | None = None,
         after_response: AfterResponse | None = None,
@@ -295,6 +296,9 @@ class OpenAICompatProvider:
         # the schema rather than the route being wrong.
         self.require_parameters = require_parameters
         self.temperature = temperature
+        # A vendor's own request fields (config `request_fields`), sent as
+        # given; the fields this class builds win on a collision.
+        self.extra_request = dict(extra_request or {})
         # Called immediately before EACH HTTP request, including every retry.
         #
         # The spend cap lives here rather than around generate() because one
@@ -440,6 +444,7 @@ class OpenAICompatProvider:
         }
         if self.temperature is not None:
             payload["temperature"] = self.temperature
+        payload = {**self.extra_request, **payload}
         if self.fallback_models:
             # The primary FIRST, then the alternates: `model` above names the
             # one this deployment chose and the ledger records, and `models`

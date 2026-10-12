@@ -453,3 +453,16 @@ def test_the_live_config_holds_an_inert_groq_writer():
     assert groq.calls == ["write_up"]
     assert groq.max_attempts == 1
     assert groq.fallback_models is None, "Groq is one endpoint; a gateway's in-request order is the gateway's"
+    # Groq's default completion budget is 1,024 tokens and gpt-oss reasons
+    # before it writes, so the budget ran out before any content on every
+    # probe of 2026-10-12. The link names its own.
+    assert groq.request_fields == {"max_completion_tokens": 3000, "reasoning_effort": "low"}
+
+
+def test_a_link_may_name_request_fields_for_its_vendor():
+    from openlocalweather.config import LLMProviderEntry
+
+    assert LLMProviderEntry(kind="openai", request_fields={"reasoning_effort": "low"}).request_fields == {
+        "reasoning_effort": "low"
+    }
+    assert LLMProviderEntry(kind="gemini").request_fields is None
