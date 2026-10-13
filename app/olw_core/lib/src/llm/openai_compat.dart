@@ -51,6 +51,13 @@ class OpenAiCompatProvider implements LlmProvider {
   /// fields null, which reads as "did not say" rather than as zero.
   final OnResponse? onResponse;
 
+  /// A vendor's own request fields, sent as given — upstream `request_fields`,
+  /// 2026-10-12: Groq's default completion budget is 1,024 tokens and
+  /// gpt-oss reasons before it writes, so without `max_completion_tokens`
+  /// and `reasoning_effort` every answer was an empty generation. The
+  /// fields this class builds win on a collision.
+  final Map<String, Object?> extraRequest;
+
   OpenAiCompatProvider({
     required this.apiKey,
     required this.model,
@@ -58,6 +65,7 @@ class OpenAiCompatProvider implements LlmProvider {
     this.jsonMode = 'json_schema',
     this.fallbackModels = const [],
     this.requireParameters = false,
+    this.extraRequest = const {},
     http.Client? client,
     this.retryPolicy = RetryPolicy.interactive,
     this.beforeAttempt,
@@ -109,6 +117,7 @@ class OpenAiCompatProvider implements LlmProvider {
       uri: endpoint,
       headers: headers,
       payload: {
+        ...extraRequest,
         'model': model,
         'messages': [
           {'role': 'system', 'content': system},

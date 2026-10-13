@@ -325,6 +325,21 @@ void main() {
           isFalse);
     });
 
+    test('extra request fields travel in the payload, never displacing the model', () async {
+      final cap = _Cap(openAiEnvelope(validPayload));
+      await OpenAiCompatProvider(
+        apiKey: 'k',
+        model: 'openai/gpt-oss-120b',
+        baseUrl: 'https://api.groq.com/openai/v1',
+        extraRequest: const {'max_completion_tokens': 3000, 'reasoning_effort': 'low', 'model': 'x'},
+        client: cap.client,
+      ).generate(systemPrompt: 'SYS', userPrompt: 'USR', shape: forecastShape);
+
+      expect(cap.body['max_completion_tokens'], 3000);
+      expect(cap.body['reasoning_effort'], 'low');
+      expect(cap.body['model'], 'openai/gpt-oss-120b');
+    });
+
     test('keyless local runtime sends no Authorization header', () async {
       final cap = _Cap(openAiEnvelope(validPayload));
       await OpenAiCompatProvider(
