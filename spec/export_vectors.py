@@ -7224,6 +7224,11 @@ def export_writer() -> None:
             audit_case("over the cap", "secondary", " ".join(["calm"] * 96)),
             audit_case("a shape defect", "today", "Showers, with , and thunder."),
             audit_case("in as a word, not inches", "today", "Showers from 13:00 in the afternoon, 2 in all."),
+            audit_case("the Gulf timeline's legs joined the model's own way", "secondary",
+                       "Over the Gulf: " + ", and ".join(inputs.secondary_wind["timeline"].split(", then ")) + "."),
+            audit_case("a model's non-breaking hyphens and narrow spaces", "today",
+                       "Winds north\u2011northeasterly overnight, turning south\u2011southwest by midday and south into the "
+                       "evening, with gusts to 39\u202fkm/h (21\u202fkt)."),
         ],
     )
 

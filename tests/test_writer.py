@@ -185,3 +185,39 @@ def test_the_ask_is_the_request_production_sends():
         ask.sections, place=location.primary_place_name, secondary_name=inputs.secondary_name,
         met_service_name=location.local_bulletin_source_name,
     )
+
+
+def test_the_models_typography_is_normalised_before_the_audit():
+    """gpt-oss on Groq (2026-10-12) writes U+2011 non-breaking hyphens in
+    "west‑southwesterly" and U+202F narrow spaces between a figure and its
+    unit, 86 and 288 times over eight write-ups; eight locked phrases were
+    refused for the hyphen alone. Typography is not a change of meaning:
+    the audit and the page read the plain forms."""
+    from openlocalweather.writer import normalise_prose
+
+    assert normalise_prose("west\u2011southwesterly at 9\u202fkm/h, 30\u00a0°C, pre\u2010computed") == (
+        "west-southwesterly at 9 km/h, 30 °C, pre-computed"
+    )
+    inputs = _inputs()
+    brief = render_brief(inputs, sections=list(SECTIONS))
+    phrase = inputs.wind_shift
+    assert phrase and "-" in phrase, phrase
+    odd = phrase.replace("-", "\u2011")
+    assert audit_section("today", f"Wind {odd}.", brief, inputs) == []
+
+
+def test_the_gulf_timeline_is_locked_leg_by_leg():
+    """Groq's gpt-oss (2026-10-12) quoted every leg of the Gulf timeline
+    and joined them with "and" or "turning" instead of "then", and the
+    forty-word sentence locked as one unit refused all eight days. The
+    legs carry the meaning; the joins do not. Each leg is locked whole."""
+    inputs = _inputs()
+    brief = render_brief(inputs, sections=list(SECTIONS))
+    legs = inputs.secondary_wind["timeline"].split(", then ")
+    assert len(legs) == 3, legs
+    joined = f"{legs[0]}, turning {legs[1]}, and {legs[2]}"
+    assert audit_section("secondary", f"Over the Gulf the wind is {joined}. Any thunderstorm brings sudden gusts.", brief, inputs) == []
+    altered = joined.replace("by midday", "by late morning")
+    assert audit_section("secondary", f"Over the Gulf the wind is {altered}.", brief, inputs) == [
+        f"phrase not verbatim: {legs[1][:40]}"
+    ]

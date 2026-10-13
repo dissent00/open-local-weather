@@ -396,7 +396,10 @@ def _secondary_wind_block(i: BriefInputs, tier: str) -> str | None:
     line = f"{i.secondary_name.upper()} WIND (verbatim timeline): {w.get('timeline')}"
     gust = w.get("consensus_gust_kmh")
     if gust is not None:
-        line += f"; consensus gust {_kmh_and_kt(gust)}"
+        # "peak", the floor's word, since 2026-10-12: the timeline is locked
+        # verbatim and "consensus" is a pipeline word the audit refuses, so
+        # a writer quoting the line as told was refused for quoting it.
+        line += f"; peak gust {_kmh_and_kt(gust)}"
     return line
 
 

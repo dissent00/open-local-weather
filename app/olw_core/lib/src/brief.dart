@@ -453,7 +453,7 @@ String? _secondaryWindBlock(BriefInputs i, String tier) {
   if (w == null || w.isEmpty || i.secondaryName == null) return null;
   var line = '${i.secondaryName!.toUpperCase()} WIND (verbatim timeline): ${w['timeline']}';
   final gust = w['consensus_gust_kmh'];
-  if (gust != null) line += '; consensus gust ${_kmhAndKt((gust as num).toDouble())}';
+  if (gust != null) line += '; peak gust ${_kmhAndKt((gust as num).toDouble())}';
   return line;
 }
 

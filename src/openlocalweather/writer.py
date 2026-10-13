@@ -67,6 +67,8 @@ WORD_CAPS = {
 # reach past Sunday and which run wetter (item 190 step 3).
 READER_SECTIONS = frozenset({SECTION_TODAY, SECTION_EXTENDED, SECTION_SECONDARY})
 NO_MODEL_NAME_SECTIONS = frozenset({SECTION_TODAY, SECTION_SECONDARY})
+# What the Gulf timeline's legs are joined by (wind.py).
+TIMELINE_JOIN = ", then "
 PIPELINE_WORDS = ("calibrated", "consensus", "pre-computed", "precomputed", "blend", "guidance", "the brief")
 MM_PER_INCH = 25.4
 
@@ -143,8 +145,8 @@ def build_writer_prompt(
             "service's bulletin where it carries one; otherwise none."
         ),
         SECTION_SECONDARY: (
-            f"{(secondary_name or 'THE SECONDARY POINT').upper()} (\"secondary\"): the wind timeline verbatim, the "
-            "consensus gust, and the thunderstorm gust hazard where thunder is possible."
+            f"{(secondary_name or 'THE SECONDARY POINT').upper()} (\"secondary\"): each leg of the wind timeline verbatim, the "
+            "peak gust, and the thunderstorm gust hazard where thunder is possible."
         ),
         SECTION_SYNOPTIC: (
             "SYNOPTIC OVERVIEW (\"synoptic\"): the LARGE SCALE statements as given, then the BASIN PRESSURE "
@@ -224,11 +226,26 @@ def _unit_key(token: str, unit: str) -> str | None:
     return key
 
 
+# TYPOGRAPHY A MODEL WRITES THAT THE PAGE DOES NOT: gpt-oss on Groq
+# (2026-10-12) put a non-breaking hyphen in every compound bearing and a
+# narrow no-break space before every unit, and eight locked phrases were
+# refused for the hyphen alone. Mapped to the plain forms before the audit
+# and on the page; none of these changes a figure or a word.
+_TYPOGRAPHY = str.maketrans({
+    "\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2212": "-",
+    "\u00a0": " ", "\u202f": " ", "\u2009": " ",
+})
+
+
+def normalise_prose(text: str) -> str:
+    return text.translate(_TYPOGRAPHY)
+
+
 def audit_section(section: str, text: str, brief: str, inputs: BriefInputs) -> list[str]:
     """Why a section is not publishable, or [] when it is. Each reason is a
     short clause for the ledger; the first is enough to drop the section."""
     defects: list[str] = []
-    body = text.strip()
+    body = normalise_prose(text).strip()
     if not body:
         return ["empty"]
     if re.search(r"^\s*#", body, flags=re.M):
@@ -283,10 +300,15 @@ def _value(token: str) -> float | None:
 
 def _locked_phrases(section: str, i: BriefInputs) -> list[str]:
     """The composed phrases this section may quote, which it quotes whole."""
+    # The Gulf timeline leg by leg — 2026-10-12: Groq's gpt-oss quoted every
+    # leg and joined them with "and" or "turning" instead of "then", and the
+    # forty-word sentence locked whole refused all eight days. The legs
+    # carry the bearings, the hours and the figures; the joins do not.
+    timeline = (i.secondary_wind or {}).get("timeline") or ""
     phrases = {
         SECTION_TODAY: [(i.instability or {}).get("timing"), i.wind_shift, i.observed_so_far],
         SECTION_EXTENDED: [i.next_three_days],
-        SECTION_SECONDARY: [(i.secondary_wind or {}).get("timeline")],
+        SECTION_SECONDARY: timeline.split(TIMELINE_JOIN),
     }.get(section, [])
     return [p for p in phrases if p]
 
@@ -319,7 +341,7 @@ def compose_write_up(
     for section in SECTIONS:
         if section not in enabled:
             continue
-        answer = (answers.get(section) or "").strip()
+        answer = normalise_prose(answers.get(section) or "").strip()
         if answer and not verdicts.get(section):
             text, source = answer, "llm"
         elif code_sections.get(section):

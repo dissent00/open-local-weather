@@ -13,6 +13,9 @@ import 'py_text.dart';
 import 'rounding.dart';
 import 'tiles.dart' show kmhPerKnot;
 
+/// What the Gulf timeline's legs are joined by — mirrors `TIMELINE_JOIN`.
+const timelineJoin = ', then ';
+
 /// Word caps per section, near the record's 90th percentile — see writer.py.
 const Map<String, int> wordCaps = {
   sectionToday: 155,
@@ -83,8 +86,8 @@ String buildWriterPrompt(
     sectionSevere: 'SEVERE WEATHER ("severe"): thunder today from PEAK CAPE TODAY, per model, with the hazard any '
         'thunderstorm brings: sudden gusts well above the forecast wind. A warning from the met '
         'service\'s bulletin where it carries one; otherwise none.',
-    sectionSecondary: '${(secondaryName ?? 'THE SECONDARY POINT').toUpperCase()} ("secondary"): the wind timeline verbatim, the '
-        'consensus gust, and the thunderstorm gust hazard where thunder is possible.',
+    sectionSecondary: '${(secondaryName ?? 'THE SECONDARY POINT').toUpperCase()} ("secondary"): each leg of the wind timeline verbatim, the '
+        'peak gust, and the thunderstorm gust hazard where thunder is possible.',
     sectionSynoptic: 'SYNOPTIC OVERVIEW ("synoptic"): the LARGE SCALE statements as given, then the BASIN PRESSURE '
         'line, then the pressure trend from THE CALL. Lower pressure lies toward a direction; never a '
         'centre, a track, a speed of approach or a front.',
@@ -150,9 +153,20 @@ double? _value(String token) => double.tryParse(token.replaceAll(',', ''));
 
 /// Why a section is not publishable, or empty when it is — mirrors
 /// `audit_section`, defect by defect in the same order.
+/// A model's typography the page does not use — mirrors `normalise_prose`
+/// (2026-10-12): non-breaking hyphens and narrow spaces to the plain forms.
+String normaliseProse(String text) => text
+    .replaceAll('\u2010', '-')
+    .replaceAll('\u2011', '-')
+    .replaceAll('\u2012', '-')
+    .replaceAll('\u2212', '-')
+    .replaceAll('\u00a0', ' ')
+    .replaceAll('\u202f', ' ')
+    .replaceAll('\u2009', ' ');
+
 List<String> auditSection(String section, String text, String brief, BriefInputs inputs) {
   final defects = <String>[];
-  final body = stripLikePython(text);
+  final body = stripLikePython(normaliseProse(text));
   if (body.isEmpty) return ['empty'];
   if (RegExp(r'^\s*#', multiLine: true).hasMatch(body)) defects.add('carries a heading');
 
@@ -211,10 +225,12 @@ List<String> auditSection(String section, String text, String brief, BriefInputs
 int _wordCount(String text) => [for (final w in text.split(RegExp(r'\s+'))) if (w.isNotEmpty) w].length;
 
 List<String> _lockedPhrases(String section, BriefInputs i) {
+  // The Gulf timeline leg by leg (2026-10-12) — mirrors `_locked_phrases`.
+  final timeline = '${(i.secondaryWind ?? const {})['timeline'] ?? ''}';
   final phrases = switch (section) {
     sectionToday => [(i.instability ?? const {})['timing'], i.windShift, i.observedSoFar],
     sectionExtended => [i.nextThreeDays],
-    sectionSecondary => [(i.secondaryWind ?? const {})['timeline']],
+    sectionSecondary => timeline.split(timelineJoin),
     _ => const <Object?>[],
   };
   return [for (final p in phrases) if (p != null && '$p'.isNotEmpty) '$p'];
@@ -250,7 +266,7 @@ bool _usesPartOf(String text, String phrase, {int window = 4}) {
   var discussionOpen = false;
   for (final section in briefSections) {
     if (!enabled.contains(section)) continue;
-    final answer = stripLikePython(answers[section] ?? '');
+    final answer = stripLikePython(normaliseProse(answers[section] ?? ''));
     final String text;
     final String source;
     if (answer.isNotEmpty && (verdicts[section] ?? const []).isEmpty) {
