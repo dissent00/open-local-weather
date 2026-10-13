@@ -1,0 +1,2105 @@
+{
+  "date": "2026-10-13",
+  "rain_expected": "Dry / Evening Thunder Possible",
+  "onset_window": null,
+  "peak_wind_primary_kmh": 36.7,
+  "peak_wind_secondary_kmh": 26.2,
+  "temp_high_c": 30.6,
+  "temp_low_c": 18.8,
+  "temp_high_low_display": "31°C / 87°F high, 19°C / 66°F low",
+  "served_call": {
+    "today_properties": {
+      "rain_expected": "Dry / Evening Thunder Possible",
+      "onset_window": null,
+      "peak_wind_primary_kmh": 36.7,
+      "peak_wind_secondary_kmh": 26.2,
+      "temp_high_c": 30.6,
+      "temp_low_c": 18.8,
+      "rain": false,
+      "onset_hour": null,
+      "precip_mm": 0.7,
+      "rain_probability_pct": 29,
+      "mslp_trend_24h": "-1.6 hPa",
+      "synoptic_pattern": "Moderate large-scale gradient, lowest pressure toward the northwest",
+      "air_quality_aqi": 69
+    },
+    "extended_properties": [
+      {
+        "lead_time_days": 3,
+        "rain": true,
+        "rain_probability_pct": 78
+      },
+      {
+        "lead_time_days": 7,
+        "rain": true,
+        "rain_probability_pct": 100
+      }
+    ]
+  },
+  "call_source": "code_blend",
+  "cloud_anchors": [
+    {
+      "when": "early",
+      "cover": "Partly cloudy",
+      "source": "station"
+    },
+    {
+      "when": "midday",
+      "cover": "Mostly cloudy"
+    },
+    {
+      "when": "evening",
+      "cover": "Mostly cloudy"
+    }
+  ],
+  "wind_anchors": [
+    {
+      "when": "early",
+      "sustained_kmh": 4.1,
+      "gust_kmh": 7.4
+    },
+    {
+      "when": "midday",
+      "direction": "SW",
+      "sustained_kmh": 7.2,
+      "gust_kmh": 16.9
+    },
+    {
+      "when": "evening",
+      "sustained_kmh": 10.2,
+      "gust_kmh": 19.3
+    }
+  ],
+  "mslp_trend_24h": "-1.6 hPa",
+  "synoptic_pattern": "Moderate large-scale gradient, lowest pressure toward the northwest",
+  "uv_index_max": "9.5 (Very high)",
+  "air_quality_aqi": "69 (Moderate)",
+  "uv_index": 9.5,
+  "air_quality_index": 69,
+  "uv_index_date": "2026-10-13",
+  "uv_index_source": "gfs_seamless",
+  "comparison": {},
+  "tiles": [
+    {
+      "label": "High / Low",
+      "unit": "°C",
+      "lines": [
+        {
+          "text": "31° / 19°",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "label": "Rain",
+      "unit": null,
+      "lines": [
+        {
+          "text": "Dry / Evening Thunder Possible",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "label": "Wind",
+      "unit": "km/h",
+      "lines": [
+        {
+          "text": "early 4G7",
+          "primary": true
+        },
+        {
+          "text": "midday SW 7G17",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "label": "Cloud",
+      "unit": null,
+      "lines": [
+        {
+          "text": "early Partly cloudy",
+          "primary": true
+        },
+        {
+          "text": "midday Mostly cloudy",
+          "primary": true
+        }
+      ]
+    },
+    {
+      "label": "UV / AQI",
+      "unit": null,
+      "lines": [
+        {
+          "text": "9.5 / 69",
+          "primary": true
+        },
+        {
+          "text": "Very high / Moderate",
+          "primary": false
+        }
+      ]
+    },
+    {
+      "label": "Sun",
+      "unit": null,
+      "lines": [
+        {
+          "text": "06:23",
+          "primary": true
+        },
+        {
+          "text": "18:30",
+          "primary": true
+        }
+      ]
+    }
+  ],
+  "ground_aqi": [
+    {
+      "name": "Kisumu Airport",
+      "station_id": "A418534",
+      "aqi": 8,
+      "pm25": 8.0,
+      "pm10": 15.0,
+      "measured_at": "2026-10-13T00:00:00Z"
+    },
+    {
+      "name": "Ochieng' Avenue, Kisumu Central",
+      "station_id": "A418300",
+      "aqi": 52,
+      "pm25": 52.0,
+      "pm10": 18.0,
+      "measured_at": "2026-10-13T00:00:00Z"
+    },
+    {
+      "name": "Dunga Beach",
+      "station_id": "A418504",
+      "aqi": 34,
+      "pm25": 34.0,
+      "pm10": 37.0,
+      "measured_at": "2026-10-13T00:00:00Z"
+    }
+  ],
+  "sunrise": "06:23",
+  "sunset": "18:30",
+  "prediction_rows": [
+    {
+      "issued_at": "2026-10-13T03:02:12.894312Z",
+      "predictions": {
+        "day0": [
+          {
+            "model": "gfs_seamless",
+            "target_date": "2026-10-13",
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.3,
+            "rain_probability_pct": 35,
+            "wind_kmh": 26.6,
+            "sustained_wind_kmh": 14.4,
+            "high_c": 31.4,
+            "low_c": 18.3,
+            "cloud_cover_pct": 52.2,
+            "peak_cape_jkg": 370.0,
+            "wind_direction_deg": 349.0,
+            "mslp_trend": -1.6000000000000227
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": "2026-10-13",
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.0,
+            "rain_probability_pct": 40,
+            "wind_kmh": 28.1,
+            "sustained_wind_kmh": 14.6,
+            "high_c": 29.6,
+            "low_c": 18.9,
+            "cloud_cover_pct": 58.1,
+            "peak_cape_jkg": 2080.0,
+            "wind_direction_deg": 76.0,
+            "mslp_trend": -2.6000000000000227
+          },
+          {
+            "model": "icon_seamless",
+            "target_date": "2026-10-13",
+            "rain": true,
+            "onset": "00:00",
+            "precip_mm": 2.2,
+            "rain_probability_pct": 38,
+            "wind_kmh": 20.2,
+            "sustained_wind_kmh": 12.0,
+            "high_c": 30.0,
+            "low_c": 20.3,
+            "cloud_cover_pct": 69.6,
+            "peak_cape_jkg": 1500.0,
+            "wind_direction_deg": 83.0,
+            "mslp_trend": -2.3999999999999773
+          },
+          {
+            "model": "ukmo_seamless",
+            "target_date": "2026-10-13",
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.0,
+            "rain_probability_pct": 50,
+            "wind_kmh": 23.4,
+            "sustained_wind_kmh": 8.6,
+            "high_c": 29.8,
+            "low_c": 17.8,
+            "cloud_cover_pct": 52.9,
+            "peak_cape_jkg": 2620.0,
+            "wind_direction_deg": 165.0,
+            "mslp_trend": 0.1999999999999318
+          },
+          {
+            "model": "best_match",
+            "target_date": "2026-10-13",
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.2,
+            "rain_probability_pct": 40,
+            "wind_kmh": 26.6,
+            "sustained_wind_kmh": 11.1,
+            "high_c": 31.2,
+            "low_c": 18.3,
+            "cloud_cover_pct": 49.5,
+            "peak_cape_jkg": 2060.0,
+            "wind_direction_deg": 93.0,
+            "mslp_trend": -2.800000000000068
+          },
+          {
+            "model": "persistence",
+            "target_date": "2026-10-13",
+            "rain": true,
+            "onset": "17:00",
+            "precip_mm": 3.7,
+            "rain_probability_pct": null,
+            "wind_kmh": 43.6,
+            "sustained_wind_kmh": null,
+            "high_c": 29.8,
+            "low_c": 19.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": 1.1000000000000227
+          },
+          {
+            "model": "climatology",
+            "target_date": "2026-10-13",
+            "rain": false,
+            "onset": null,
+            "precip_mm": 1.6238095238095238,
+            "rain_probability_pct": 40,
+            "wind_kmh": 39.76349206349206,
+            "sustained_wind_kmh": null,
+            "high_c": 30.857142857142858,
+            "low_c": 18.71746031746032,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "olw_blend",
+            "target_date": "2026-10-13",
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.2,
+            "rain_probability_pct": 35,
+            "wind_kmh": 36.7,
+            "sustained_wind_kmh": null,
+            "high_c": 30.5,
+            "low_c": 18.8,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "olw_code_blend",
+            "target_date": "2026-10-13",
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.7,
+            "rain_probability_pct": 29,
+            "wind_kmh": 36.656,
+            "sustained_wind_kmh": null,
+            "high_c": 30.6375,
+            "low_c": 18.7875,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day3": [
+          {
+            "model": "gfs_seamless",
+            "target_date": "2026-10-16",
+            "rain": false,
+            "onset": null,
+            "precip_mm": 0.4,
+            "rain_probability_pct": 74,
+            "wind_kmh": 31.3,
+            "sustained_wind_kmh": 14.4,
+            "high_c": 30.0,
+            "low_c": 20.1,
+            "cloud_cover_pct": 90.0,
+            "peak_cape_jkg": 540.0,
+            "wind_direction_deg": null,
+            "mslp_trend": 0.10000000000002274
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": "2026-10-16",
+            "rain": true,
+            "onset": null,
+            "precip_mm": 15.2,
+            "rain_probability_pct": 88,
+            "wind_kmh": 27.4,
+            "sustained_wind_kmh": 9.8,
+            "high_c": 27.4,
+            "low_c": 19.5,
+            "cloud_cover_pct": 98.0,
+            "peak_cape_jkg": 1700.0,
+            "wind_direction_deg": null,
+            "mslp_trend": 1.5
+          },
+          {
+            "model": "icon_seamless",
+            "target_date": "2026-10-16",
+            "rain": true,
+            "onset": null,
+            "precip_mm": 3.3,
+            "rain_probability_pct": 92,
+            "wind_kmh": 18.0,
+            "sustained_wind_kmh": 10.2,
+            "high_c": 28.4,
+            "low_c": 21.4,
+            "cloud_cover_pct": 91.0,
+            "peak_cape_jkg": 1200.0,
+            "wind_direction_deg": null,
+            "mslp_trend": 0.5
+          },
+          {
+            "model": "ukmo_seamless",
+            "target_date": "2026-10-16",
+            "rain": true,
+            "onset": null,
+            "precip_mm": 5.4,
+            "rain_probability_pct": 94,
+            "wind_kmh": 22.0,
+            "sustained_wind_kmh": 7.2,
+            "high_c": 30.1,
+            "low_c": 18.3,
+            "cloud_cover_pct": 32.0,
+            "peak_cape_jkg": 4260.0,
+            "wind_direction_deg": null,
+            "mslp_trend": 0.20000000000004547
+          },
+          {
+            "model": "best_match",
+            "target_date": "2026-10-16",
+            "rain": true,
+            "onset": null,
+            "precip_mm": 17.8,
+            "rain_probability_pct": 88,
+            "wind_kmh": 32.0,
+            "sustained_wind_kmh": 16.0,
+            "high_c": 27.5,
+            "low_c": 19.9,
+            "cloud_cover_pct": 98.0,
+            "peak_cape_jkg": 1670.0,
+            "wind_direction_deg": null,
+            "mslp_trend": 1.6000000000000227
+          },
+          {
+            "model": "persistence",
+            "target_date": "2026-10-16",
+            "rain": true,
+            "onset": null,
+            "precip_mm": 3.7,
+            "rain_probability_pct": null,
+            "wind_kmh": 43.6,
+            "sustained_wind_kmh": null,
+            "high_c": 29.8,
+            "low_c": 19.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": 1.1000000000000227
+          },
+          {
+            "model": "climatology",
+            "target_date": "2026-10-16",
+            "rain": false,
+            "onset": null,
+            "precip_mm": 1.6238095238095238,
+            "rain_probability_pct": 40,
+            "wind_kmh": 39.76349206349206,
+            "sustained_wind_kmh": null,
+            "high_c": 30.857142857142858,
+            "low_c": 18.71746031746032,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "olw_blend",
+            "target_date": "2026-10-16",
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 85,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "olw_code_blend",
+            "target_date": "2026-10-16",
+            "rain": true,
+            "onset": null,
+            "precip_mm": 6.9,
+            "rain_probability_pct": 78,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ],
+        "day7": [
+          {
+            "model": "gfs_seamless",
+            "target_date": "2026-10-20",
+            "rain": true,
+            "onset": null,
+            "precip_mm": 8.5,
+            "rain_probability_pct": 65,
+            "wind_kmh": 22.0,
+            "sustained_wind_kmh": 12.2,
+            "high_c": 29.8,
+            "low_c": 18.9,
+            "cloud_cover_pct": 78.0,
+            "peak_cape_jkg": 1780.0,
+            "wind_direction_deg": null,
+            "mslp_trend": -1.0
+          },
+          {
+            "model": "ecmwf_ifs025",
+            "target_date": "2026-10-20",
+            "rain": true,
+            "onset": null,
+            "precip_mm": 11.4,
+            "rain_probability_pct": 91,
+            "wind_kmh": 27.7,
+            "sustained_wind_kmh": 9.4,
+            "high_c": 27.1,
+            "low_c": 18.9,
+            "cloud_cover_pct": 84.0,
+            "peak_cape_jkg": 1820.0,
+            "wind_direction_deg": null,
+            "mslp_trend": -0.10000000000002274
+          },
+          {
+            "model": "icon_seamless",
+            "target_date": "2026-10-20",
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": null,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "ukmo_seamless",
+            "target_date": "2026-10-20",
+            "rain": null,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 39,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "best_match",
+            "target_date": "2026-10-20",
+            "rain": true,
+            "onset": null,
+            "precip_mm": 8.4,
+            "rain_probability_pct": 91,
+            "wind_kmh": 33.1,
+            "sustained_wind_kmh": 12.7,
+            "high_c": 25.2,
+            "low_c": 19.5,
+            "cloud_cover_pct": 84.0,
+            "peak_cape_jkg": 1230.0,
+            "wind_direction_deg": null,
+            "mslp_trend": 0.0
+          },
+          {
+            "model": "persistence",
+            "target_date": "2026-10-20",
+            "rain": true,
+            "onset": null,
+            "precip_mm": 3.7,
+            "rain_probability_pct": null,
+            "wind_kmh": 43.6,
+            "sustained_wind_kmh": null,
+            "high_c": 29.8,
+            "low_c": 19.0,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": 1.1000000000000227
+          },
+          {
+            "model": "climatology",
+            "target_date": "2026-10-20",
+            "rain": false,
+            "onset": null,
+            "precip_mm": 1.6238095238095238,
+            "rain_probability_pct": 40,
+            "wind_kmh": 39.76349206349206,
+            "sustained_wind_kmh": null,
+            "high_c": 30.857142857142858,
+            "low_c": 18.71746031746032,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "olw_blend",
+            "target_date": "2026-10-20",
+            "rain": true,
+            "onset": null,
+            "precip_mm": null,
+            "rain_probability_pct": 80,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          },
+          {
+            "model": "olw_code_blend",
+            "target_date": "2026-10-20",
+            "rain": true,
+            "onset": null,
+            "precip_mm": 11.4,
+            "rain_probability_pct": 100,
+            "wind_kmh": null,
+            "sustained_wind_kmh": null,
+            "high_c": null,
+            "low_c": null,
+            "cloud_cover_pct": null,
+            "peak_cape_jkg": null,
+            "wind_direction_deg": null,
+            "mslp_trend": null
+          }
+        ]
+      },
+      "window_predictions": [
+        {
+          "model": "gfs_seamless",
+          "target_date": null,
+          "rain": false,
+          "onset": null,
+          "precip_mm": 0.4,
+          "rain_probability_pct": 35,
+          "wind_kmh": 26.6,
+          "sustained_wind_kmh": 14.4,
+          "high_c": 31.4,
+          "low_c": 18.3,
+          "cloud_cover_pct": 52.4,
+          "peak_cape_jkg": 370.0,
+          "wind_direction_deg": 349.0,
+          "mslp_trend": -3.2000000000000455
+        },
+        {
+          "model": "ecmwf_ifs025",
+          "target_date": null,
+          "rain": false,
+          "onset": null,
+          "precip_mm": 0.0,
+          "rain_probability_pct": 40,
+          "wind_kmh": 28.1,
+          "sustained_wind_kmh": 14.6,
+          "high_c": 29.6,
+          "low_c": 19.1,
+          "cloud_cover_pct": 62.5,
+          "peak_cape_jkg": 2080.0,
+          "wind_direction_deg": 76.0,
+          "mslp_trend": -2.3999999999999773
+        },
+        {
+          "model": "icon_seamless",
+          "target_date": null,
+          "rain": true,
+          "onset": "22:00",
+          "precip_mm": 4.1,
+          "rain_probability_pct": 55,
+          "wind_kmh": 19.8,
+          "sustained_wind_kmh": 12.0,
+          "high_c": 30.0,
+          "low_c": 20.3,
+          "cloud_cover_pct": 70.5,
+          "peak_cape_jkg": 1540.0,
+          "wind_direction_deg": 242.0,
+          "mslp_trend": -1.8999999999999773
+        },
+        {
+          "model": "ukmo_seamless",
+          "target_date": null,
+          "rain": false,
+          "onset": null,
+          "precip_mm": 0.1,
+          "rain_probability_pct": 50,
+          "wind_kmh": 23.4,
+          "sustained_wind_kmh": 8.6,
+          "high_c": 29.8,
+          "low_c": 17.9,
+          "cloud_cover_pct": 43.4,
+          "peak_cape_jkg": 2620.0,
+          "wind_direction_deg": 165.0,
+          "mslp_trend": -1.6000000000000227
+        },
+        {
+          "model": "best_match",
+          "target_date": null,
+          "rain": false,
+          "onset": null,
+          "precip_mm": 0.2,
+          "rain_probability_pct": 40,
+          "wind_kmh": 26.6,
+          "sustained_wind_kmh": 11.1,
+          "high_c": 31.2,
+          "low_c": 18.3,
+          "cloud_cover_pct": 48.2,
+          "peak_cape_jkg": 2580.0,
+          "wind_direction_deg": 93.0,
+          "mslp_trend": -2.5
+        },
+        {
+          "model": "persistence",
+          "target_date": null,
+          "rain": true,
+          "onset": "17:00",
+          "precip_mm": 3.7,
+          "rain_probability_pct": null,
+          "wind_kmh": 43.6,
+          "sustained_wind_kmh": null,
+          "high_c": 29.8,
+          "low_c": 19.0,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": 1.1000000000000227
+        },
+        {
+          "model": "climatology",
+          "target_date": null,
+          "rain": false,
+          "onset": null,
+          "precip_mm": 1.6238095238095238,
+          "rain_probability_pct": 40,
+          "wind_kmh": 39.76349206349206,
+          "sustained_wind_kmh": null,
+          "high_c": 30.857142857142858,
+          "low_c": 18.71746031746032,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": null
+        },
+        {
+          "model": "olw_code_blend",
+          "target_date": null,
+          "rain": false,
+          "onset": null,
+          "precip_mm": 1.5,
+          "rain_probability_pct": 34,
+          "wind_kmh": null,
+          "sustained_wind_kmh": null,
+          "high_c": 30.3775,
+          "low_c": 18.735,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": null
+        }
+      ],
+      "secondary_predictions": [
+        {
+          "model": "gfs_seamless",
+          "target_date": null,
+          "rain": false,
+          "onset": null,
+          "precip_mm": 0.2,
+          "rain_probability_pct": 35,
+          "wind_kmh": 26.6,
+          "sustained_wind_kmh": 27.8,
+          "high_c": 29.3,
+          "low_c": 19.6,
+          "cloud_cover_pct": 51.4,
+          "peak_cape_jkg": 370.0,
+          "wind_direction_deg": 357.0,
+          "mslp_trend": -1.6000000000000227
+        },
+        {
+          "model": "ecmwf_ifs025",
+          "target_date": null,
+          "rain": false,
+          "onset": null,
+          "precip_mm": 0.0,
+          "rain_probability_pct": 40,
+          "wind_kmh": 28.1,
+          "sustained_wind_kmh": 14.6,
+          "high_c": 29.9,
+          "low_c": 19.2,
+          "cloud_cover_pct": 58.1,
+          "peak_cape_jkg": 2080.0,
+          "wind_direction_deg": 76.0,
+          "mslp_trend": -2.6000000000000227
+        },
+        {
+          "model": "icon_seamless",
+          "target_date": null,
+          "rain": true,
+          "onset": "00:00",
+          "precip_mm": 2.2,
+          "rain_probability_pct": 60,
+          "wind_kmh": 20.2,
+          "sustained_wind_kmh": 12.0,
+          "high_c": 30.4,
+          "low_c": 20.7,
+          "cloud_cover_pct": 69.6,
+          "peak_cape_jkg": 1500.0,
+          "wind_direction_deg": 83.0,
+          "mslp_trend": -2.3999999999999773
+        },
+        {
+          "model": "ukmo_seamless",
+          "target_date": null,
+          "rain": false,
+          "onset": null,
+          "precip_mm": 0.0,
+          "rain_probability_pct": 17,
+          "wind_kmh": 30.6,
+          "sustained_wind_kmh": 19.4,
+          "high_c": 30.5,
+          "low_c": 19.2,
+          "cloud_cover_pct": 45.6,
+          "peak_cape_jkg": 4450.0,
+          "wind_direction_deg": 253.0,
+          "mslp_trend": 0.10000000000002274
+        },
+        {
+          "model": "best_match",
+          "target_date": null,
+          "rain": false,
+          "onset": null,
+          "precip_mm": 0.0,
+          "rain_probability_pct": 40,
+          "wind_kmh": 25.6,
+          "sustained_wind_kmh": 13.9,
+          "high_c": 28.7,
+          "low_c": 20.5,
+          "cloud_cover_pct": 62.2,
+          "peak_cape_jkg": 2360.0,
+          "wind_direction_deg": 339.0,
+          "mslp_trend": -2.900000000000091
+        }
+      ],
+      "secondary_scores": {},
+      "secondary_verified_at": null,
+      "window_opened_local": "2026-10-13T06:00:00",
+      "window_scores": {},
+      "window_verified_at": null,
+      "window_observed": null,
+      "day_over_day": {
+        "yesterday_high_c": 29.8,
+        "yesterday_low_c": 19.0,
+        "yesterday_rain": true,
+        "yesterday_thunder": true,
+        "yesterday_peak_wind_kmh": 43.6,
+        "today_rain_expected": false,
+        "today_consensus_high_c": 30.4,
+        "today_consensus_low_c": 18.7,
+        "today_consensus_peak_wind_kmh": 25.0,
+        "today_calibrated_peak_wind_kmh": 36.7,
+        "high_delta_c": 0.6,
+        "low_delta_c": -0.3,
+        "wind_delta_kmh": -6.9,
+        "cloud_delta_pct": -14.6,
+        "high_label": "about the same",
+        "wind_label": "similar winds",
+        "cloud_label": "clearer",
+        "rain_contrast": "dry, with thunder possible from the morning, peaking this evening",
+        "overview_comparison": "Clearer than yesterday; temperatures and winds little changed. Dry, with thunder possible from the morning, peaking this evening.",
+        "provenance": {
+          "rain": "era5_archive",
+          "high_c": "era5_archive",
+          "low_c": "era5_archive",
+          "peak_wind_kmh": "era5_archive",
+          "sustained_wind_kmh": "era5_archive",
+          "mslp_trend": "era5_archive",
+          "onset_hour": "era5_archive",
+          "precip_mm": "era5_archive",
+          "cloud_cover_pct": "era5_archive",
+          "thunder": "metar_station",
+          "precipitation": "metar_station",
+          "station_cloud_oktas": "metar_station",
+          "station_high_c": "metar_station",
+          "station_low_c": "metar_station",
+          "station_peak_wind_kmh": "metar_station",
+          "station_wind_direction_deg": "metar_station"
+        }
+      }
+    }
+  ],
+  "observed_so_far": {
+    "precipitation": false,
+    "high_c": 22.0,
+    "low_c": 21.0,
+    "peak_wind_kmh": 5.56,
+    "peak_gust_kmh": null,
+    "cloud_oktas": 4.0,
+    "thunder": false,
+    "precipitation_onset": null,
+    "reported_through": "03:00"
+  },
+  "model_predictions": null,
+  "verification": {
+    "day0": {
+      "verified": false,
+      "note": null,
+      "note_sign_corrected_on": null
+    },
+    "day3": {
+      "verified": false,
+      "note": null,
+      "note_sign_corrected_on": null
+    },
+    "day7": {
+      "verified": false,
+      "note": null,
+      "note_sign_corrected_on": null
+    }
+  },
+  "local_bulletin": {
+    "source_name": "Kenya Meteorological Department (KMD)",
+    "text": "Kenya Meteorological Department (KMD): fetch failed (HTTPError).",
+    "fetched_at_utc": "2026-10-13T03:02:12.894450Z",
+    "document_id": null
+  },
+  "yesterday_verification_summary": "Day+0 for 2026-10-12: ecmwf_ifs025, icon_seamless, ukmo_seamless, best_match and kenya_met called the rain right; gfs_seamless did not. Day+3 for 2026-10-09: gfs_seamless, ecmwf_ifs025, icon_seamless, ukmo_seamless and best_match called the rain right. Day+7 for 2026-10-05: gfs_seamless, ecmwf_ifs025 and best_match called the rain right.",
+  "narrative_markdown": "## Today's Forecast\n\nClearer than yesterday; temperatures and winds little changed. Dry, with thunder possible from the morning, peaking this evening. 31°C / 87°F high, 19°C / 66°F low. Sky partly cloudy early as reported, mostly cloudy at midday and mostly cloudy in the evening. Wind SW at midday; gusts to 37 km/h (20 kt). UV index 9.5 (very high). Air quality 52 (moderate) at Ochieng' Avenue, Kisumu Central, the highest of 3 stations. As of 06:01, reports through 03:00: no rain; no thunder; high so far 22°C / 72°F; low so far 21°C / 70°F; peak sustained 6 km/h; sky partly cloudy.\n\n## Extended Outlook\n\nTemperatures and winds much the same through Friday, with showers and thunderstorms likely each day. Skies partly cloudy Wednesday, then mostly cloudy Thursday and Friday. Friday's call: rain, 78%, with three of four models wet; highs 27 to 30 °C. At this lead ECMWF has the best record, right 80% of the time over 59 checks.\n\nFurther out, temperatures and winds much the same through Tuesday, with showers and thunderstorms likely Saturday, Sunday and Monday, and showers and thunderstorms possible Tuesday. Saturday: all four models wet, the week's wettest day at 12 mm on average, highs around 29 °C. Sunday: all four models wet, highs 27 to 30 °C. Monday: all three models that reach it wet, highs around 29 °C.\n\nOnly GFS, ECMWF and ICON reach past Sunday. GFS, ECMWF and ICON are the wetter solutions from Saturday to Sunday; UKMO keeps it drier. Tuesday's call: rain, 100%, with both models wet; highs 27 to 30 °C. At this lead ECMWF has the best record, right 80% of the time over 55 checks.\n\n## Severe Weather / Hazard Potential\n\nConvective instability today: UKMO 2620 J/kg, ECMWF 2080 J/kg, ICON 1500 J/kg and GFS 370 J/kg. Thunder likely; any thunderstorm brings sudden gusts well above the 37 km/h (20 kt) forecast.\n\n## Winam Gulf — Conditions for Boaters\n\nPeak gust 26 km/h (14 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.\n\n## Detailed Discussion\n\n### Synoptic Overview\n\nAcross roughly 2,600 km, pressure is lowest toward the northwest (1010 hPa) and highest toward the southeast (1016 hPa) — a 6 hPa spread, a moderate large-scale gradient. Pressure is also falling toward the east, north, southwest — a large-scale feature building in that direction, though this sampling cannot say how fast or whether it will reach here. Pressure overhead is falling. Sampling is a nine-point ring at 12-degree spacing, so this locates a direction, not a centre or a front. Across the basin's 5 points, pressure today sits between 1013.5 and 1015.5 hPa, falling by 2.4 hPa over three days. Pressure here over the last 24 hours: -1.6 hPa.\n\n### Forecaster Confidence Notes\n\nOn rain the record ranks ECMWF first at Day+3, right 80% of the last 30 checks and ECMWF first at Day+7, right 80% of the last 30 checks. On today's high GFS is the warmest model at 31.4 °C and ECMWF the coolest at 29.6 °C; the call's 30.6 °C sits between them. At Day+0, no model is meaningfully better than the others here yet. At Day+7, ECMWF is the strongest rain caller here and GFS the weakest. At Day+0, Best Match slightly under-forecasts peak wind here.\n\nFigures issued 06:01. Written by code; a discussion follows when a model answers.\n",
+  "narrative_source": "code",
+  "extended_trend": "temperatures and winds much the same through Friday, with showers and thunderstorms likely each day",
+  "extended_days": [
+    {
+      "lead_time_days": 1,
+      "date": "2026-10-14",
+      "day_name": "Wednesday",
+      "models": [
+        "gfs_seamless",
+        "ecmwf_ifs025",
+        "icon_seamless",
+        "ukmo_seamless"
+      ],
+      "wet_votes": 4,
+      "precip_mm": 2.8,
+      "precip_by_model": {
+        "gfs_seamless": 1.5,
+        "ecmwf_ifs025": 0.8,
+        "icon_seamless": 6.1,
+        "ukmo_seamless": 2.7
+      },
+      "high_c": 31.4,
+      "high_min_c": 30.3,
+      "high_max_c": 32.8,
+      "low_c": 19.7,
+      "wind_kmh": 25.1,
+      "thunder": "likely",
+      "sky": "Partly cloudy"
+    },
+    {
+      "lead_time_days": 2,
+      "date": "2026-10-15",
+      "day_name": "Thursday",
+      "models": [
+        "gfs_seamless",
+        "ecmwf_ifs025",
+        "icon_seamless",
+        "ukmo_seamless"
+      ],
+      "wet_votes": 4,
+      "precip_mm": 3.2,
+      "precip_by_model": {
+        "gfs_seamless": 1.4,
+        "ecmwf_ifs025": 2.6,
+        "icon_seamless": 4.9,
+        "ukmo_seamless": 4.1
+      },
+      "high_c": 31.1,
+      "high_min_c": 29.9,
+      "high_max_c": 32.5,
+      "low_c": 19.9,
+      "wind_kmh": 26.9,
+      "thunder": "likely",
+      "sky": "Mostly cloudy"
+    },
+    {
+      "lead_time_days": 3,
+      "date": "2026-10-16",
+      "day_name": "Friday",
+      "models": [
+        "gfs_seamless",
+        "ecmwf_ifs025",
+        "icon_seamless",
+        "ukmo_seamless"
+      ],
+      "wet_votes": 3,
+      "precip_mm": 6.1,
+      "precip_by_model": {
+        "gfs_seamless": 0.4,
+        "ecmwf_ifs025": 15.2,
+        "icon_seamless": 3.3,
+        "ukmo_seamless": 5.4
+      },
+      "high_c": 29.0,
+      "high_min_c": 27.4,
+      "high_max_c": 30.1,
+      "low_c": 19.8,
+      "wind_kmh": 24.7,
+      "thunder": "likely",
+      "sky": "Mostly cloudy"
+    },
+    {
+      "lead_time_days": 4,
+      "date": "2026-10-17",
+      "day_name": "Saturday",
+      "models": [
+        "gfs_seamless",
+        "ecmwf_ifs025",
+        "icon_seamless",
+        "ukmo_seamless"
+      ],
+      "wet_votes": 4,
+      "precip_mm": 11.9,
+      "precip_by_model": {
+        "gfs_seamless": 9.0,
+        "ecmwf_ifs025": 16.2,
+        "icon_seamless": 19.0,
+        "ukmo_seamless": 3.3
+      },
+      "high_c": 28.6,
+      "high_min_c": 27.8,
+      "high_max_c": 29.4,
+      "low_c": 19.3,
+      "wind_kmh": 25.9,
+      "thunder": "likely",
+      "sky": "Mostly cloudy"
+    },
+    {
+      "lead_time_days": 5,
+      "date": "2026-10-18",
+      "day_name": "Sunday",
+      "models": [
+        "gfs_seamless",
+        "ecmwf_ifs025",
+        "icon_seamless",
+        "ukmo_seamless"
+      ],
+      "wet_votes": 4,
+      "precip_mm": 11.2,
+      "precip_by_model": {
+        "gfs_seamless": 18.4,
+        "ecmwf_ifs025": 11.2,
+        "icon_seamless": 5.7,
+        "ukmo_seamless": 9.4
+      },
+      "high_c": 28.7,
+      "high_min_c": 27.2,
+      "high_max_c": 29.6,
+      "low_c": 19.1,
+      "wind_kmh": 23.1,
+      "thunder": "likely",
+      "sky": "Mostly cloudy"
+    },
+    {
+      "lead_time_days": 6,
+      "date": "2026-10-19",
+      "day_name": "Monday",
+      "models": [
+        "gfs_seamless",
+        "ecmwf_ifs025",
+        "icon_seamless"
+      ],
+      "wet_votes": 3,
+      "precip_mm": 8.4,
+      "precip_by_model": {
+        "gfs_seamless": 15.8,
+        "ecmwf_ifs025": 3.8,
+        "icon_seamless": 5.7
+      },
+      "high_c": 29.1,
+      "high_min_c": 28.8,
+      "high_max_c": 29.7,
+      "low_c": 20.2,
+      "wind_kmh": 23.3,
+      "thunder": "likely",
+      "sky": "Mostly cloudy"
+    },
+    {
+      "lead_time_days": 7,
+      "date": "2026-10-20",
+      "day_name": "Tuesday",
+      "models": [
+        "gfs_seamless",
+        "ecmwf_ifs025"
+      ],
+      "wet_votes": 2,
+      "precip_mm": 9.9,
+      "precip_by_model": {
+        "gfs_seamless": 8.5,
+        "ecmwf_ifs025": 11.4
+      },
+      "high_c": 28.5,
+      "high_min_c": 27.1,
+      "high_max_c": 29.8,
+      "low_c": 18.9,
+      "wind_kmh": 24.9,
+      "thunder": "possible",
+      "sky": "Mostly cloudy"
+    }
+  ],
+  "extended_outlook": "Temperatures and winds much the same through Friday, with showers and thunderstorms likely each day. Skies partly cloudy Wednesday, then mostly cloudy Thursday and Friday. Friday's call: rain, 78%, with three of four models wet; highs 27 to 30 °C. At this lead ECMWF has the best record, right 80% of the time over 59 checks.\n\nFurther out, temperatures and winds much the same through Tuesday, with showers and thunderstorms likely Saturday, Sunday and Monday, and showers and thunderstorms possible Tuesday. Saturday: all four models wet, the week's wettest day at 12 mm on average, highs around 29 °C. Sunday: all four models wet, highs 27 to 30 °C. Monday: all three models that reach it wet, highs around 29 °C.\n\nOnly GFS, ECMWF and ICON reach past Sunday. GFS, ECMWF and ICON are the wetter solutions from Saturday to Sunday; UKMO keeps it drier. Tuesday's call: rain, 100%, with both models wet; highs 27 to 30 °C. At this lead ECMWF has the best record, right 80% of the time over 55 checks.",
+  "write_up_sources": null,
+  "synoptic_ring": {
+    "summary": {
+      "centre_mslp_hpa": 1013.5,
+      "lowest_label": "NW",
+      "lowest_mslp_hpa": 1009.8,
+      "highest_label": "SE",
+      "highest_mslp_hpa": 1016.3,
+      "gradient_hpa": 6.5,
+      "gradient_strength": "moderate",
+      "tendencies": {
+        "centre": "deepening",
+        "N": "deepening",
+        "NE": "steady",
+        "E": "deepening",
+        "SE": "steady",
+        "S": "steady",
+        "SW": "deepening",
+        "W": "steady",
+        "NW": "steady"
+      },
+      "statements": [
+        "Across roughly 2,600 km, pressure is lowest toward the northwest (1010 hPa) and highest toward the southeast (1016 hPa) — a 6 hPa spread, a moderate large-scale gradient.",
+        "Pressure is also falling toward the east, north, southwest — a large-scale feature building in that direction, though this sampling cannot say how fast or whether it will reach here.",
+        "Pressure overhead is falling.",
+        "Sampling is a nine-point ring at 12-degree spacing, so this locates a direction, not a centre or a front."
+      ]
+    },
+    "points": [
+      {
+        "label": "centre",
+        "lat": -0.10544816,
+        "lon": 34.793453,
+        "dates": [
+          "2026-10-13",
+          "2026-10-14",
+          "2026-10-15"
+        ],
+        "mslp_hpa": [
+          1013.5,
+          1011.8,
+          1011.0
+        ],
+        "precip_mm": [
+          0.2,
+          0.1,
+          2.8
+        ],
+        "cape_jkg": [
+          2060.0,
+          2810.0,
+          3940.0
+        ]
+      },
+      {
+        "label": "N",
+        "lat": 11.915642,
+        "lon": 34.789238,
+        "dates": [
+          "2026-10-13",
+          "2026-10-14",
+          "2026-10-15"
+        ],
+        "mslp_hpa": [
+          1011.5,
+          1009.7,
+          1007.5
+        ],
+        "precip_mm": [
+          1.2,
+          1.4,
+          0.0
+        ],
+        "cape_jkg": [
+          2370.0,
+          2600.0,
+          2220.0
+        ]
+      },
+      {
+        "label": "NE",
+        "lat": 11.915642,
+        "lon": 46.735428,
+        "dates": [
+          "2026-10-13",
+          "2026-10-14",
+          "2026-10-15"
+        ],
+        "mslp_hpa": [
+          1012.6,
+          1012.8,
+          1012.1
+        ],
+        "precip_mm": [
+          4.3,
+          1.2,
+          2.7
+        ],
+        "cape_jkg": [
+          3240.0,
+          2450.0,
+          2570.0
+        ]
+      },
+      {
+        "label": "E",
+        "lat": -0.10544816,
+        "lon": 46.788776,
+        "dates": [
+          "2026-10-13",
+          "2026-10-14",
+          "2026-10-15"
+        ],
+        "mslp_hpa": [
+          1013.8,
+          1013.1,
+          1012.2
+        ],
+        "precip_mm": [
+          6.2,
+          9.2,
+          5.3
+        ],
+        "cape_jkg": [
+          890.0,
+          1220.0,
+          1280.0
+        ]
+      },
+      {
+        "label": "SE",
+        "lat": -12.126537,
+        "lon": 46.78058,
+        "dates": [
+          "2026-10-13",
+          "2026-10-14",
+          "2026-10-15"
+        ],
+        "mslp_hpa": [
+          1016.3,
+          1015.8,
+          1015.4
+        ],
+        "precip_mm": [
+          2.0,
+          0.2,
+          0.1
+        ],
+        "cape_jkg": [
+          560.0,
+          730.0,
+          570.0
+        ]
+      },
+      {
+        "label": "S",
+        "lat": -12.126537,
+        "lon": 34.80216,
+        "dates": [
+          "2026-10-13",
+          "2026-10-14",
+          "2026-10-15"
+        ],
+        "mslp_hpa": [
+          1014.8,
+          1014.1,
+          1013.6
+        ],
+        "precip_mm": [
+          0.4,
+          0.9,
+          0.3
+        ],
+        "cape_jkg": [
+          1720.0,
+          1750.0,
+          2300.0
+        ]
+      },
+      {
+        "label": "SW",
+        "lat": -12.126537,
+        "lon": 22.742807,
+        "dates": [
+          "2026-10-13",
+          "2026-10-14",
+          "2026-10-15"
+        ],
+        "mslp_hpa": [
+          1013.7,
+          1011.3,
+          1010.0
+        ],
+        "precip_mm": [
+          0.8,
+          0.3,
+          0.0
+        ],
+        "cape_jkg": [
+          1360.0,
+          1460.0,
+          150.0
+        ]
+      },
+      {
+        "label": "W",
+        "lat": -0.10544816,
+        "lon": 22.798128,
+        "dates": [
+          "2026-10-13",
+          "2026-10-14",
+          "2026-10-15"
+        ],
+        "mslp_hpa": [
+          1011.5,
+          1011.1,
+          1010.9
+        ],
+        "precip_mm": [
+          2.5,
+          3.1,
+          17.8
+        ],
+        "cape_jkg": [
+          2410.0,
+          3510.0,
+          3240.0
+        ]
+      },
+      {
+        "label": "NW",
+        "lat": 11.915642,
+        "lon": 22.762331,
+        "dates": [
+          "2026-10-13",
+          "2026-10-14",
+          "2026-10-15"
+        ],
+        "mslp_hpa": [
+          1009.8,
+          1009.4,
+          1008.8
+        ],
+        "precip_mm": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "cape_jkg": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    ]
+  },
+  "basin_pressure": {
+    "points": 5,
+    "today_min_hpa": 1013.5,
+    "today_max_hpa": 1015.5,
+    "change_72h_hpa": -2.4
+  },
+  "cloud_bands": {
+    "times": [
+      "2026-10-13T00:00",
+      "2026-10-13T01:00",
+      "2026-10-13T02:00",
+      "2026-10-13T03:00",
+      "2026-10-13T04:00",
+      "2026-10-13T05:00",
+      "2026-10-13T06:00",
+      "2026-10-13T07:00",
+      "2026-10-13T08:00",
+      "2026-10-13T09:00",
+      "2026-10-13T10:00",
+      "2026-10-13T11:00",
+      "2026-10-13T12:00",
+      "2026-10-13T13:00",
+      "2026-10-13T14:00",
+      "2026-10-13T15:00",
+      "2026-10-13T16:00",
+      "2026-10-13T17:00",
+      "2026-10-13T18:00",
+      "2026-10-13T19:00",
+      "2026-10-13T20:00",
+      "2026-10-13T21:00",
+      "2026-10-13T22:00",
+      "2026-10-13T23:00"
+    ],
+    "models": {
+      "gfs_seamless": {
+        "low": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          10,
+          5,
+          5,
+          5,
+          0,
+          0,
+          0
+        ],
+        "mid": [
+          81,
+          39,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          73,
+          100,
+          100,
+          100,
+          82,
+          67,
+          24,
+          5
+        ],
+        "high": [
+          100,
+          100,
+          100,
+          26,
+          14,
+          5,
+          10,
+          10,
+          0,
+          0,
+          0,
+          10,
+          10,
+          5,
+          5,
+          35,
+          91,
+          55,
+          100,
+          100,
+          100,
+          100,
+          34,
+          100
+        ]
+      },
+      "ecmwf_ifs025": {
+        "low": [
+          35,
+          36,
+          36,
+          35,
+          32,
+          28,
+          23,
+          16,
+          8,
+          2,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mid": [
+          48,
+          40,
+          31,
+          24,
+          19,
+          16,
+          16,
+          21,
+          28,
+          35,
+          41,
+          46,
+          48,
+          43,
+          35,
+          30,
+          32,
+          37,
+          40,
+          40,
+          39,
+          38,
+          37,
+          35
+        ],
+        "high": [
+          35,
+          27,
+          25,
+          26,
+          32,
+          41,
+          47,
+          44,
+          37,
+          36,
+          47,
+          64,
+          79,
+          88,
+          95,
+          100,
+          100,
+          100,
+          100,
+          95,
+          88,
+          79,
+          69,
+          59
+        ]
+      },
+      "icon_seamless": {
+        "low": [
+          64,
+          45,
+          51,
+          33,
+          30,
+          31,
+          39,
+          55,
+          49,
+          37,
+          0,
+          24,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          29,
+          42,
+          46,
+          53,
+          28
+        ],
+        "mid": [
+          59,
+          58,
+          60,
+          42,
+          26,
+          29,
+          10,
+          7,
+          0,
+          0,
+          0,
+          3,
+          31,
+          40,
+          34,
+          52,
+          76,
+          70,
+          83,
+          80,
+          49,
+          66,
+          61,
+          58
+        ],
+        "high": [
+          100,
+          100,
+          100,
+          67,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          3,
+          47,
+          43,
+          4,
+          100,
+          100,
+          96,
+          54,
+          2,
+          13,
+          80,
+          47,
+          6
+        ]
+      },
+      "ukmo_seamless": {
+        "low": [
+          92,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          9,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mid": [
+          3,
+          3,
+          13,
+          20,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          11,
+          3,
+          0,
+          9,
+          11,
+          11,
+          13,
+          2,
+          2,
+          5
+        ],
+        "high": [
+          78,
+          67,
+          45,
+          45,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          95,
+          98,
+          100,
+          100,
+          100,
+          100,
+          66,
+          84,
+          100,
+          91,
+          36,
+          2,
+          0
+        ]
+      },
+      "best_match": {
+        "low": [
+          32,
+          5,
+          23,
+          13,
+          5,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "mid": [
+          27,
+          9,
+          9,
+          3,
+          5,
+          1,
+          2,
+          2,
+          5,
+          5,
+          6,
+          11,
+          2,
+          5,
+          26,
+          30,
+          17,
+          23,
+          13,
+          14,
+          23,
+          9,
+          34,
+          22
+        ],
+        "high": [
+          5,
+          4,
+          3,
+          0,
+          0,
+          0,
+          2,
+          1,
+          1,
+          0,
+          0,
+          25,
+          100,
+          99,
+          98,
+          98,
+          91,
+          76,
+          97,
+          67,
+          84,
+          75,
+          51,
+          15
+        ]
+      }
+    }
+  },
+  "review_findings": [
+    {
+      "kind": "ranking",
+      "checks": 47,
+      "claim": "At Day+0, no model is meaningfully better than the others here yet."
+    },
+    {
+      "kind": "bias",
+      "checks": 62,
+      "claim": "At Day+0, gfs_seamless systematically over-forecasts daytime highs here."
+    },
+    {
+      "kind": "bias",
+      "checks": 62,
+      "claim": "At Day+0, gfs_seamless systematically under-forecasts peak wind here."
+    },
+    {
+      "kind": "tendency",
+      "checks": 32,
+      "claim": "At Day+0, gfs_seamless slightly over-forecasts cloud cover here."
+    },
+    {
+      "kind": "tendency",
+      "checks": 62,
+      "claim": "At Day+0, ecmwf_ifs025 slightly under-forecasts daytime highs here."
+    },
+    {
+      "kind": "tendency",
+      "checks": 62,
+      "claim": "At Day+0, ecmwf_ifs025 slightly over-forecasts overnight lows here."
+    },
+    {
+      "kind": "bias",
+      "checks": 62,
+      "claim": "At Day+0, ecmwf_ifs025 systematically under-forecasts peak wind here."
+    },
+    {
+      "kind": "tendency",
+      "checks": 62,
+      "claim": "At Day+0, icon_seamless slightly under-forecasts daytime highs here."
+    },
+    {
+      "kind": "bias",
+      "checks": 62,
+      "claim": "At Day+0, icon_seamless systematically over-forecasts overnight lows here."
+    },
+    {
+      "kind": "bias",
+      "checks": 62,
+      "claim": "At Day+0, icon_seamless systematically under-forecasts peak wind here."
+    },
+    {
+      "kind": "tendency",
+      "checks": 32,
+      "claim": "At Day+0, icon_seamless slightly over-forecasts cloud cover here."
+    },
+    {
+      "kind": "tendency",
+      "checks": 62,
+      "claim": "At Day+0, ukmo_seamless slightly under-forecasts daytime highs here."
+    },
+    {
+      "kind": "bias",
+      "checks": 62,
+      "claim": "At Day+0, ukmo_seamless systematically under-forecasts overnight lows here."
+    },
+    {
+      "kind": "bias",
+      "checks": 62,
+      "claim": "At Day+0, ukmo_seamless systematically under-forecasts peak wind here."
+    },
+    {
+      "kind": "bias",
+      "checks": 32,
+      "claim": "At Day+0, ukmo_seamless systematically under-forecasts cloud cover here."
+    },
+    {
+      "kind": "tendency",
+      "checks": 62,
+      "claim": "At Day+0, best_match slightly under-forecasts peak wind here."
+    },
+    {
+      "kind": "tendency",
+      "checks": 47,
+      "claim": "At Day+0, kenya_met slightly under-forecasts daytime highs here."
+    },
+    {
+      "kind": "tendency",
+      "checks": 47,
+      "claim": "At Day+0, kenya_met slightly over-forecasts overnight lows here."
+    },
+    {
+      "kind": "bias",
+      "checks": 59,
+      "claim": "At Day+3, gfs_seamless systematically over-forecasts daytime highs here."
+    },
+    {
+      "kind": "bias",
+      "checks": 59,
+      "claim": "At Day+3, gfs_seamless systematically under-forecasts peak wind here."
+    },
+    {
+      "kind": "tendency",
+      "checks": 59,
+      "claim": "At Day+3, ecmwf_ifs025 slightly over-forecasts overnight lows here."
+    },
+    {
+      "kind": "tendency",
+      "checks": 59,
+      "claim": "At Day+3, ecmwf_ifs025 slightly under-forecasts peak wind here."
+    },
+    {
+      "kind": "tendency",
+      "checks": 59,
+      "claim": "At Day+3, icon_seamless slightly under-forecasts daytime highs here."
+    },
+    {
+      "kind": "bias",
+      "checks": 59,
+      "claim": "At Day+3, icon_seamless systematically over-forecasts overnight lows here."
+    },
+    {
+      "kind": "bias",
+      "checks": 59,
+      "claim": "At Day+3, icon_seamless systematically under-forecasts peak wind here."
+    },
+    {
+      "kind": "bias",
+      "checks": 59,
+      "claim": "At Day+3, ukmo_seamless systematically under-forecasts overnight lows here."
+    },
+    {
+      "kind": "bias",
+      "checks": 59,
+      "claim": "At Day+3, ukmo_seamless systematically under-forecasts peak wind here."
+    },
+    {
+      "kind": "tendency",
+      "checks": 59,
+      "claim": "At Day+3, best_match slightly over-forecasts daytime highs here."
+    },
+    {
+      "kind": "tendency",
+      "checks": 59,
+      "claim": "At Day+3, best_match slightly over-forecasts overnight lows here."
+    },
+    {
+      "kind": "ranking",
+      "checks": 55,
+      "claim": "At Day+7, ecmwf_ifs025 is the strongest rain caller here and gfs_seamless the weakest."
+    },
+    {
+      "kind": "bias",
+      "checks": 55,
+      "claim": "At Day+7, gfs_seamless systematically over-forecasts daytime highs here."
+    },
+    {
+      "kind": "bias",
+      "checks": 55,
+      "claim": "At Day+7, gfs_seamless systematically under-forecasts peak wind here."
+    },
+    {
+      "kind": "bias",
+      "checks": 55,
+      "claim": "At Day+7, ecmwf_ifs025 systematically under-forecasts daytime highs here."
+    },
+    {
+      "kind": "bias",
+      "checks": 55,
+      "claim": "At Day+7, ecmwf_ifs025 systematically over-forecasts overnight lows here."
+    },
+    {
+      "kind": "tendency",
+      "checks": 55,
+      "claim": "At Day+7, ecmwf_ifs025 slightly under-forecasts peak wind here."
+    },
+    {
+      "kind": "bias",
+      "checks": 55,
+      "claim": "At Day+7, best_match systematically under-forecasts daytime highs here."
+    },
+    {
+      "kind": "bias",
+      "checks": 55,
+      "claim": "At Day+7, best_match systematically over-forecasts overnight lows here."
+    }
+  ],
+  "lead_records": [
+    {
+      "lead_time_days": 3,
+      "best_model": "ecmwf_ifs025",
+      "rain_pct": 80.0,
+      "checks": 59
+    },
+    {
+      "lead_time_days": 7,
+      "best_model": "ecmwf_ifs025",
+      "rain_pct": 80.0,
+      "checks": 55
+    }
+  ],
+  "whatsapp_summary": null,
+  "earlier_issuances": [],
+  "morning_issuance": null,
+  "guidance_initialised_at": "2026-10-12T18:00:00Z",
+  "guidance_age_hours": 9.023120558611112,
+  "guidance_source": "observed",
+  "forecast_reach": {
+    "gfs_seamless": 7,
+    "ecmwf_ifs025": 7,
+    "icon_seamless": 6,
+    "ukmo_seamless": 5,
+    "best_match": 7
+  },
+  "meta": {
+    "generated_at_utc": "2026-10-13T03:02:12.894470Z",
+    "llm_provider": "GeminiProvider",
+    "llm_model": "gemini-3.8-flash",
+    "narrative_llm_model": null,
+    "llm_call_outcome": "served",
+    "pipeline_version": "0.1.0",
+    "system_prompt_sha256": "cb57f8dbbe0fe44ba844f62ba359caa3b423a911c9c7fbc2962489dff5a77bcd",
+    "finish_reason": "STOP",
+    "input_tokens": 40145,
+    "output_tokens": 281,
+    "thought_tokens": 3496,
+    "prompt_size": {
+      "user_prompt_chars": 81854,
+      "judgment_prompt_chars": 19836,
+      "narrative_prompt_chars": 39492,
+      "blocks": {
+        "PREAMBLE": 298,
+        "CALENDAR": 911,
+        "FORECAST WINDOWS": 692,
+        "HOURS AHEAD": 18475,
+        "TODAY'S MULTI-MODEL GUIDANCE": 25389,
+        "TODAY'S MULTI-MODEL GUIDANCE/primary_extended_daily": 8392,
+        "TODAY'S MULTI-MODEL GUIDANCE/secondary_extended_daily": 8399,
+        "TODAY'S MULTI-MODEL GUIDANCE/regional_pressure": 4212,
+        "TODAY'S MULTI-MODEL GUIDANCE/air_quality": 2194,
+        "TODAY'S MULTI-MODEL GUIDANCE/airport_metar": 734,
+        "TODAY'S MULTI-MODEL GUIDANCE/synoptic_scale_pressure": 1044,
+        "EXTRACTED PER-MODEL PREDICTIONS": 2199,
+        "GUIDANCE RECENCY": 338,
+        "CONVECTIVE INSTABILITY": 694,
+        "DAY-OVER-DAY COMPARISON": 1457,
+        "NEXT THREE DAYS": 194,
+        "SKY AT EACH ANCHOR": 333,
+        "SKY BY DAY": 594,
+        "WIND DIRECTION": 553,
+        "WIND SHIFT": 142,
+        "SECONDARY POINT WIND": 655,
+        "PEAK UV INDEX": 611,
+        "CALIBRATED PEAK GUST": 1329,
+        "OBSERVED SO FAR TODAY": 956,
+        "GROUND AQI STATIONS": 581,
+        "GROUND AQI SUMMARY": 241,
+        "GROUND AQI LAST KNOWN": 309,
+        "LOCAL BULLETIN": 122,
+        "PRE-COMPUTED VERIFICATION RESULTS": 7067,
+        "MODEL TRACK RECORD": 4569,
+        "LONG-RUN REVIEW": 13145
+      },
+      "trailing_median_chars": 81335,
+      "growth_pct": 0.64
+    },
+    "response_schema_sha256": "2850e5fcab69ecee06cc75ea51daccc4c3b616f219920b5f77fecd31d963c22e",
+    "nullable_fields": [
+      "/extended_properties[]/rain_probability_pct",
+      "/today_properties/air_quality_aqi",
+      "/today_properties/mslp_trend_24h",
+      "/today_properties/onset_hour",
+      "/today_properties/onset_window",
+      "/today_properties/peak_wind_primary_kmh",
+      "/today_properties/peak_wind_secondary_kmh",
+      "/today_properties/precip_mm",
+      "/today_properties/rain_probability_pct",
+      "/today_properties/synoptic_pattern"
+    ],
+    "narrative_findings": [],
+    "information_moved": {
+      "first_issuance_of_day": true,
+      "guidance_is_newer": null,
+      "observation_disagreements": [],
+      "notable_disagreements": [],
+      "sustained_wind_gap": {
+        "consensus_kmh": 12.14,
+        "observed_kmh": 5.56,
+        "delta_kmh": -6.580000000000001,
+        "model_count": 5
+      },
+      "low_divergence": null
+    },
+    "refreshed_at": null,
+    "trigger_source": "workflow_dispatch",
+    "issued_local_time": "06:01",
+    "observations_local_time": "06:01",
+    "degradations": [
+      {
+        "code": "narrative_unavailable",
+        "summary": "Today's figures are decided and published. The written discussion follows when a model answers; the numbers are the same ones this forecast is scored on.",
+        "detail": "The write-up is asked for after the forecast is committed and published (ROADMAP item 189), by `olw write-up`, from the archived prompts and the stored call. Until it lands the entry carries the placeholder."
+      }
+    ]
+  }
+}

@@ -918,7 +918,7 @@
   "model_predictions": null,
   "verification": {
     "day0": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     },
@@ -1391,6 +1391,7 @@
     "today_max_hpa": 1016.3,
     "change_72h_hpa": -2.5
   },
+  "cloud_bands": null,
   "review_findings": [
     {
       "kind": "ranking",
