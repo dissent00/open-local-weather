@@ -86,7 +86,7 @@ String buildWriterPrompt(
     sectionSevere: 'SEVERE WEATHER ("severe"): thunder today from PEAK CAPE TODAY, per model, with the hazard any '
         'thunderstorm brings: sudden gusts well above the forecast wind. A warning from the met '
         'service\'s bulletin where it carries one; otherwise none.',
-    sectionSecondary: '${(secondaryName ?? 'THE SECONDARY POINT').toUpperCase()} ("secondary"): each leg of the wind timeline verbatim, the '
+    sectionSecondary: '${(secondaryName ?? 'THE SECONDARY POINT').toUpperCase()} ("secondary"): the wind timeline\'s bearings and figures verbatim, the '
         'peak gust, and the thunderstorm gust hazard where thunder is possible.',
     sectionSynoptic: 'SYNOPTIC OVERVIEW ("synoptic"): the LARGE SCALE statements as given, then the BASIN PRESSURE '
         'line, then the pressure trend from THE CALL. Lower pressure lies toward a direction; never a '
@@ -209,6 +209,14 @@ List<String> auditSection(String section, String text, String brief, BriefInputs
       for (final w in _pipelineWords) if (RegExp('\\b${RegExp.escape(w)}\\b').hasMatch(lowered)) w,
     ];
     if (found.isNotEmpty) defects.add('pipeline words: ${found.join(', ')}');
+
+  // A bearing is a figure (2026-10-13) — mirrors the Python check.
+  if (bearingSections.contains(section)) {
+    final allowed = {for (final m in _bearing.allMatches(brief)) _bearingKey(m.group(0)!)};
+    final strays = {for (final m in _bearing.allMatches(body)) if (!allowed.contains(_bearingKey(m.group(0)!))) m.group(0)!}.toList()
+      ..sort((a, b) => comparePython(a.toLowerCase(), b.toLowerCase()));
+    if (strays.isNotEmpty) defects.add('bearings not in the brief: ${strays.join(', ')}');
+  }
   }
 
   for (final paragraph in body.split('\n\n')) {
@@ -225,15 +233,33 @@ List<String> auditSection(String section, String text, String brief, BriefInputs
 int _wordCount(String text) => [for (final w in text.split(RegExp(r'\s+'))) if (w.isNotEmpty) w].length;
 
 List<String> _lockedPhrases(String section, BriefInputs i) {
-  // The Gulf timeline leg by leg (2026-10-12) — mirrors `_locked_phrases`.
+  // The Gulf timeline by its bearings and figure pairs (2026-10-13) —
+  // mirrors `_locked_phrases`.
   final timeline = '${(i.secondaryWind ?? const {})['timeline'] ?? ''}';
   final phrases = switch (section) {
     sectionToday => [(i.instability ?? const {})['timing'], i.windShift, i.observedSoFar],
     sectionExtended => [i.nextThreeDays],
-    sectionSecondary => timeline.split(timelineJoin),
+    sectionSecondary => [for (final leg in timeline.split(timelineJoin)) ..._legParts(leg)],
     _ => const <Object?>[],
   };
   return [for (final p in phrases) if (p != null && '$p'.isNotEmpty) '$p'];
+}
+
+const bearingSections = [sectionToday, sectionSecondary];
+final _bearing = RegExp(r'\b(?:north|south|east|west)(?:-?(?:north|south|east|west)){0,2}(?:erly)?\b', caseSensitive: false);
+
+String _bearingKey(String word) {
+  final lower = word.toLowerCase();
+  return lower.endsWith('erly') ? lower.substring(0, lower.length - 4) : lower;
+}
+
+final _leg = RegExp(r'^(?:([a-z-]+) )?(?:overnight|by midday|into the evening) at (.+)$');
+
+/// A leg's bearing, when it has one, and its figure pair — mirrors `_leg_parts`.
+List<String> _legParts(String leg) {
+  final m = _leg.firstMatch(leg);
+  if (m == null) return leg.isEmpty ? const [] : [leg];
+  return [for (final p in [m.group(1), m.group(2)]) if (p != null && p.isNotEmpty) p];
 }
 
 bool _usesPartOf(String text, String phrase, {int window = 4}) {

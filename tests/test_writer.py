@@ -206,18 +206,32 @@ def test_the_models_typography_is_normalised_before_the_audit():
     assert audit_section("today", f"Wind {odd}.", brief, inputs) == []
 
 
-def test_the_gulf_timeline_is_locked_leg_by_leg():
-    """Groq's gpt-oss (2026-10-12) quoted every leg of the Gulf timeline
-    and joined them with "and" or "turning" instead of "then", and the
-    forty-word sentence locked as one unit refused all eight days. The
-    legs carry the meaning; the joins do not. Each leg is locked whole."""
+def test_the_gulf_timeline_is_locked_by_bearing_and_figures():
+    """Groq's gpt-oss (2026-10-12 and 13) quoted every figure of the Gulf
+    timeline and wrote the legs its own way — "Overnight winds are 6 km/h
+    (3 kt) gusting 8 km/h (5 kt)", "By midday the flow shifts
+    south-southwesterly at..." — and a leg locked whole refused all of
+    them. What a leg means is its bearing and its figure pair; those are
+    locked, and the wording around them is the writer's."""
+    from openlocalweather.writer import _locked_phrases
+
     inputs = _inputs()
     brief = render_brief(inputs, sections=list(SECTIONS))
+    locked = _locked_phrases("secondary", inputs)
+    assert any(" gusting " in p for p in locked) and all("overnight" not in p and "midday" not in p for p in locked), locked
     legs = inputs.secondary_wind["timeline"].split(", then ")
-    assert len(legs) == 3, legs
-    joined = f"{legs[0]}, turning {legs[1]}, and {legs[2]}"
-    assert audit_section("secondary", f"Over the Gulf the wind is {joined}. Any thunderstorm brings sudden gusts.", brief, inputs) == []
-    altered = joined.replace("by midday", "by late morning")
-    assert audit_section("secondary", f"Over the Gulf the wind is {altered}.", brief, inputs) == [
-        f"phrase not verbatim: {legs[1][:40]}"
-    ]
+    own_way = (
+        f"Overnight winds on the Gulf are {legs[0].split(' at ', 1)[1]}. By midday the flow shifts "
+        f"{legs[1].replace(' by midday at ', ' at ')}. In the evening it strengthens to "
+        f"{legs[2].split(' at ', 1)[1]}."
+    )
+    assert audit_section("secondary", own_way, brief, inputs) == []
+    bearing = legs[1].split(" ")[0]
+    assert "-" in bearing, bearing
+    # "southwesterly" would pass here: this brief's wind phrase says
+    # "southwest", and a bearing the brief names anywhere is allowed.
+    strayed = own_way.replace(bearing, "westerly")
+    assert audit_section("secondary", strayed, brief, inputs) == ["bearings not in the brief: westerly"]
+    assert audit_section("today", "A southwesterly breeze later.", brief, inputs) == [], (
+        "the brief says 'southwest'; its adverb form is the same bearing"
+    )

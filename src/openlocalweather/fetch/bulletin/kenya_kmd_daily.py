@@ -297,9 +297,12 @@ class KenyaKMDDailyFetcher:
             raise ValueError("no forecast post found")
         post_url = urljoin(landing_url, match.group(1))
 
+        # The post page may fail on its own (HTTP 500 on 2026-10-13 while
+        # the PDF sat at the next id): its link is read when it answers,
+        # and the probe needs only the slug the landing page gave.
         post = requests.get(post_url, timeout=REQUEST_TIMEOUT_S, headers=self._headers())
-        post.raise_for_status()
-        pdf_url = find_pdf_url(post.text, post_url) or self._probe_unlinked_pdf(post_url)
+        linked = find_pdf_url(post.text, post_url) if post.ok else None
+        pdf_url = linked or self._probe_unlinked_pdf(post_url)
         if not pdf_url:
             raise ValueError("post has no PDF link")
         found = document_id_of(pdf_url)

@@ -255,3 +255,18 @@ def test_the_five_day_post_pattern_matches_both_slugs():
 
     for slug in ("five-day-weather-forecast-3rd-to-7th-october-2026", "5-day-weather-forecast-valid-11th-to-15th-october-2026"):
         assert _FIVE_DAY_POST_RE.search(f'<a href="/our-products/5-day-forecast/{slug}/">x</a>'), slug
+
+
+def test_a_failing_post_page_still_lets_the_probe_find_the_pdf():
+    """2026-10-13: the post page answered HTTP 500 while the PDF sat at
+    the next document id. The slug comes from the landing page, so the
+    probe needs nothing from the post."""
+    with requests_mock.Mocker() as m:
+        m.get(LANDING, text='<a href="/our-products/daily-forecast/daily-weather-forecast-valid-11th-october-2026/">x</a>')
+        m.get(POST_11TH, status_code=500, text="Server Error")
+        m.head(requests_mock.ANY, status_code=404)
+        m.head(UNLINKED_PDF, status_code=200)
+        m.get(UNLINKED_PDF, content=b"%PDF-1.4 fake")
+        result = KenyaKMDDailyFetcher(LANDING, "Kisumu", "kenya_met", document_id_hint=5255).fetch_forecast()
+    assert result.document_id == 5261
+    assert "fetch failed" not in result.text

@@ -2782,7 +2782,9 @@ is a fixture (`kmd_5day_2026-10-11.json`) and parses all five days. The
 five-day PDF's filename varies more than the daily's ("Valid_from",
 "Valid", a double underscore once) and the 12th-to-16th file was not
 found under any name tried, so the Day+3 row stays a bonus, silent when
-the probe misses. The 8th to the 11th
+the probe misses. On 2026-10-13 the daily post page itself answered HTTP
+500 while the PDF sat at the next id; the fetcher reads the post's link
+when the page answers and probes from the landing page's slug either way. The 8th to the 11th
 are lost to the scored record: the row is a prediction and the run that
 would have stored it has passed.
 
@@ -27293,8 +27295,10 @@ keyless Groq link would have joined the chain and spent a ledger row
 refusing every call. A hosted endpoint now needs its key at build; a
 local one (localhost, 127.0.0.1, `.local`) still builds without. Groq's
 pass rate on the brief is unmeasured: `writer_probe.yml` is the
-measurement, below under item 191. Still owed here: the per-link `per_day`
-allowance, the monthly re-ranking from the ledger, the 14-day sweep.
+measurement, below under item 191. A link also carries `request_fields` since 2026-10-12, a vendor's own
+knobs sent as given; what Groq needed is under item 191 step (d). Still
+owed here: the per-link `per_day` allowance, the monthly re-ranking from
+the ledger, the 14-day sweep.
 
 **Changes to the chain.**
 - A link is chosen per job: `calls: [write_up]`, `[judgment]`,
@@ -27504,7 +27508,28 @@ the judgment and then the brief minutes apart.
   `probe`. Not run yet: it spends the route's allowance and needs the
   repository's keys, so the operator dispatches it — Groq first, then the
   gateway's free models, then Gemini.
-- *Groq* — the link, under item 192.
+- *Groq* — the link, under item 192. **Probed 2026-10-12 and 13,
+  gpt-oss-120b on the eight archived days.** Three runs answered nothing:
+  two 400s and six 429s, then eight 400s, then sixteen; the 429s were the
+  8K-tokens-a-minute ceiling (the probe now waits 65 s between days) and
+  the 400s were an empty generation, because Groq's default completion
+  budget is 1,024 tokens and gpt-oss reasons before it writes (a link's
+  `request_fields` now carries `max_completion_tokens: 3000` and
+  `reasoning_effort: low`). With the budget, every day answered in 2 to
+  3 s: 33 of 48 sections passed, and reading the refusals found three
+  the audit had caused — the model's non-breaking hyphens and narrow
+  spaces (86 and 288 in eight texts), the Gulf timeline locked as one
+  forty-word sentence, and that timeline ending "consensus gust", a
+  pipeline word the vocabulary rule refuses. Fixed (typography
+  normalised, the timeline locked by bearing and figure pair with a new
+  bearing check beside the number check, the brief's line "peak gust"),
+  a fresh run passed 35 of 48 live and 39 of 48 (81%) under the final
+  audit: GO at the 80% bar. Per section: today 1 of 8 (the observed
+  line reworded, the wind phrase reworded, a figure invented, a model
+  named), extended 8, severe 8, secondary 6, synoptic 7, confidence 8.
+  The first live Groq write-up landed the same morning, 2026-10-13
+  03:13Z, after four Gemini refusals: extended, severe and confidence
+  by Groq, the rest by code. Not yet probed: gpt-oss-20b, Qwen 3.8 27B.
 The app's section toggles are the app's side of this step; the mini tier
 waits on an on-device route (the brief already renders it).
 

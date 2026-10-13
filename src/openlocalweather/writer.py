@@ -84,6 +84,12 @@ _UNIT_NUMBER = re.compile(
 )
 _UNIT_KEYS = {"°c": "c", "° c": "c", "°f": "f", "° f": "f", "km/h": "kmh", "kt": "kt", "mm": "mm", "in": "in", "%": "pct", "hpa": "hpa", "j/kg": "jkg"}
 _MODEL_IDS = tuple(MODEL_SHORT_NAMES) + ("kenya_met", "olw_blend", "olw_code_blend")
+BEARING_SECTIONS = (SECTION_TODAY, SECTION_SECONDARY)
+_BEARING = re.compile(r"\b(?:north|south|east|west)(?:-?(?:north|south|east|west)){0,2}(?:erly)?\b", re.I)
+
+
+def _bearing_key(word: str) -> str:
+    return word.lower().removesuffix("erly")
 
 
 def sections_to_ask(enabled: list[str] | tuple[str, ...], inputs: BriefInputs) -> list[str]:
@@ -145,7 +151,7 @@ def build_writer_prompt(
             "service's bulletin where it carries one; otherwise none."
         ),
         SECTION_SECONDARY: (
-            f"{(secondary_name or 'THE SECONDARY POINT').upper()} (\"secondary\"): each leg of the wind timeline verbatim, the "
+            f"{(secondary_name or 'THE SECONDARY POINT').upper()} (\"secondary\"): the wind timeline's bearings and figures verbatim, the "
             "peak gust, and the thunderstorm gust hazard where thunder is possible."
         ),
         SECTION_SYNOPTIC: (
@@ -282,6 +288,17 @@ def audit_section(section: str, text: str, brief: str, inputs: BriefInputs) -> l
         if words_found:
             defects.append("pipeline words: " + ", ".join(words_found))
 
+    # A BEARING IS A FIGURE — 2026-10-13. A lock on a single word cannot
+    # catch "south-southwesterly" written as "southwesterly", because a
+    # phrase not used is not a phrase misused. Every compass word in a
+    # wind section is checked against the brief's, as the numbers are;
+    # "northerly" and "north" are one bearing.
+    if section in BEARING_SECTIONS:
+        allowed = {_bearing_key(b) for b in _BEARING.findall(brief)}
+        strays = sorted({b for b in _BEARING.findall(body) if _bearing_key(b) not in allowed}, key=str.lower)
+        if strays:
+            defects.append("bearings not in the brief: " + ", ".join(strays))
+
     for paragraph in body.split("\n\n"):
         reason = phrase_defect(paragraph.strip())
         if reason:
@@ -300,17 +317,30 @@ def _value(token: str) -> float | None:
 
 def _locked_phrases(section: str, i: BriefInputs) -> list[str]:
     """The composed phrases this section may quote, which it quotes whole."""
-    # The Gulf timeline leg by leg — 2026-10-12: Groq's gpt-oss quoted every
-    # leg and joined them with "and" or "turning" instead of "then", and the
-    # forty-word sentence locked whole refused all eight days. The legs
-    # carry the bearings, the hours and the figures; the joins do not.
+    # The Gulf timeline by its bearings and figure pairs — 2026-10-12 and
+    # 13: Groq's gpt-oss quoted every figure and wrote the legs its own way
+    # ("Overnight winds are 6 km/h (3 kt) gusting 8 km/h (5 kt)"), and a
+    # leg locked whole refused 13 of 16 days. A leg's bearing and its
+    # sustained-and-gust pair are what it means; the anchor wording is not.
     timeline = (i.secondary_wind or {}).get("timeline") or ""
     phrases = {
         SECTION_TODAY: [(i.instability or {}).get("timing"), i.wind_shift, i.observed_so_far],
         SECTION_EXTENDED: [i.next_three_days],
-        SECTION_SECONDARY: timeline.split(TIMELINE_JOIN),
+        SECTION_SECONDARY: [part for leg in timeline.split(TIMELINE_JOIN) for part in _leg_parts(leg)],
     }.get(section, [])
     return [p for p in phrases if p]
+
+
+_LEG = re.compile(r"^(?:(?P<bearing>[a-z-]+) )?(?:overnight|by midday|into the evening) at (?P<figures>.+)$")
+
+
+def _leg_parts(leg: str) -> list[str]:
+    """A leg's bearing, when it has one, and its figure pair; the whole
+    leg when it is not shaped as wind.py composes it."""
+    match = _LEG.match(leg)
+    if not match:
+        return [leg] if leg else []
+    return [p for p in (match.group("bearing"), match.group("figures")) if p]
 
 
 def _uses_part_of(text: str, phrase: str, window: int = 4) -> bool:
