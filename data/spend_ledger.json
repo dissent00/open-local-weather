@@ -2,40 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-10-06T03:15:41.119162+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 5.727
-    },
-    {
-      "at": "2026-10-06T03:15:46.848903+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "write-up",
-      "outcome": "http_200",
-      "elapsed_s": 317.456,
-      "served_model": "dots-studio/dots-3-note-preview:free"
-    },
-    {
-      "at": "2026-10-07T03:01:35.908874+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 10.76
-    },
-    {
-      "at": "2026-10-07T03:01:46.672339+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 128.207,
-      "served_model": "dots-studio/dots-3-note-preview:free"
-    },
-    {
       "at": "2026-10-07T03:03:57.065743+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -447,6 +413,31 @@
       "outcome": "http_200",
       "elapsed_s": 2.414,
       "audit": "passed: extended, severe, confidence; refused: today (phrase not verbatim: As of 06:01, reports through 03:00: no r); secondary (phrase not verbatim: overnight at 6 km/h (3 kt) gusting 8 km/); synoptic (figures not in the brief: 1.6hPa)"
+    },
+    {
+      "at": "2026-10-14T03:03:09.460649+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 0.77
+    },
+    {
+      "at": "2026-10-14T03:03:10.234071+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 0.498
+    },
+    {
+      "at": "2026-10-14T03:03:10.797050+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 149.006,
+      "served_model": "dots-studio/dots-3-note-preview:free"
     }
   ]
 }

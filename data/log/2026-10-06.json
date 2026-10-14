@@ -1130,7 +1130,7 @@
       "note_sign_corrected_on": null
     },
     "day7": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     }
@@ -1138,7 +1138,8 @@
   "local_bulletin": {
     "source_name": "Kenya Meteorological Department (KMD)",
     "text": "Kenya Meteorological Department (KMD) — forecast for Kisumu\nValid for 2026-10-06.\nMax 31.0C / Min 20.0C.\nTonight: Partly cloudy.\nMorning: Sunny intervals\nAfternoon: Sunny intervals, Light showers and thunderstorms likely over few places.\nNational outlook mentions this area:\n  - Light to moderate rainfall is expected in Kisumu, Siaya, Kericho, Kisii, Kakamega, Bungoma, Busia,",
-    "fetched_at_utc": "2026-10-06T03:05:33.194232Z"
+    "fetched_at_utc": "2026-10-06T03:05:33.194232Z",
+    "document_id": null
   },
   "yesterday_verification_summary": "Yesterday's verification at Day+0 revealed that most models missed the rain event, and nearly all under-forecast peak wind. Daytime highs were generally under-forecast, while overnight lows showed mixed biases. At Day+3 and Day+7, the models continued to show systematic errors in temperature and wind.",
   "narrative_markdown": "## Today's Forecast\n\nShowers and thunderstorms are expected today, with a high of 31.3°C. Thunder possible from midday, peaking this evening. The morning will be mostly cloudy, becoming partly cloudy by midday, and mostly cloudy again this evening. Rain is expected to begin at 16:00 and continue into the evening, with a 100% chance and up to 9.1 mm of precipitation. Winds will be northeasterly overnight, turning southwest by midday, with peak gusts reaching 47.5 km/h and sustained winds around 20-25 km/h. The UV index is expected to peak at 9.5, which is very high. Air quality will be moderate, with ground sensors reporting up to 59 AQI at Ochieng' Avenue and the model-based estimate at 67. Tonight will be mostly cloudy with a chance of showers, and the low will be around 19.2°C.",
@@ -1323,6 +1324,12 @@
     }
   ],
   "extended_outlook": "Becoming calmer through Friday, with showers and thunderstorms likely each day. Skies mostly cloudy throughout. Friday's call: rain, 100%, with all four models wet; highs 29 to 33 °C. At this lead ECMWF has the best record, right 77% of the time over 53 checks.\n\nFurther out, cooling through Tuesday, with rain and thunderstorms likely Saturday and Sunday, and showers and thunderstorms possible Monday and Tuesday. Only GFS, ECMWF and ICON reach past Sunday. ECMWF, ICON and UKMO are the wetter solutions from Saturday to Tuesday; GFS keeps it drier. Tuesday's call: rain, 100%, with both models wet; highs 26 to 30 °C. At this lead ECMWF has the best record, right 77% of the time over 49 checks.",
+  "write_up_sources": null,
+  "synoptic_ring": null,
+  "basin_pressure": null,
+  "cloud_bands": null,
+  "review_findings": null,
+  "lead_records": null,
   "whatsapp_summary": null,
   "earlier_issuances": [],
   "morning_issuance": null,
