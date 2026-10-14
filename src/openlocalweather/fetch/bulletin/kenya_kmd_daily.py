@@ -68,9 +68,12 @@ _DOCUMENT_ID_RE = re.compile(r"/documents/(\d+)/")
 # shell: a title, no body, no link. The PDF is still uploaded, one document
 # id further on each day (5246 on the 8th, 5261 on the 11th), and the CMS
 # serves it only under its exact filename, which follows the post's slug.
-# The fetcher probes ids after the last one it saw. Thirty covers a week
-# of uploads at the ~5 a day observed; two to four names per id.
-DOCUMENT_PROBE_SPAN = 30
+# The fetcher probes ids after the last one it saw. Ninety, since
+# 2026-10-14: the daily PDFs sat at 5263, 5266 and 5297 on the 12th, 13th
+# and 14th, about seventeen uploads a day across all of KMD's products,
+# and a span of thirty from a two-day-old id missed the 14th's by four. A
+# miss costs the day's met row; the HEADs cost nothing.
+DOCUMENT_PROBE_SPAN = 90
 # Where a deployment with no stored id starts: the 11th's, dated here.
 DOCUMENT_ID_SEED = 5261
 # Words the filenames keep lowercase.

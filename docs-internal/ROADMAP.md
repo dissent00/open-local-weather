@@ -2784,7 +2784,10 @@ five-day PDF's filename varies more than the daily's ("Valid_from",
 found under any name tried, so the Day+3 row stays a bonus, silent when
 the probe misses. On 2026-10-13 the daily post page itself answered HTTP
 500 while the PDF sat at the next id; the fetcher reads the post's link
-when the page answers and probes from the landing page's slug either way. The 8th to the 11th
+when the page answers and probes from the landing page's slug either way.
+The 14th was missed by the span: ids 5263, 5266, 5297 on the 12th, 13th
+and 14th, about seventeen a day, and thirty from a two-day-old id fell
+four short; the span is ninety. The 8th to the 11th
 are lost to the scored record: the row is a prediction and the run that
 would have stored it has passed.
 
