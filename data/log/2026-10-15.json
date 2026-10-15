@@ -966,8 +966,8 @@
     "document_id": 5320
   },
   "yesterday_verification_summary": "Day+0 for 2026-10-14: gfs_seamless, ukmo_seamless and best_match called the rain right; ecmwf_ifs025 and icon_seamless did not. Day+3 for 2026-10-11: icon_seamless and best_match called the rain right; gfs_seamless, ecmwf_ifs025 and ukmo_seamless did not. Day+7 for 2026-10-07: gfs_seamless, ecmwf_ifs025 and best_match called the rain right.",
-  "narrative_markdown": "## Today's Forecast\n\nSlightly cooler and windier and much cloudier than yesterday. Showery, with thunder possible from midday, peaking this evening. 31°C / 89°F high, 20°C / 67°F low. Sky mostly cloudy early as reported, partly cloudy at midday and mostly cloudy in the evening. Wind NE early and SSW at midday; gusts to 37 km/h (20 kt). UV index 9.5 (very high). Air quality 45 (good) at Kisumu Airport, the highest of 3 stations. As of 06:03, reports through 04:00: no rain; no thunder; high so far 25°C / 77°F; low so far 22°C / 72°F; peak sustained 9 km/h; sky mostly cloudy.\n\n## Extended Outlook\n\nCooling through Sunday, with rain and thunderstorms likely each day. Skies mostly cloudy throughout. Sunday's call: rain, 100%, with all four models wet; highs around 28 °C. Kenya Meteorological Department (KMD) calls it wet. At this lead kenya_met has the best record, right 75% of the time over 16 checks.\n\nFurther out, temperatures and winds much the same through Thursday, with showers and thunderstorms likely Monday, Tuesday and Wednesday, and rain and thunderstorms possible Thursday. Monday: three of four models wet, highs 28 to 30 °C. Tuesday: three of four models wet, highs 29 to 31 °C. Wednesday: all three models that reach it wet, highs around 30 °C.\n\nOnly GFS, ECMWF and ICON reach past Tuesday. GFS and ECMWF are the wetter solutions from Monday to Tuesday; ICON and UKMO keep it drier. Thursday's call: rain, 100%, with both models wet; highs around 30 °C. At this lead ECMWF has the best record, right 77% of the time over 57 checks.\n\n## Severe Weather / Hazard Potential\n\nConvective instability today: UKMO 5180 J/kg, ECMWF 1590 J/kg, ICON 1530 J/kg and GFS 460 J/kg. Thunder likely; any thunderstorm brings sudden gusts well above the 37 km/h (20 kt) forecast.\n\n## Winam Gulf — Conditions for Boaters\n\nPeak gust 29 km/h (16 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.\n\n## Detailed Discussion\n\n### Synoptic Overview\n\nAcross roughly 2,600 km, pressure is lowest toward the north (1008 hPa) and highest toward the southeast (1016 hPa) — an 8 hPa spread, a moderate large-scale gradient. Pressure is also falling toward the southwest — a large-scale feature building in that direction, though this sampling cannot say how fast or whether it will reach here. Pressure overhead is near-steady. Sampling is a nine-point ring at 12-degree spacing, so this locates a direction, not a centre or a front. Across the basin's 5 points, pressure today sits between 1012.2 and 1014.3 hPa, near-steady over three days (+0.8 hPa). Pressure here over the last 24 hours: +1.5 hPa.\n\n### Forecaster Confidence Notes\n\nOn rain the record ranks kenya_met first at Day+3, right 75% of the last 30 checks and ECMWF first at Day+7, right 77% of the last 30 checks. On today's high GFS is the warmest model at 32.8 °C and ICON the coolest at 29.6 °C; the call's 31.4 °C sits between them. Kenya Meteorological Department (KMD) calls a high of 30.0 °C and rain, agreeing with the call on rain. At Day+0, no model is meaningfully better than the others here yet. At Day+7, ECMWF is the strongest rain caller here and GFS the weakest. At Day+0, Best Match slightly under-forecasts peak wind here.\n\nFigures issued 06:03. Written by code; a discussion follows when a model answers.\n",
-  "narrative_source": "code",
+  "narrative_markdown": "## Today's Forecast\n\nSlightly cooler and windier and much cloudier than yesterday. Showery, with thunder possible from midday, peaking this evening. 31°C / 89°F high, 20°C / 67°F low. Sky mostly cloudy early as reported, partly cloudy at midday and mostly cloudy in the evening. Wind NE early and SSW at midday; gusts to 37 km/h (20 kt). UV index 9.5 (very high). Air quality 45 (good) at Kisumu Airport, the highest of 3 stations. As of 06:03, reports through 04:00: no rain; no thunder; high so far 25°C / 77°F; low so far 22°C / 72°F; peak sustained 9 km/h; sky mostly cloudy.\n\n## Extended Outlook\n\nNEXT THREE DAYS. The sky will be Mostly cloudy on Friday, Saturday and Sunday, Partly cloudy on Monday, and Mostly cloudy thereafter through Thursday. Friday sees four of four models wet with rain totals between 0.9 and 11.8 mm, a high of 29–31 °C and thunder likely. Saturday is also four of four wet, 9.5–25.9 mm, high 26–30 °C, thunder likely. Sunday remains four of four wet, 3.0–22.8 mm, high 28–29 °C, thunder likely. Day+3 (Sunday) high range 28–29 °C; Day+7 (Thursday) high range 30–31 °C. Record: Day+3 best rain record Kenya Meteorological Department (KMD), right 75 % of the last 30 checks.\n\n## Severe Weather / Hazard Potential\n\nThe peak CAPE values indicate a strong thunderstorm potential today, with Best Match, ECMWF, ICON and UKMO all above the thunderstorm threshold and a peak at 18:00. Any thunderstorm could bring sudden gusts well above the forecast wind, exceeding the 37 km/h (20 kt) peak gust. No official warning has been issued by the Kenya Meteorological Department.\n\n## Winam Gulf — Conditions for Boaters\n\nWinam Gulf wind will be east-northeasterly overnight at 5 km/h (3 kt) gusting 10 km/h (5 kt), turning south-southwesterly by midday at 9 km/h (5 kt) gusting 19 km/h (10 kt), and into the evening at 13 km/h (7 kt) gusting 19 km/h (10 kt); peak gust 29 km/h (16 kt). Thunder is possible this evening, so gusts could briefly exceed the stated values.\n\n## Detailed Discussion\n\n### Synoptic Overview\n\nAcross roughly 2,600 km, pressure is lowest toward the north (1008 hPa) and highest toward the southeast (1016 hPa) — an 8 hPa spread, a moderate large-scale gradient. Pressure is also falling toward the southwest — a large-scale feature building in that direction. Pressure overhead is near-steady. Basin pressure today ranges from 1012.2 to 1014.3 hPa, near-steady over three days (+0.8 hPa). The call notes a pressure trend of +1.5 hPa, with the lowest pressure toward the north.\n\n### Forecaster Confidence Notes\n\nThe REVIEW notes that at Day+0 no model is meaningfully better than the others, and that Best Match slightly under-forecasts peak wind. The RECORD shows the ECMWF holds the best rain record for Day+0, yet the call’s rain amount (8.3 mm) aligns more closely with Best Match’s 5.1 mm than ECMWF’s 3.2 mm, placing ECMWF on the wrong side of its own record. KMD forecasts a maximum of 30 °C, slightly lower than the call’s 31 °C high, but otherwise agrees on the rain probability. DATA SUFFICIENCY indicates 47 checks for Day+0, providing a settled picture despite uneven coverage, and 16 checks for Day+3, enough for model comparison. Overall confidence is moderate, with slight uncertainties in wind and rain magnitude.\n\nExtended Outlook, Severe Weather / Hazard Potential, Winam Gulf — Conditions for Boaters, Synoptic Overview and Forecaster Confidence Notes by gpt-oss-120b; the rest written by code.\n",
+  "narrative_source": "llm",
   "extended_trend": "cooling through Sunday, with showers and thunderstorms likely each day",
   "extended_days": [
     {
@@ -1148,7 +1148,14 @@
     }
   ],
   "extended_outlook": "Cooling through Sunday, with rain and thunderstorms likely each day. Skies mostly cloudy throughout. Sunday's call: rain, 100%, with all four models wet; highs around 28 °C. Kenya Meteorological Department (KMD) calls it wet. At this lead kenya_met has the best record, right 75% of the time over 16 checks.\n\nFurther out, temperatures and winds much the same through Thursday, with showers and thunderstorms likely Monday, Tuesday and Wednesday, and rain and thunderstorms possible Thursday. Monday: three of four models wet, highs 28 to 30 °C. Tuesday: three of four models wet, highs 29 to 31 °C. Wednesday: all three models that reach it wet, highs around 30 °C.\n\nOnly GFS, ECMWF and ICON reach past Tuesday. GFS and ECMWF are the wetter solutions from Monday to Tuesday; ICON and UKMO keep it drier. Thursday's call: rain, 100%, with both models wet; highs around 30 °C. At this lead ECMWF has the best record, right 77% of the time over 57 checks.",
-  "write_up_sources": null,
+  "write_up_sources": {
+    "today": "code",
+    "extended": "llm",
+    "severe": "llm",
+    "secondary": "llm",
+    "synoptic": "llm",
+    "confidence": "llm"
+  },
   "synoptic_ring": {
     "summary": {
       "centre_mslp_hpa": 1012.2,
@@ -2059,7 +2066,7 @@
     "generated_at_utc": "2026-10-15T03:11:42.388948Z",
     "llm_provider": "GeminiProvider",
     "llm_model": "gemini-3.8-flash",
-    "narrative_llm_model": null,
+    "narrative_llm_model": "openai/gpt-oss-120b",
     "llm_call_outcome": "served",
     "pipeline_version": "0.1.0",
     "system_prompt_sha256": "cb57f8dbbe0fe44ba844f62ba359caa3b423a911c9c7fbc2962489dff5a77bcd",
@@ -2138,12 +2145,6 @@
     "trigger_source": "workflow_dispatch",
     "issued_local_time": "06:03",
     "observations_local_time": "06:03",
-    "degradations": [
-      {
-        "code": "narrative_unavailable",
-        "summary": "Today's figures are decided and published. The written discussion follows when a model answers; the numbers are the same ones this forecast is scored on.",
-        "detail": "The write-up is asked for after the forecast is committed and published (ROADMAP item 189), by `olw write-up`, from the archived prompts and the stored call. Until it lands the entry carries the placeholder."
-      }
-    ]
+    "degradations": []
   }
 }
