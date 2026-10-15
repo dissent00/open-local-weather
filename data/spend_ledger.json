@@ -2,39 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-10-08T03:01:24.162330+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 4.254
-    },
-    {
-      "at": "2026-10-08T03:01:28.418845+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 101.798,
-      "served_model": "dots-studio/dots-3-note-preview:free"
-    },
-    {
-      "at": "2026-10-08T03:03:12.256045+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 15.656
-    },
-    {
-      "at": "2026-10-08T03:06:27.913694+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 2.873
-    },
-    {
       "at": "2026-10-08T03:13:30.788928+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -471,6 +438,22 @@
       "outcome": "http_200",
       "elapsed_s": 2.386,
       "audit": "passed: extended, severe, secondary, confidence; refused: today (phrase not verbatim: northeasterly overnight, turning southwe); synoptic (figures not in the brief: 0.3hPa)"
+    },
+    {
+      "at": "2026-10-15T03:09:11.676737+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "timeout",
+      "elapsed_s": 90.074
+    },
+    {
+      "at": "2026-10-15T03:10:41.755642+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 60.626
     }
   ]
 }
