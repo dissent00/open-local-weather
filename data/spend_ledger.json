@@ -430,6 +430,32 @@
       "outcome": "http_200",
       "elapsed_s": 201.016,
       "served_model": "dots-studio/dots-3-note-preview:free"
+    },
+    {
+      "at": "2026-10-16T03:13:03.524942+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 35.276,
+      "audit": "refused: today (518 words, cap 155); unanswered: extended, severe, secondary, synoptic, confidence"
+    },
+    {
+      "at": "2026-10-16T03:13:38.810383+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 0.733
+    },
+    {
+      "at": "2026-10-16T03:13:39.546771+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "openai/gpt-oss-120b",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 2.131,
+      "audit": "passed: extended, secondary, synoptic, confidence; refused: today (phrase not verbatim: As of 06:03, reports through 04:00: rain); severe (figures not in the brief: 140J/kg, 460J/kg)"
     }
   ]
 }
