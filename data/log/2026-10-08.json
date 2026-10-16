@@ -1087,7 +1087,7 @@
       "note_sign_corrected_on": null
     },
     "day7": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     }
@@ -1284,6 +1284,7 @@
   "write_up_sources": null,
   "synoptic_ring": null,
   "basin_pressure": null,
+  "cloud_bands": null,
   "review_findings": null,
   "lead_records": null,
   "whatsapp_summary": null,
