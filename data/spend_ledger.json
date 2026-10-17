@@ -431,6 +431,15 @@
       "purpose": "forecast",
       "outcome": "http_200",
       "elapsed_s": 41.572
+    },
+    {
+      "at": "2026-10-17T03:03:04.198348+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 35.395,
+      "audit": "passed: today, severe, secondary, synoptic, confidence; refused: extended (figures not in the brief: 82)"
     }
   ]
 }
