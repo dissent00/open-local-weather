@@ -2,22 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-10-11T03:01:49.397594+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 0.49
-    },
-    {
-      "at": "2026-10-11T03:04:49.889967+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 0.643
-    },
-    {
       "at": "2026-10-11T03:11:50.535915+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -380,6 +364,32 @@
       "purpose": "forecast",
       "outcome": "http_200",
       "elapsed_s": 16.606
+    },
+    {
+      "at": "2026-10-18T03:02:07.169764+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 0.513
+    },
+    {
+      "at": "2026-10-18T03:05:07.684710+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 23.979,
+      "audit": "refused: today (shape: ends on ','); unanswered: extended, severe, secondary, synoptic, confidence"
+    },
+    {
+      "at": "2026-10-18T03:05:31.671533+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 66.194,
+      "audit": "passed: today; unanswered: extended, severe, secondary, synoptic, confidence"
     }
   ]
 }
