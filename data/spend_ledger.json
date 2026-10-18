@@ -2,74 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-10-10T03:03:11.816355+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 338.822,
-      "served_model": "dots-studio/dots-3-note-preview:free"
-    },
-    {
-      "at": "2026-10-10T03:08:52.900124+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 7.798
-    },
-    {
-      "at": "2026-10-10T03:12:00.700889+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 23.343
-    },
-    {
-      "at": "2026-10-10T03:19:24.046829+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 61.408
-    },
-    {
-      "at": "2026-10-10T03:20:25.458663+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.8-flash",
-      "purpose": "write-up",
-      "outcome": "timeout",
-      "elapsed_s": 90.109
-    },
-    {
-      "at": "2026-10-10T03:21:55.571410+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "write-up",
-      "outcome": "http_200",
-      "elapsed_s": 141.684,
-      "served_model": "dots-studio/dots-3-note-preview:free",
-      "audit": "refused: missing ## Today's Forecast; missing ## Extended Outlook; missing ## Severe Weather / Hazard Potential; missing ## Winam Gulf \u2014 Conditions for Boaters; missing ## Detailed Discussion; missing ### Synoptic Overview; missing ### Forecaster Confidence Notes"
-    },
-    {
-      "at": "2026-10-10T04:24:18.982245+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_200",
-      "elapsed_s": 47.182,
-      "audit": "passed"
-    },
-    {
-      "at": "2026-10-11T03:01:28.844755+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 18.211
-    },
-    {
       "at": "2026-10-11T03:01:49.397594+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -440,6 +372,14 @@
       "outcome": "http_200",
       "elapsed_s": 35.395,
       "audit": "passed: today, severe, secondary, synoptic, confidence; refused: extended (figures not in the brief: 82)"
+    },
+    {
+      "at": "2026-10-18T03:01:48.253658+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 16.606
     }
   ]
 }
