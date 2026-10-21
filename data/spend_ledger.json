@@ -2,31 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-10-14T03:03:09.460649+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 0.77
-    },
-    {
-      "at": "2026-10-14T03:03:10.234071+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.8-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 0.498
-    },
-    {
-      "at": "2026-10-14T03:03:10.797050+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 149.006,
-      "served_model": "dots-studio/dots-3-note-preview:free"
-    },
-    {
       "at": "2026-10-14T03:05:42.016602+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -349,6 +324,31 @@
       "outcome": "http_200",
       "elapsed_s": 2.362,
       "audit": "passed: extended, severe, secondary, synoptic, confidence; refused: today (phrase not verbatim: As of 06:01, reports through 03:00: no r)"
+    },
+    {
+      "at": "2026-10-21T03:01:58.195282+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 3.129
+    },
+    {
+      "at": "2026-10-21T03:02:01.330853+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "forecast",
+      "outcome": "timeout",
+      "elapsed_s": 90.134
+    },
+    {
+      "at": "2026-10-21T03:03:31.468797+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 67.639,
+      "served_model": "dots-studio/dots-3-note-preview:free"
     }
   ]
 }
