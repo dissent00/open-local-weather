@@ -349,6 +349,15 @@
       "outcome": "http_200",
       "elapsed_s": 67.639,
       "served_model": "dots-studio/dots-3-note-preview:free"
+    },
+    {
+      "at": "2026-10-21T03:04:41.584134+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 20.853,
+      "audit": "passed: today, extended, severe, secondary, synoptic, confidence"
     }
   ]
 }
