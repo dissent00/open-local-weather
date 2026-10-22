@@ -22,17 +22,11 @@
 <main class="wrap">
   <p class="disclaimer-banner">Experimental, AI-assisted forecast &mdash; not an official government product. Do not rely on this for life-safety decisions. For official warnings and advisories, consult <a href="https://meteo.go.ke/our-products/daily-forecast/">Kenya Meteorological Department (KMD)</a>.</p>
 
-  <div class="banner run-degraded">
-    <p><strong>This forecast was built on less than usual.</strong></p>
-    <ul>
-<li>Today&#39;s figures are decided and published. The written discussion follows when a model answers; the numbers are the same ones this forecast is scored on.</li>    </ul>
-    <p class="summary">The technical detail is in <a href="#run-notes">Notes on this forecast</a>, at the end.</p>
-  </div>
 
   <p class="banner">This is an archived forecast for 2026-10-22. <a href="https://dissent00.github.io/open-local-weather/">See today's forecast</a>.</p>
 
   <h1>Kisumu, Kenya</h1>
-  <p class="meta">Forecast for 2026-10-22 &middot; figures by code, write-up by code</p>
+  <p class="meta">Forecast for 2026-10-22 &middot; figures by code, written up via openai/gpt-oss-120b</p>
 
   <div class="stat-grid">
     <div class="stat">
@@ -69,28 +63,22 @@
   <h2>Today's Forecast</h2>
 <p>Much like yesterday. Dry by day, with thunder possible, peaking this evening. 31°C / 88°F high, 20°C / 69°F low. Sky mostly cloudy early as reported, partly cloudy at midday and partly cloudy in the evening. Wind SW at midday; gusts to 36 km/h (20 kt). UV index 9.4 (very high). Air quality 53 (moderate) at Kisumu Airport, the highest of 3 stations. As of 06:01, reports through 05:00: no rain; no thunder; high so far 23°C / 73°F; low so far 22°C / 72°F; peak sustained 7 km/h; sky mostly cloudy.</p>
 <h2>Extended Outlook</h2>
-<p>Temperatures and winds much the same through Sunday, with showers possible Saturday, dry Sunday, and thunderstorms likely each day. Skies partly cloudy Friday, then mostly cloudy Saturday and Sunday. Sunday's call: dry, 38%, with two of four models wet; highs around 30 °C. Kenya Meteorological Department (KMD) calls it dry. At this lead ICON has the best record, right 77% of the time over 68 checks.</p>
-<p>Further out, cooling through Thursday, with showers and thunderstorms likely Monday, Tuesday and Wednesday, and showers and thunderstorms possible Thursday. Monday: three of four models wet, highs 30 to 32 °C. Tuesday: three of four models wet, highs 29 to 32 °C. Wednesday: all three models that reach it wet, highs around 28 °C.</p>
-<p>Only GFS, ECMWF and ICON reach past Tuesday. ECMWF and ICON are the wetter solutions from Monday to Tuesday; GFS and UKMO keep it drier. Thursday's call: rain, 100%, with both models wet; highs 26 to 30 °C. At this lead ECMWF has the best record, right 77% of the time over 64 checks.</p>
+<p>Next three days will see temperatures and winds much the same through Sunday, with showers possible Saturday, dry Sunday, and thunderstorms likely each day. Friday will be partly cloudy, Saturday mostly cloudy, and Sunday mostly cloudy. Rain chances are modest on Friday (2 of 4 models wet) and rise to 2 of 4 models wet on Sunday, with totals between 0.0 and 2.6 mm. Highs will range from 29 °C to 31 °C and lows around 19 °C. The Day+3 call gives a dry outlook with a 38 % probability of rain, while the Day+7 call expects rain with a 100 % chance. Record: none noted for this period.</p>
 <h2>Severe Weather / Hazard Potential</h2>
-<p>Convective instability today: UKMO 5840 J/kg, ECMWF 2610 J/kg, ICON 1640 J/kg and GFS 870 J/kg. Thunder likely; any thunderstorm brings sudden gusts well above the 36 km/h (20 kt) forecast.</p>
+<p>Thunder possible this evening brings the risk of sudden gusts that could exceed the forecast wind, especially as CAPE values peak at 18:00. The best-match model shows a CAPE of 4610 J/kg, well above the thunderstorm threshold. No official severe weather warning has been issued by the Kenya Meteorological Department.</p>
 <h2>Winam Gulf — Conditions for Boaters</h2>
 <p>Peak gust 26 km/h (14 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.</p>
 <h2>Detailed Discussion</h2>
 <h3>Synoptic Overview</h3>
-<p>Across roughly 2,600 km, pressure is lowest toward the north (1007 hPa) and highest toward the southeast (1014 hPa) — a 7 hPa spread, a moderate large-scale gradient. Pressure overhead is near-steady. Sampling is a nine-point ring at 12-degree spacing, so this locates a direction, not a centre or a front. Across the basin's 5 points, pressure today sits between 1012.7 and 1015.1 hPa, near-steady over three days (-1.3 hPa). Pressure here over the last 24 hours: +0.8 hPa.</p>
+<p>Across roughly 2,600 km, pressure is lowest toward the north (1007 hPa) and highest toward the southeast (1014 hPa), creating a moderate large-scale gradient. Pressure overhead is near-steady. Basin pressure today averages between 1012.7 and 1015.1 hPa and remains near-steady over three days, with a slight drop of 1.3 hPa. The pressure trend is +0.8 hPa, indicating a gentle rise.</p>
 <h3>Forecaster Confidence Notes</h3>
-<p>On rain the record ranks ICON first at Day+3, right 77% of the last 30 checks and ECMWF first at Day+7, right 77% of the last 30 checks. On today's high UKMO is the warmest model at 31.6 °C and ECMWF the coolest at 28.8 °C; the call's 31.3 °C sits between them. Kenya Meteorological Department (KMD) calls a high of 30.0 °C and rain, agreeing with the call on rain. At Day+0, no model is meaningfully better than the others here yet. At Day+7, ECMWF is the strongest rain caller here and GFS the weakest. At Day+0, Best Match slightly under-forecasts peak wind here.</p>
-<p>Figures issued 06:01. Written by code; a discussion follows when a model answers.</p>
+<p>Review notes that at Day+0 no model is meaningfully better than the others, reflecting a balanced picture across 52 checks. The call’s high of 31 °C (88 °F) sits within the spread of the models, though GFS tends to slightly over-forecast daytime highs and Best Match under-forecasts peak wind. ECMWF under-forecasts both daytime highs and peak wind, while ICON slightly under-forecasts highs. The rain probability at Day+0 shows best-match and ECMWF above the thunderstorm threshold, matching the observed thunder risk. KMD’s forecast of a max 30 °C aligns closely with the call’s 31 °C, indicating reasonable agreement. Data sufficiency is solid with 71 days of stored forecasts reviewed, giving confidence in the overall guidance.</p>
+<p>Extended Outlook, Severe Weather / Hazard Potential, Synoptic Overview and Forecaster Confidence Notes by gpt-oss-120b; the rest written by code.</p>
 
   <h2 id="observed">Observed so far today</h2>
   <p class="meta">As of 06:01, reports through 05:00: no rain; no thunder; high so far 23°C / 73°F; low so far 22°C / 72°F; peak sustained 7 km/h; sky mostly cloudy.</p>
   <p class="summary">Measured at HKKI, not forecast. Rainfall totals are not reported: the station records that rain fell, never how much.</p>
 
-  <h2 id="run-notes">Notes on this forecast</h2>
-  <ul class="archive-list">
-    <li><strong>Today&#39;s figures are decided and published. The written discussion follows when a model answers; the numbers are the same ones this forecast is scored on.</strong><span class="summary">The write-up is asked for after the forecast is committed and published (ROADMAP item 189), by `olw write-up`, from the archived prompts and the stored call. Until it lands the entry carries the placeholder.</span></li>
-  </ul>
 
   <h2>Ground AQI Stations</h2>
   <p class="meta">No station has a sufficiently current composite AQI reading right now — see individual readings below.</p>
