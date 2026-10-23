@@ -2,31 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-10-15T03:21:45.879418+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 0.551
-    },
-    {
-      "at": "2026-10-15T03:21:46.434814+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.8-flash",
-      "purpose": "write-up",
-      "outcome": "timeout",
-      "elapsed_s": 90.054
-    },
-    {
-      "at": "2026-10-15T03:23:16.493386+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "openai/gpt-oss-120b",
-      "purpose": "write-up",
-      "outcome": "http_200",
-      "elapsed_s": 3.642,
-      "audit": "passed: extended, severe, secondary, synoptic, confidence; refused: today (phrase not verbatim: As of 06:03, reports through 04:00: no r)"
-    },
-    {
       "at": "2026-10-16T03:08:09.650605+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -351,6 +326,31 @@
       "outcome": "http_200",
       "elapsed_s": 2.429,
       "audit": "passed: extended, severe, synoptic, confidence; refused: today (156 words, cap 155); secondary (phrase not verbatim: 6 km/h (3 kt) gusting 12 km/h (6 kt))"
+    },
+    {
+      "at": "2026-10-23T03:01:47.951687+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 1.947
+    },
+    {
+      "at": "2026-10-23T03:01:49.903552+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "forecast",
+      "outcome": "timeout",
+      "elapsed_s": 90.086
+    },
+    {
+      "at": "2026-10-23T03:03:19.995487+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 310.223,
+      "served_model": "dots-studio/dots-3-note-preview:free"
     }
   ]
 }

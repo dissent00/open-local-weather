@@ -3067,6 +3067,49 @@
         "station_peak_wind_kmh": "metar_station",
         "station_wind_direction_deg": "metar_station"
       }
+    },
+    "2026-10-22": {
+      "rain": true,
+      "high_c": 29.9,
+      "low_c": 21.3,
+      "peak_wind_kmh": 45.4,
+      "sustained_wind_kmh": 21.9,
+      "mslp_trend": 2.0,
+      "onset_hour": "15:00",
+      "precip_mm": 1.9,
+      "thunder": true,
+      "precipitation": false,
+      "precipitation_onset": null,
+      "station_high_c": 30.0,
+      "station_low_c": 21.0,
+      "station_peak_wind_kmh": 22.22,
+      "station_peak_gust_kmh": null,
+      "station_wind_direction_deg": {
+        "3": 50.0,
+        "12": 230.0,
+        "18": 250.0
+      },
+      "cloud_cover_pct": 67.1,
+      "station_cloud_oktas": 5.9,
+      "lightning": null,
+      "provenance": {
+        "rain": "era5_archive",
+        "high_c": "era5_archive",
+        "low_c": "era5_archive",
+        "peak_wind_kmh": "era5_archive",
+        "sustained_wind_kmh": "era5_archive",
+        "mslp_trend": "era5_archive",
+        "onset_hour": "era5_archive",
+        "precip_mm": "era5_archive",
+        "cloud_cover_pct": "era5_archive",
+        "thunder": "metar_station",
+        "precipitation": "metar_station",
+        "station_cloud_oktas": "metar_station",
+        "station_high_c": "metar_station",
+        "station_low_c": "metar_station",
+        "station_peak_wind_kmh": "metar_station",
+        "station_wind_direction_deg": "metar_station"
+      }
     }
   },
   "secondary": {
@@ -5309,6 +5352,37 @@
       "station_peak_gust_kmh": null,
       "station_wind_direction_deg": null,
       "cloud_cover_pct": 49.9,
+      "station_cloud_oktas": null,
+      "lightning": null,
+      "provenance": {
+        "rain": "era5_archive",
+        "high_c": "era5_archive",
+        "low_c": "era5_archive",
+        "peak_wind_kmh": "era5_archive",
+        "sustained_wind_kmh": "era5_archive",
+        "mslp_trend": "era5_archive",
+        "precip_mm": "era5_archive",
+        "cloud_cover_pct": "era5_archive"
+      }
+    },
+    "2026-10-22": {
+      "rain": false,
+      "high_c": 29.0,
+      "low_c": 22.1,
+      "peak_wind_kmh": 38.5,
+      "sustained_wind_kmh": 19.5,
+      "mslp_trend": 1.7000000000000455,
+      "onset_hour": null,
+      "precip_mm": 1.0,
+      "thunder": null,
+      "precipitation": null,
+      "precipitation_onset": null,
+      "station_high_c": null,
+      "station_low_c": null,
+      "station_peak_wind_kmh": null,
+      "station_peak_gust_kmh": null,
+      "station_wind_direction_deg": null,
+      "cloud_cover_pct": 73.0,
       "station_cloud_oktas": null,
       "lightning": null,
       "provenance": {
