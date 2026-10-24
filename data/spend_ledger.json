@@ -341,6 +341,22 @@
       "outcome": "http_200",
       "elapsed_s": 2.217,
       "audit": "passed: extended, severe, secondary, confidence; refused: today (figures not in the brief: 39km/h); synoptic (figures not in the brief: 1.6hPa)"
+    },
+    {
+      "at": "2026-10-24T03:01:52.657116+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 0.514
+    },
+    {
+      "at": "2026-10-24T03:01:53.175558+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 53.583
     }
   ]
 }
