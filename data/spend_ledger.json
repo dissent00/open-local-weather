@@ -2,31 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-10-17T03:02:15.263173+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_503",
-      "elapsed_s": 5.007
-    },
-    {
-      "at": "2026-10-17T03:02:20.275234+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.8-flash",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 41.572
-    },
-    {
-      "at": "2026-10-17T03:03:04.198348+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_200",
-      "elapsed_s": 35.395,
-      "audit": "passed: today, severe, secondary, synoptic, confidence; refused: extended (figures not in the brief: 82)"
-    },
-    {
       "at": "2026-10-18T03:01:48.253658+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -357,6 +332,47 @@
       "purpose": "forecast",
       "outcome": "http_200",
       "elapsed_s": 53.583
+    },
+    {
+      "at": "2026-10-24T03:02:49.126890+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 23.774
+    },
+    {
+      "at": "2026-10-24T03:06:12.902613+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 0.398
+    },
+    {
+      "at": "2026-10-24T03:13:13.303291+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "timeout",
+      "elapsed_s": 90.077
+    },
+    {
+      "at": "2026-10-24T03:14:43.383583+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "write-up",
+      "outcome": "timeout",
+      "elapsed_s": 90.126
+    },
+    {
+      "at": "2026-10-24T03:16:13.512297+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "openai/gpt-oss-120b",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 2.043,
+      "audit": "passed: severe, secondary, confidence; refused: today (figures not in the brief: 39km/h); extended (phrase not verbatim: temperatures and winds much the same thr); synoptic (figures not in the brief: 0.1hPa)"
     }
   ]
 }

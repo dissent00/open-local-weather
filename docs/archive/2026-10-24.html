@@ -22,17 +22,11 @@
 <main class="wrap">
   <p class="disclaimer-banner">Experimental, AI-assisted forecast &mdash; not an official government product. Do not rely on this for life-safety decisions. For official warnings and advisories, consult <a href="https://meteo.go.ke/our-products/daily-forecast/">Kenya Meteorological Department (KMD)</a>.</p>
 
-  <div class="banner run-degraded">
-    <p><strong>This forecast was built on less than usual.</strong></p>
-    <ul>
-<li>Today&#39;s figures are decided and published. The written discussion follows when a model answers; the numbers are the same ones this forecast is scored on.</li>    </ul>
-    <p class="summary">The technical detail is in <a href="#run-notes">Notes on this forecast</a>, at the end.</p>
-  </div>
 
   <p class="banner">This is an archived forecast for 2026-10-24. <a href="https://dissent00.github.io/open-local-weather/">See today's forecast</a>.</p>
 
   <h1>Kisumu, Kenya</h1>
-  <p class="meta">Forecast for 2026-10-24 &middot; figures by code, write-up by code</p>
+  <p class="meta">Forecast for 2026-10-24 &middot; figures by code, written up via openai/gpt-oss-120b</p>
 
   <div class="stat-grid">
     <div class="stat">
@@ -73,24 +67,20 @@
 <p>Further out, temperatures and winds much the same through Saturday, with showers and thunderstorms likely Wednesday, Thursday and Friday, and showers and thunderstorms possible Saturday. Wednesday: all four models wet, highs 25 to 31 °C. Thursday: all four models wet, highs 27 to 30 °C. Friday: all three models that reach it wet, highs around 28 °C.</p>
 <p>Only GFS, ECMWF and ICON reach past Thursday. ICON is the wetter solution from Wednesday to Thursday; GFS, ECMWF and UKMO keep it drier. Saturday's call: rain, 100%, with both models wet; highs around 29 °C. At this lead ECMWF has the best record, right 77% of the time over 66 checks.</p>
 <h2>Severe Weather / Hazard Potential</h2>
-<p>Convective instability today: UKMO 4250 J/kg, ECMWF 2360 J/kg, ICON 1830 J/kg and GFS 520 J/kg. Thunder likely; any thunderstorm brings sudden gusts well above the 41 km/h (22 kt) forecast.</p>
+<p>The high CAPE values today—UKMO at 4250 J/kg, ECMWF at 2360 J/kg, ICON at 1550 J/kg, and Best Match at 2570 J/kg—signal a thunderstorm risk with sudden gusts that could exceed the forecast wind. No specific bulletin from the Kenya Meteorological Department was issued, but the thunder possible, peaking this evening warning applies.</p>
 <h2>Winam Gulf — Conditions for Boaters</h2>
-<p>Peak gust 30 km/h (16 kt). Any thunderstorm brings sudden gusts well above this figure; the water is unsafe while one is nearby.</p>
+<p>Winam Gulf winds shift from a northeasterly 9 km/h (5 kt) gusting 12 km/h (7 kt) overnight, to 8 km/h (4 kt) gusting 18 km/h (10 kt) by midday, and then north-northwesterly 10 km/h (6 kt) gusting 18 km/h (10 kt) into the evening, with a peak gust of 30 km/h (16 kt). Thunderstorm gusts could be well above these values.</p>
 <h2>Detailed Discussion</h2>
 <h3>Synoptic Overview</h3>
 <p>Across roughly 2,600 km, pressure is lowest toward the north (1007 hPa) and highest toward the southeast (1014 hPa) — a 7 hPa spread, a moderate large-scale gradient. Pressure overhead is near-steady. Sampling is a nine-point ring at 12-degree spacing, so this locates a direction, not a centre or a front. Across the basin's 5 points, pressure today sits between 1012.3 and 1014.6 hPa, near-steady over three days (-0.6 hPa). Pressure here over the last 24 hours: -0.1 hPa.</p>
 <h3>Forecaster Confidence Notes</h3>
-<p>On rain the record ranks ICON first at Day+3, right 73% of the last 30 checks and ECMWF first at Day+7, right 77% of the last 30 checks. On today's high GFS is the warmest model at 31.2 °C and ICON the coolest at 28.4 °C; the call's 30.6 °C sits between them. Kenya Meteorological Department (KMD) calls a high of 30.0 °C and rain, agreeing with the call on rain. At Day+0, no model is meaningfully better than the others here yet. At Day+7, ECMWF is the strongest rain caller here and GFS the weakest. At Day+0, Best Match slightly under-forecasts peak wind here.</p>
-<p>Figures issued 06:01. Written by code; a discussion follows when a model answers.</p>
+<p>Review notes that at Day+0 no model is meaningfully better than the others, with 54 checks supporting this settled picture. The Best Match model slightly under-forecasts peak wind today, while ECMWF slightly under-forecasts daytime highs and peak wind. GFS tends to over-forecast cloud cover and daytime highs, and systematically under-forecasts peak wind. The Kenya Meteorological Department forecast aligns with the call on temperature but offers less detail on wind and rain probabilities. Data sufficiency is strong with 73 days reviewed for Day+0, providing confidence in the overall guidance.</p>
+<p>Severe Weather / Hazard Potential, Winam Gulf — Conditions for Boaters and Forecaster Confidence Notes by gpt-oss-120b; the rest written by code.</p>
 
   <h2 id="observed">Observed so far today</h2>
   <p class="meta">As of 06:01, reports through 04:00: no rain; no thunder; high so far 23°C / 73°F; low so far 22°C / 72°F; peak sustained 11 km/h; sky mostly cloudy.</p>
   <p class="summary">Measured at HKKI, not forecast. Rainfall totals are not reported: the station records that rain fell, never how much.</p>
 
-  <h2 id="run-notes">Notes on this forecast</h2>
-  <ul class="archive-list">
-    <li><strong>Today&#39;s figures are decided and published. The written discussion follows when a model answers; the numbers are the same ones this forecast is scored on.</strong><span class="summary">The write-up is asked for after the forecast is committed and published (ROADMAP item 189), by `olw write-up`, from the archived prompts and the stored call. Until it lands the entry carries the placeholder.</span></li>
-  </ul>
 
   <h2>Ground AQI Stations</h2>
   <p class="meta">Range across 3 currently-fresh reporting stations: AQI 26&ndash;47, highest at <strong>Dunga Beach</strong>.</p>
