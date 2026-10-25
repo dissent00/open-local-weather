@@ -373,6 +373,14 @@
       "outcome": "http_200",
       "elapsed_s": 2.043,
       "audit": "passed: severe, secondary, confidence; refused: today (figures not in the brief: 39km/h); extended (phrase not verbatim: temperatures and winds much the same thr); synoptic (figures not in the brief: 0.1hPa)"
+    },
+    {
+      "at": "2026-10-25T03:01:38.493610+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 15.473
     }
   ]
 }
