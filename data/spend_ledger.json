@@ -2,15 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-10-18T03:05:31.671533+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.8-flash",
-      "purpose": "write-up",
-      "outcome": "http_200",
-      "elapsed_s": 66.194,
-      "audit": "passed: today; unanswered: extended, severe, secondary, synoptic, confidence"
-    },
-    {
       "at": "2026-10-19T03:01:55.513537+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -373,6 +364,14 @@
       "outcome": "http_200",
       "elapsed_s": 26.751,
       "audit": "passed: today, severe, secondary, synoptic, confidence; refused: extended (141 words, cap 140)"
+    },
+    {
+      "at": "2026-10-26T03:01:44.064443+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 16.579
     }
   ]
 }
