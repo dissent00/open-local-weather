@@ -2,47 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-10-19T03:01:55.513537+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 14.339
-    },
-    {
-      "at": "2026-10-19T03:02:12.439379+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 2.227
-    },
-    {
-      "at": "2026-10-19T03:05:14.668749+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 5.055
-    },
-    {
-      "at": "2026-10-19T03:12:19.726357+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 4.602
-    },
-    {
-      "at": "2026-10-19T03:12:24.331706+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.8-flash",
-      "purpose": "write-up",
-      "outcome": "http_200",
-      "elapsed_s": 76.075,
-      "audit": "refused: today (641 words, cap 155); unanswered: extended, severe, secondary, synoptic, confidence"
-    },
-    {
       "at": "2026-10-19T03:13:40.417499+00:00",
       "provider": "OpenAICompatProvider",
       "model": "openai/gpt-oss-120b",
@@ -372,6 +331,47 @@
       "purpose": "forecast",
       "outcome": "http_200",
       "elapsed_s": 16.579
+    },
+    {
+      "at": "2026-10-26T03:02:03.010089+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 3.166
+    },
+    {
+      "at": "2026-10-26T03:05:06.177592+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 36.777
+    },
+    {
+      "at": "2026-10-26T03:12:42.956937+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 54.816
+    },
+    {
+      "at": "2026-10-26T03:13:37.775897+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 1.419
+    },
+    {
+      "at": "2026-10-26T03:13:39.197980+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "openai/gpt-oss-120b",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 2.635,
+      "audit": "passed: extended, severe, secondary, synoptic, confidence; refused: today (phrase not verbatim: As of 06:01, reports through 04:00: rain)"
     }
   ]
 }
