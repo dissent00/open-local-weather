@@ -1669,6 +1669,197 @@
         "convective_correct": null,
         "precip_error_mm": null
       }
+    },
+    {
+      "name": "the 2026-10-20 dropped decimal is not scored",
+      "input": {
+        "predicted": {
+          "model": "olw_blend",
+          "target_date": null,
+          "rain": true,
+          "onset": null,
+          "precip_mm": 25.0,
+          "rain_probability_pct": 75,
+          "wind_kmh": 20.0,
+          "sustained_wind_kmh": null,
+          "high_c": 305.0,
+          "low_c": 195.0,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": false,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "sustained_wind_kmh": null,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00",
+          "precip_mm": null,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "station_peak_gust_kmh": null,
+          "station_wind_direction_deg": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "lead_time_days": 0
+      },
+      "expected": null
+    },
+    {
+      "name": "a low above the high is not scored",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "target_date": null,
+          "rain": true,
+          "onset": "14:00",
+          "precip_mm": null,
+          "rain_probability_pct": null,
+          "wind_kmh": 20.0,
+          "sustained_wind_kmh": null,
+          "high_c": 18.0,
+          "low_c": 26.0,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "sustained_wind_kmh": null,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00",
+          "precip_mm": null,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "station_peak_gust_kmh": null,
+          "station_wind_direction_deg": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "lead_time_days": 0
+      },
+      "expected": null
+    },
+    {
+      "name": "a gust over the world record is not scored",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "target_date": null,
+          "rain": true,
+          "onset": "14:00",
+          "precip_mm": null,
+          "rain_probability_pct": null,
+          "wind_kmh": 408.1,
+          "sustained_wind_kmh": null,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "sustained_wind_kmh": null,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00",
+          "precip_mm": null,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "station_peak_gust_kmh": null,
+          "station_wind_direction_deg": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "lead_time_days": 3
+      },
+      "expected": null
+    },
+    {
+      "name": "the world records themselves are scored",
+      "input": {
+        "predicted": {
+          "model": "gfs_seamless",
+          "target_date": null,
+          "rain": true,
+          "onset": "14:00",
+          "precip_mm": 0.0,
+          "rain_probability_pct": 100,
+          "wind_kmh": 408.0,
+          "sustained_wind_kmh": null,
+          "high_c": 56.7,
+          "low_c": -89.2,
+          "cloud_cover_pct": null,
+          "peak_cape_jkg": null,
+          "wind_direction_deg": null,
+          "mslp_trend": -1.0
+        },
+        "actual": {
+          "rain": true,
+          "high_c": 26.0,
+          "low_c": 18.0,
+          "peak_wind_kmh": 20.0,
+          "sustained_wind_kmh": null,
+          "mslp_trend": -1.0,
+          "onset_hour": "14:00",
+          "precip_mm": null,
+          "thunder": null,
+          "precipitation": null,
+          "precipitation_onset": null,
+          "station_high_c": null,
+          "station_low_c": null,
+          "station_peak_wind_kmh": null,
+          "station_peak_gust_kmh": null,
+          "station_wind_direction_deg": null,
+          "cloud_cover_pct": null,
+          "station_cloud_oktas": null,
+          "lightning": null,
+          "provenance": null
+        },
+        "lead_time_days": 0
+      },
+      "expected": {
+        "rain_correct": true,
+        "rain_brier": 0.0,
+        "onset_error_hrs": 0.0,
+        "wind_error_kmh": -388.0,
+        "high_error_c": -30.700000000000003,
+        "low_error_c": 107.2,
+        "mslp_error_hpa": 0.0,
+        "cloud_error_pct": null,
+        "convective_correct": null,
+        "precip_error_mm": null
+      }
     }
   ]
 }

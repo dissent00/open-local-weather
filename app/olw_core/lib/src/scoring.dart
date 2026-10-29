@@ -8,6 +8,18 @@ import 'dart:math' as math;
 import 'models.dart';
 import 'sums.dart';
 
+/// Whether `impossibleFigure` refuses this prediction's figures. Public
+/// because the all-time rail in verify.dart counts what this sets aside.
+bool isImpossible(ModelPrediction predicted) =>
+    impossibleFigure(
+      highC: predicted.highC,
+      lowC: predicted.lowC,
+      precipMm: predicted.precipMm,
+      windsKmh: [predicted.windKmh, predicted.sustainedWindKmh],
+      rainProbabilityPct: predicted.rainProbabilityPct,
+    ) !=
+    null;
+
 /// Scores one model's stored prediction against one day's actual.
 ///
 /// Returns `null` when there is nothing to score. Three distinct reasons,
@@ -23,6 +35,13 @@ VerificationScore? scorePrediction(
 ) {
   if (predicted == null || actual == null) return null;
   if (predicted.rain == null) return null;
+
+  // THE WHOLE ROW, NOT THE FIELD. One impossible figure means the generation
+  // was broken — 2026-10-20's 305 C sat beside a 25 mm that was probably 2.5
+  // — so nothing else in it is evidence either.
+  if (isImpossible(predicted)) {
+    return null;
+  }
 
   // Scored against observed CONVECTION, not against reanalysis rain alone. A
   // thunderstorm the airport watched pass overhead counts even when the grid

@@ -191,3 +191,51 @@ def test_today_properties_names_both_wind_points():
     assert "peak_wind_kmh" not in fields, (
         "the ambiguous name must be gone, not kept beside the explicit ones"
     )
+
+
+# --- physically impossible figures ----------------------------------------------
+
+
+def _today(**overrides):
+    from openlocalweather.llm.schema import TodayProperties
+
+    fields = dict(rain_expected="Likely", rain=True, temp_high_c=30.5, temp_low_c=19.5)
+    fields.update(overrides)
+    return TodayProperties(**fields)
+
+
+def test_the_2026_10_20_temperatures_fail_validation():
+    """A schema failure is a refusal: the model's call adds no row."""
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        _today(temp_high_c=305.0, temp_low_c=195.0)
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"temp_high_c": 18.0, "temp_low_c": 26.0},
+        {"precip_mm": -1.0},
+        {"peak_wind_primary_kmh": 500.0},
+        {"peak_wind_secondary_kmh": -2.0},
+        {"rain_probability_pct": 120},
+    ],
+)
+def test_an_impossible_figure_fails_validation(overrides):
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        _today(**overrides)
+
+
+def test_a_possible_call_still_validates():
+    assert _today(precip_mm=2.5, peak_wind_primary_kmh=41.0, rain_probability_pct=75).temp_high_c == 30.5
+
+
+def test_an_extended_probability_over_100_fails_validation():
+    from pydantic import ValidationError
+    from openlocalweather.llm.schema import ExtendedDayProperties
+
+    with pytest.raises(ValidationError):
+        ExtendedDayProperties(lead_time_days=3, rain=True, rain_probability_pct=101)

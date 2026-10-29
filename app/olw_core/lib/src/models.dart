@@ -317,6 +317,56 @@ int _roundHalfEven(double v) {
   return floor.isEven ? floor : floor + 1;
 }
 
+/// WHAT NO FORECAST CAN SAY, ANYWHERE — the world records, not a location's
+/// climate, so a fork needs no configuration. On 2026-10-20 the model's own
+/// call stored a high of 305 C and a low of 195 C, a dropped decimal the
+/// schema accepted; that one row was the whole of the record's -26.6 C
+/// ten-day mean high error, and the only impossible row in 2,190 stored
+/// predictions, swept 2026-10-29.
+///
+/// NOT CAUGHT: a dropped decimal that lands in range — 25 mm for 2.5, or a
+/// 3.05 C high. Mirrors `impossible_figure` in the Python models.
+const double worldMinTempC = -89.2; // Vostok, 1983
+const double worldMaxTempC = 56.7; // Death Valley, 1913, as the WMO recognises it
+const double worldMaxGustKmh = 408.0; // Barrow Island, 1996
+const int maxProbabilityPct = 100;
+
+/// Why these figures cannot be a forecast, or null. Absent is not wrong.
+String? impossibleFigure({
+  double? highC,
+  double? lowC,
+  double? precipMm,
+  List<double?> windsKmh = const [],
+  num? rainProbabilityPct,
+}) {
+  for (final (name, value) in [('high', highC), ('low', lowC)]) {
+    if (value != null && !(worldMinTempC <= value && value <= worldMaxTempC)) {
+      return '$name of $value C is outside the world records';
+    }
+  }
+
+  if (highC != null && lowC != null && lowC > highC) {
+    return 'low of $lowC C is above the high of $highC C';
+  }
+
+  if (precipMm != null && precipMm < 0) {
+    return 'rain of $precipMm mm is negative';
+  }
+
+  for (final wind in windsKmh) {
+    if (wind != null && !(0 <= wind && wind <= worldMaxGustKmh)) {
+      return 'wind of $wind km/h is outside 0 to the world record';
+    }
+  }
+
+  if (rainProbabilityPct != null &&
+      !(0 <= rainProbabilityPct && rainProbabilityPct <= maxProbabilityPct)) {
+    return 'rain probability of $rainProbabilityPct% is outside 0 to 100';
+  }
+
+  return null;
+}
+
 class ModelPrediction {
   final String model;
 

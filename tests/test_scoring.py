@@ -724,7 +724,7 @@ def _row_with_a_bulletin_claim():
         window_opened_local=datetime(2026, 8, 11, 6, 0),
         window_predictions=[ModelPrediction(model="gfs_seamless", rain=False, high_c=40.0)],
         predictions=ModelPredictionsByLead(day0=[ModelPrediction(
-            model="kenya_met", rain=True, high_c=60.0, target_date=date(2026, 8, 11),
+            model="kenya_met", rain=True, high_c=50.0, target_date=date(2026, 8, 11),
         )]),
     )
 
@@ -772,7 +772,7 @@ def test_a_bulletin_is_scored_on_the_24_hours_it_claims():
 
     assert row.window_scores["kenya_met"].rain_correct is True
     # 21:00 on the 10th (index 21) to 20:00 on the 11th (index 44).
-    assert row.window_scores["kenya_met"].high_error_c == pytest.approx(54.0 - 60.0)
+    assert row.window_scores["kenya_met"].high_error_c == pytest.approx(54.0 - 50.0)
     assert row.window_scores["gfs_seamless"].rain_correct is True, "the issuance's window saw no rain"
     assert row.window_scores["gfs_seamless"].high_error_c == pytest.approx(63.0 - 40.0)
 
@@ -908,3 +908,42 @@ def test_sample_sd_needs_two_values_and_is_zero_for_a_constant():
     assert sample_sd([5.0]) is None
     assert sample_sd([None, None]) is None
     assert sample_sd([1.5, 1.5, 1.5]) == 0.0
+
+
+# --- physically impossible predictions -----------------------------------------
+
+
+def test_the_2026_10_20_row_is_not_scored():
+    """The stored row exactly: 305 and 195 for 30.5 and 19.5, a dropped
+    decimal the schema accepted. It was the whole of a -26.6 C mean error."""
+    impossible = prediction(model="olw_blend", onset=None, high_c=305.0, low_c=195.0, precip_mm=25.0)
+
+    assert score_prediction(impossible, actual(rain=False), 0) is None
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"high_c": 56.8},
+        {"low_c": -89.3},
+        {"high_c": 18.0, "low_c": 26.0},
+        {"precip_mm": -0.1},
+        {"wind_kmh": -1.0},
+        {"wind_kmh": 408.1},
+        {"sustained_wind_kmh": 408.1},
+        {"rain_probability_pct": 101},
+        {"rain_probability_pct": -1},
+    ],
+)
+def test_an_impossible_figure_skips_the_whole_row(overrides):
+    assert score_prediction(prediction(**overrides), actual(), 0) is None
+
+
+def test_the_world_records_themselves_are_still_scored():
+    edge = prediction(high_c=56.7, low_c=-89.2, wind_kmh=408.0, precip_mm=0.0, rain_probability_pct=100)
+
+    assert score_prediction(edge, actual(), 0) is not None
+
+
+def test_an_equal_high_and_low_is_possible():
+    assert score_prediction(prediction(high_c=20.0, low_c=20.0), actual(), 0) is not None

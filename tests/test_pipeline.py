@@ -302,6 +302,41 @@ def test_all_time_never_silently_shrinks_when_actuals_are_missing(capsys):
     assert "WARNING" in capsys.readouterr().err
 
 
+def test_all_time_drops_a_row_the_impossibility_rule_sets_aside(capsys):
+    """A recorded check whose row is now impossible is not a missing actual.
+    2026-10-20's model call was counted before the rule existed; on the
+    first run after it, the rail held the stale count and blamed the
+    actuals cache."""
+    today = date(2026, 8, 12)
+    days = [date(2026, 8, 10), date(2026, 8, 11)]
+    logs = {
+        days[0]: log_entry(days[0], day0=[prediction(model="gfs_seamless", rain=True, high_c=305.0, low_c=195.0)]),
+        days[1]: log_entry(days[1], day0=[prediction(model="gfs_seamless", rain=True)]),
+    }
+
+    prior = empty_track_record()
+    for e in prior.entries:
+        if e.model == "gfs_seamless" and e.lead_time_days == 0:
+            e.all_time_checks = 2
+            e.all_time_correct = 1
+            e.all_time_rain_pct = 50.0
+
+    result = run_deterministic_verification_and_scoring(
+        log_lookup=lambda d: logs.get(d),
+        prior_track_record=prior,
+        actuals_primary={days[0]: actual(rain=False), days[1]: actual(rain=True)},
+        today=today,
+        yesterday=days[1],
+        models=MODELS,
+        lead_times_days=[0],
+        earliest_log_date=days[0],
+    )
+
+    entry = result.updated_track_record.get("gfs_seamless", 0)
+    assert (entry.all_time_checks, entry.all_time_correct) == (1, 1)
+    assert "WARNING" not in capsys.readouterr().err
+
+
 def test_all_time_checks_unchanged_when_nothing_new_scored():
     today = date(2026, 8, 11)
     yesterday = date(2026, 8, 10)

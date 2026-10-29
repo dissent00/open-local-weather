@@ -350,6 +350,46 @@ def export_weekday_name() -> None:
     )
 
 
+def export_impossible_figure() -> None:
+    from openlocalweather.models import impossible_figure
+
+    scenarios = [
+        ("nothing given is possible", {}),
+        ("the 2026-10-20 high", {"high_c": 305.0, "low_c": 195.0}),
+        ("the world's highest is possible", {"high_c": 56.7}),
+        ("above it is not", {"high_c": 56.8}),
+        ("the world's lowest is possible", {"low_c": -89.2}),
+        ("below it is not", {"low_c": -89.3}),
+        ("a low above the high", {"high_c": 18.0, "low_c": 26.0}),
+        ("an equal high and low is possible", {"high_c": 20.0, "low_c": 20.0}),
+        ("a low with no high is not compared", {"low_c": 26.0}),
+        ("negative rain", {"precip_mm": -0.1}),
+        ("no rain is possible", {"precip_mm": 0.0}),
+        ("a negative wind", {"winds_kmh": [20.0, -1.0]}),
+        ("a gust over the record", {"winds_kmh": [408.1]}),
+        ("an absent wind is skipped", {"winds_kmh": [None, 30.0]}),
+        ("a probability over 100", {"rain_probability_pct": 101}),
+        ("a negative probability", {"rain_probability_pct": -1}),
+        ("certainty is possible", {"rain_probability_pct": 100}),
+        ("temperature is checked before wind", {"high_c": 60.0, "winds_kmh": [500.0]}),
+    ]
+    cases = [
+        {
+            "name": name,
+            "input": kw,
+            "expected": impossible_figure(**{k: tuple(v) if k == "winds_kmh" else v for k, v in kw.items()}),
+        }
+        for name, kw in scenarios
+    ]
+    write(
+        "impossible_figure.json",
+        "impossible_figure",
+        "Why a prediction's figures cannot be a forecast anywhere, or null. "
+        "Bounds are the world records; absent figures are never wrong.",
+        cases,
+    )
+
+
 def export_overlong_display_values() -> None:
     """The stat-grid tiles, checked against the box they render in.
 
@@ -1081,6 +1121,15 @@ def export_scoring() -> None:
             act(rain=False, precip_mm=0.0, onset_hour=None, thunder=None, precipitation=None),
             0,
         ),
+        # An impossible figure skips the WHOLE row — models.impossible_figure.
+        # The first is 2026-10-20's stored model call, field for field.
+        ("the 2026-10-20 dropped decimal is not scored",
+         pred(model="olw_blend", onset=None, high_c=305.0, low_c=195.0, precip_mm=25.0, rain_probability_pct=75),
+         act(rain=False), 0),
+        ("a low above the high is not scored", pred(high_c=18.0, low_c=26.0), act(), 0),
+        ("a gust over the world record is not scored", pred(wind_kmh=408.1), act(), 3),
+        ("the world records themselves are scored",
+         pred(high_c=56.7, low_c=-89.2, wind_kmh=408.0, precip_mm=0.0, rain_probability_pct=100), act(), 0),
     ]
     cases = [
         {
@@ -7338,6 +7387,7 @@ def main() -> None:
     export_forward_calendar()
     export_false_weekday_claims()
     export_overlong_display_values()
+    export_impossible_figure()
     export_tile_comparison()
     export_cloud_anchors()
     export_sky_by_day()

@@ -379,6 +379,51 @@ def _fixed(value: float, decimals: int) -> str:
 # ---------------------------------------------------------------------------
 
 
+# WHAT NO FORECAST CAN SAY, ANYWHERE — the world records, not this
+# location's climate, so a fork needs no configuration. On 2026-10-20 the
+# model's own call stored a high of 305 C and a low of 195 C, a dropped
+# decimal the schema accepted; that one row was the whole of the record's
+# -26.6 C ten-day mean high error. It was the only impossible row in 2,190
+# stored predictions, swept 2026-10-29.
+#
+# NOT CAUGHT: a dropped decimal that lands in range — 25 mm for 2.5, or a
+# 3.05 C high. That needs a bound from the location's climate or the
+# models' spread, measured against the record first.
+WORLD_MIN_TEMP_C = -89.2  # Vostok, 1983
+WORLD_MAX_TEMP_C = 56.7  # Death Valley, 1913, as the WMO recognises it
+WORLD_MAX_GUST_KMH = 408.0  # Barrow Island, 1996
+MAX_PROBABILITY_PCT = 100
+
+
+def impossible_figure(
+    *,
+    high_c: float | None = None,
+    low_c: float | None = None,
+    precip_mm: float | None = None,
+    winds_kmh: tuple[float | None, ...] = (),
+    rain_probability_pct: float | None = None,
+) -> str | None:
+    """Why these figures cannot be a forecast, or None. Absent is not wrong."""
+    for name, value in (("high", high_c), ("low", low_c)):
+        if value is not None and not WORLD_MIN_TEMP_C <= value <= WORLD_MAX_TEMP_C:
+            return f"{name} of {value} C is outside the world records"
+
+    if high_c is not None and low_c is not None and low_c > high_c:
+        return f"low of {low_c} C is above the high of {high_c} C"
+
+    if precip_mm is not None and precip_mm < 0:
+        return f"rain of {precip_mm} mm is negative"
+
+    for wind in winds_kmh:
+        if wind is not None and not 0 <= wind <= WORLD_MAX_GUST_KMH:
+            return f"wind of {wind} km/h is outside 0 to the world record"
+
+    if rain_probability_pct is not None and not 0 <= rain_probability_pct <= MAX_PROBABILITY_PCT:
+        return f"rain probability of {rain_probability_pct}% is outside 0 to 100"
+
+    return None
+
+
 class ModelPrediction(BaseModel):
     """One model's prediction for one target date at one lead time.
 

@@ -12,7 +12,9 @@ import hashlib
 import json
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from openlocalweather.models import impossible_figure
 
 
 class SkillProfileSummaryItem(BaseModel):
@@ -144,6 +146,23 @@ class TodayProperties(BaseModel):
     # the answer is tomorrow's maximum and nothing told it so.
     air_quality_aqi: int | None = None
 
+    # ON THIS SIDE ONLY, like `MAX_DISPLAY_STRING`: a validator never reaches
+    # the provider's schema. Failing here is a refusal, so the model's call
+    # adds no row and no further link is asked — see `models.impossible_figure`.
+    @model_validator(mode="after")
+    def _possible(self) -> "TodayProperties":
+        reason = impossible_figure(
+            high_c=self.temp_high_c,
+            low_c=self.temp_low_c,
+            precip_mm=self.precip_mm,
+            winds_kmh=(self.peak_wind_primary_kmh, self.peak_wind_secondary_kmh),
+            rain_probability_pct=self.rain_probability_pct,
+        )
+        if reason is not None:
+            raise ValueError(reason)
+
+        return self
+
 
 # ROADMAP item 72, minimal shape.
 #
@@ -170,6 +189,14 @@ class ExtendedDayProperties(BaseModel):
     lead_time_days: int
     rain: bool
     rain_probability_pct: int | None = None
+
+    @model_validator(mode="after")
+    def _possible(self) -> "ExtendedDayProperties":
+        reason = impossible_figure(rain_probability_pct=self.rain_probability_pct)
+        if reason is not None:
+            raise ValueError(reason)
+
+        return self
 
 
 class GeminiJudgmentResponse(BaseModel):

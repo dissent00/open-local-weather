@@ -863,6 +863,45 @@ void main() {
       }
     });
 
+    test('a row the impossibility rule sets aside is not a missing actual', () {
+      // 2026-10-20's model call was counted before the rule existed. On the
+      // first run after it, the rail held the stale count and blamed the
+      // observations. Mirrors the Python pipeline test of the same name.
+      final days = [DateTime.utc(2026, 8, 10), DateTime.utc(2026, 8, 11)];
+      ModelPrediction call(double high, double low) => ModelPrediction.fromJson(
+          {'model': 'alpha', 'rain': true, 'high_c': high, 'low_c': low});
+      final predictions = {
+        formatDate(days[0]): [call(305.0, 195.0)],
+        formatDate(days[1]): [call(26.0, 18.0)],
+      };
+      final actuals = {
+        formatDate(days[0]): DailyActual.fromJson({'rain': false}),
+        formatDate(days[1]): DailyActual.fromJson({'rain': true}),
+      };
+
+      final result = runVerification(
+        predictionsFor: (d, lead) => lead == 0 ? predictions[formatDate(d)] : null,
+        actualFor: (d) => actuals[formatDate(d)],
+        priorTrackRecord: [
+          TrackRecordEntry(
+              model: 'alpha',
+              leadTimeDays: 0,
+              allTimeChecks: 2,
+              allTimeCorrect: 1,
+              allTimeRainPct: 50.0),
+        ],
+        today: DateTime.utc(2026, 8, 12),
+        yesterday: days[1],
+        earliestRecordDate: days[0],
+        models: const ['alpha'],
+        leadTimesDays: const [0],
+      );
+
+      expect(result.warnings, isEmpty);
+      expect(result.trackRecord.first.allTimeChecks, 1);
+      expect(result.trackRecord.first.allTimeCorrect, 1);
+    });
+
     test('a shrinking all-time derivation warns rather than publishing it', () {
       // Fewer checks than last time means observations are missing for dates
       // we hold predictions for. Quietly publishing the smaller number would
@@ -2154,6 +2193,22 @@ void main() {
       }
     });
 
+    test('impossible_figure', () {
+      for (final c in loadVectors('impossible_figure.json')['cases'] as List) {
+        final input = ((c as Map)['input'] as Map).cast<String, Object?>();
+        final got = impossibleFigure(
+          highC: (input['high_c'] as num?)?.toDouble(),
+          lowC: (input['low_c'] as num?)?.toDouble(),
+          precipMm: (input['precip_mm'] as num?)?.toDouble(),
+          windsKmh: [
+            for (final w in (input['winds_kmh'] as List?) ?? const []) (w as num?)?.toDouble(),
+          ],
+          rainProbabilityPct: input['rain_probability_pct'] as num?,
+        );
+        expect(got, equals(c['expected']), reason: 'case "${c['name']}"');
+      }
+    });
+
     test('overlong_display_values', () {
       // Upstream ROADMAP item 7. The stat grid renders rain_expected and
       // onset_window as TILES and nothing measured their length until one
@@ -2480,6 +2535,7 @@ void main() {
       'forward_calendar.json',
       'false_weekday_claims.json',
       'overlong_display_values.json',
+      'impossible_figure.json',
       'cloud_anchors.json',
       'sky_by_day.json',
       'period_summary.json',

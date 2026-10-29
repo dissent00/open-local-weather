@@ -104,6 +104,7 @@ absent values are `null`, never omitted keys.
 | `extended_trend.json` | `describe_extended_trend` | 41 |
 | `phrase_defect.json` | `phrase_defect` | 18 |
 | `overlong_display_values.json` | `overlong_display_values` | 11 |
+| `impossible_figure.json` | `impossible_figure` | 18 |
 | `cloud_anchors.json` | `cloud_anchors` | 12 |
 | `sky_by_day.json` | `sky_by_day` | 7 |
 | `period_summary.json` | `summarize_periods` | 9 |
@@ -161,7 +162,7 @@ absent values are `null`, never omitted keys.
 | `llm_user_prompt.json` | `build_user_prompt` | 14 |
 | `scoring_mean.json` | `mean` | 4 |
 | `scoring_rain_pct_trend.json` | `compute_rain_pct_trend` | 9 |
-| `scoring_score_prediction.json` | `score_prediction` | 31 |
+| `scoring_score_prediction.json` | `score_prediction` | 35 |
 | `spend.json` | `calls_in_window / prune` | 6 |
 | `synoptic.json` | `summarize_synoptic` | 7 |
 | `verification.json` | `run_deterministic_verification_and_scoring` | 4 |

@@ -334,7 +334,11 @@ class TodayProperties {
     this.airQualityAqi,
   });
 
-  factory TodayProperties.fromJson(Map<String, Object?> j) => TodayProperties(
+  /// Throws on an impossible figure, which `parseResponse` turns into an
+  /// `LlmResponseError`: the model's call adds no row and no further link is
+  /// asked. Mirrors the `_possible` validator in the Python schema.
+  factory TodayProperties.fromJson(Map<String, Object?> j) =>
+      _possibleToday(TodayProperties(
         rainExpected: _bounded(j['rain_expected'], 'rain_expected')!,
         onsetWindow: _bounded(j['onset_window'], 'onset_window'),
         peakWindPrimaryKmh: _toDouble(j['peak_wind_primary_kmh']),
@@ -348,7 +352,7 @@ class TodayProperties {
         mslpTrend24h: _bounded(j['mslp_trend_24h'], 'mslp_trend_24h'),
         synopticPattern: _bounded(j['synoptic_pattern'], 'synoptic_pattern'),
         airQualityAqi: (j['air_quality_aqi'] as num?)?.toInt(),
-      );
+      ));
 
   /// The counterpart to [fromJson], using the SAME wire keys.
   ///
@@ -373,6 +377,21 @@ class TodayProperties {
         'synoptic_pattern': synopticPattern,
         'air_quality_aqi': airQualityAqi,
       };
+}
+
+TodayProperties _possibleToday(TodayProperties t) {
+  final reason = impossibleFigure(
+    highC: t.tempHighC,
+    lowC: t.tempLowC,
+    precipMm: t.precipMm,
+    windsKmh: [t.peakWindPrimaryKmh, t.peakWindSecondaryKmh],
+    rainProbabilityPct: t.rainProbabilityPct,
+  );
+  if (reason != null) {
+    throw FormatException(reason);
+  }
+
+  return t;
 }
 
 /// What a provider must return. Validated on parse — a malformed response
@@ -401,12 +420,18 @@ class ExtendedDayProperties {
     this.rainProbabilityPct,
   });
 
-  factory ExtendedDayProperties.fromJson(Map<String, Object?> j) =>
-      ExtendedDayProperties(
-        leadTimeDays: (j['lead_time_days'] as num).toInt(),
-        rain: j['rain'] as bool,
-        rainProbabilityPct: (j['rain_probability_pct'] as num?)?.toInt(),
-      );
+  factory ExtendedDayProperties.fromJson(Map<String, Object?> j) {
+    final reason = impossibleFigure(rainProbabilityPct: j['rain_probability_pct'] as num?);
+    if (reason != null) {
+      throw FormatException(reason);
+    }
+
+    return ExtendedDayProperties(
+      leadTimeDays: (j['lead_time_days'] as num).toInt(),
+      rain: j['rain'] as bool,
+      rainProbabilityPct: (j['rain_probability_pct'] as num?)?.toInt(),
+    );
+  }
 
   Map<String, Object?> toJson() => {
         'lead_time_days': leadTimeDays,

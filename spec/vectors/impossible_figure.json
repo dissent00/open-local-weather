@@ -1,0 +1,145 @@
+{
+  "vector_format_version": 1,
+  "function": "impossible_figure",
+  "description": "Why a prediction's figures cannot be a forecast anywhere, or null. Bounds are the world records; absent figures are never wrong.",
+  "cases": [
+    {
+      "name": "nothing given is possible",
+      "input": {},
+      "expected": null
+    },
+    {
+      "name": "the 2026-10-20 high",
+      "input": {
+        "high_c": 305.0,
+        "low_c": 195.0
+      },
+      "expected": "high of 305.0 C is outside the world records"
+    },
+    {
+      "name": "the world's highest is possible",
+      "input": {
+        "high_c": 56.7
+      },
+      "expected": null
+    },
+    {
+      "name": "above it is not",
+      "input": {
+        "high_c": 56.8
+      },
+      "expected": "high of 56.8 C is outside the world records"
+    },
+    {
+      "name": "the world's lowest is possible",
+      "input": {
+        "low_c": -89.2
+      },
+      "expected": null
+    },
+    {
+      "name": "below it is not",
+      "input": {
+        "low_c": -89.3
+      },
+      "expected": "low of -89.3 C is outside the world records"
+    },
+    {
+      "name": "a low above the high",
+      "input": {
+        "high_c": 18.0,
+        "low_c": 26.0
+      },
+      "expected": "low of 26.0 C is above the high of 18.0 C"
+    },
+    {
+      "name": "an equal high and low is possible",
+      "input": {
+        "high_c": 20.0,
+        "low_c": 20.0
+      },
+      "expected": null
+    },
+    {
+      "name": "a low with no high is not compared",
+      "input": {
+        "low_c": 26.0
+      },
+      "expected": null
+    },
+    {
+      "name": "negative rain",
+      "input": {
+        "precip_mm": -0.1
+      },
+      "expected": "rain of -0.1 mm is negative"
+    },
+    {
+      "name": "no rain is possible",
+      "input": {
+        "precip_mm": 0.0
+      },
+      "expected": null
+    },
+    {
+      "name": "a negative wind",
+      "input": {
+        "winds_kmh": [
+          20.0,
+          -1.0
+        ]
+      },
+      "expected": "wind of -1.0 km/h is outside 0 to the world record"
+    },
+    {
+      "name": "a gust over the record",
+      "input": {
+        "winds_kmh": [
+          408.1
+        ]
+      },
+      "expected": "wind of 408.1 km/h is outside 0 to the world record"
+    },
+    {
+      "name": "an absent wind is skipped",
+      "input": {
+        "winds_kmh": [
+          null,
+          30.0
+        ]
+      },
+      "expected": null
+    },
+    {
+      "name": "a probability over 100",
+      "input": {
+        "rain_probability_pct": 101
+      },
+      "expected": "rain probability of 101% is outside 0 to 100"
+    },
+    {
+      "name": "a negative probability",
+      "input": {
+        "rain_probability_pct": -1
+      },
+      "expected": "rain probability of -1% is outside 0 to 100"
+    },
+    {
+      "name": "certainty is possible",
+      "input": {
+        "rain_probability_pct": 100
+      },
+      "expected": null
+    },
+    {
+      "name": "temperature is checked before wind",
+      "input": {
+        "high_c": 60.0,
+        "winds_kmh": [
+          500.0
+        ]
+      },
+      "expected": "high of 60.0 C is outside the world records"
+    }
+  ]
+}

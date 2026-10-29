@@ -526,4 +526,46 @@ void main() {
       expect(back.synopticPattern, isNull);
     });
   });
+
+  group('impossible figures', () {
+    String judgment(Map<String, Object?> today, [List<Object?> extended = const []]) => jsonEncode({
+          'today_properties': {
+            'rain_expected': 'Likely',
+            'rain': true,
+            'temp_high_c': 30.5,
+            'temp_low_c': 19.5,
+            ...today,
+          },
+          'extended_properties': extended,
+        });
+
+    test('the 2026-10-20 temperatures are a schema failure', () {
+      // A schema failure is a refusal: the model's call adds no row, and the
+      // chain does not ask the next link.
+      expect(
+        () => parseResponse(judgment({'temp_high_c': 305.0, 'temp_low_c': 195.0}), 'test', judgmentShape),
+        throwsA(isA<LlmResponseError>()),
+      );
+    });
+
+    test('an impossible extended probability is a schema failure', () {
+      expect(
+        () => parseResponse(
+            judgment({}, [
+              {'lead_time_days': 3, 'rain': true, 'rain_probability_pct': 101}
+            ]),
+            'test',
+            judgmentShape),
+        throwsA(isA<LlmResponseError>()),
+      );
+    });
+
+    test('a possible call still parses', () {
+      final got = parseResponse(
+          judgment({'precip_mm': 2.5, 'peak_wind_primary_kmh': 41.0, 'rain_probability_pct': 75}),
+          'test',
+          judgmentShape);
+      expect(got.todayProperties.tempHighC, 30.5);
+    });
+  });
 }

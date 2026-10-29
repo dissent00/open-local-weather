@@ -175,7 +175,12 @@ def run_deterministic_verification_and_scoring(
             # means actuals are missing for dates we hold predictions for —
             # a data problem to surface, never a smaller number to quietly
             # publish. Keep the previous figures and say so loudly.
-            if new_all_time_checks < track_entry.all_time_checks:
+            #
+            # A row the impossibility rule set aside is not missing data, so
+            # it counts toward the comparison and not the published figure.
+            # The cost: on a day one actual goes missing while a set-aside
+            # row exists, the rail is that much less sensitive.
+            if new_all_time_checks + all_time.set_aside < track_entry.all_time_checks:
                 print(
                     f"WARNING: all-time re-derivation for {model} lead+{k} found "
                     f"{new_all_time_checks} checks but {track_entry.all_time_checks} were "

@@ -31,6 +31,7 @@ from openlocalweather.models import (
     ModelPrediction,
     ModelPredictionsByLead,
     VerificationScore,
+    impossible_figure,
 )
 
 # `date -> DailyLogEntry | None`. Injected rather than reading files directly
@@ -348,6 +349,14 @@ def score_prediction(
     if predicted.rain is None:
         return None
 
+    # THE WHOLE ROW, NOT THE FIELD. One impossible figure means the
+    # generation was broken — 2026-10-20's 305 C sat beside a 25 mm that was
+    # probably 2.5 — so nothing else in it is evidence either. The record is
+    # rebuilt from the logs on every run, so a stored row drops out without
+    # editing the archive.
+    if _is_impossible(predicted):
+        return None
+
     # Scored against observed CONVECTION, not against reanalysis rain alone.
     # A thunderstorm the airport watched pass overhead counts even when the
     # grid cell recorded half a millimetre — see DailyActual.observed_convection.
@@ -409,6 +418,16 @@ def score_prediction(
         # the reanalysis alone — see VerificationScore.precip_error_mm.
         precip_error_mm=_diff(predicted.precip_mm, actual.precip_mm),
     )
+
+
+def _is_impossible(predicted: ModelPrediction) -> bool:
+    return impossible_figure(
+        high_c=predicted.high_c,
+        low_c=predicted.low_c,
+        precip_mm=predicted.precip_mm,
+        winds_kmh=(predicted.wind_kmh, predicted.sustained_wind_kmh),
+        rain_probability_pct=predicted.rain_probability_pct,
+    ) is not None
 
 
 def _hour_diff(predicted_hhmm: str, actual_hhmm: str) -> float:
@@ -712,6 +731,31 @@ class AllTimeResult:
     pct: float | None
     earliest_target_date: date | None
     latest_target_date: date | None
+    # Rows that had a prediction and an actual but were impossible, so were
+    # not scored. The caller's rail needs it: a check recorded before the
+    # rule existed and now set aside is not a missing actual.
+    set_aside: int = 0
+
+
+def _count_set_aside(
+    model: str,
+    lead_time_days: int,
+    yesterday: date,
+    earliest_target_date: date,
+    log_lookup: LogLookup,
+    actuals: dict[date, DailyActual],
+) -> int:
+    """The dates `collect_scores` walks on which this model's row was
+    impossible — the same walk, counting what `score_prediction` refused."""
+    count = 0
+    cursor = yesterday
+    while cursor >= earliest_target_date:
+        entry = log_lookup(prediction_row_date_for_target(cursor, lead_time_days))
+        predicted = predictions_by_model(entry, lead_time_days).get(model) if entry is not None else None
+        if predicted is not None and predicted.rain is not None and cursor in actuals and _is_impossible(predicted):
+            count += 1
+        cursor = add_days(cursor, -1)
+    return count
 
 
 def rescore_all_time(
@@ -757,6 +801,7 @@ def rescore_all_time(
         pct=(100 * correct / checks) if checks else None,
         earliest_target_date=earliest_scored,
         latest_target_date=latest_scored,
+        set_aside=_count_set_aside(model, lead_time_days, yesterday, earliest_target_date, log_lookup, actuals),
     )
 
 

@@ -997,6 +997,16 @@ def test_vectors_overlong_display_values():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+def test_vectors_impossible_figure():
+    from openlocalweather.models import impossible_figure
+
+    for case in load("impossible_figure.json")["cases"]:
+        kw = dict(case["input"])
+        if "winds_kmh" in kw:
+            kw["winds_kmh"] = tuple(kw["winds_kmh"])
+        assert impossible_figure(**kw) == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_phrase_defect():
     """ROADMAP item 158 — the shape check that a golden vector cannot be.
 
@@ -1277,6 +1287,7 @@ def test_every_vector_file_is_exercised():
         "extended_trend.json",
         "phrase_defect.json",
         "overlong_display_values.json",
+        "impossible_figure.json",
         "cloud_anchors.json",
         "sky_by_day.json",
         "period_summary.json",

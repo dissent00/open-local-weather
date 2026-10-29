@@ -193,6 +193,7 @@ class AllTimeResult {
     required this.pct,
     required this.earliestTargetDate,
     required this.latestTargetDate,
+    this.setAside = 0,
   });
 
   final int checks;
@@ -200,6 +201,44 @@ class AllTimeResult {
   final double? pct;
   final DateTime? earliestTargetDate;
   final DateTime? latestTargetDate;
+
+  /// Rows that had a prediction and an actual but were impossible, so were
+  /// not scored. The caller's rail needs it: a check recorded before the
+  /// rule existed and now set aside is not a missing actual.
+  final int setAside;
+}
+
+/// The dates [collectScores] walks on which this model's row was impossible
+/// — the same walk, counting what [scorePrediction] refused.
+int _countSetAside({
+  required String model,
+  required int leadTimeDays,
+  required DateTime yesterday,
+  required DateTime earliestTargetDate,
+  required List<ModelPrediction>? Function(DateTime rowDate, int leadTimeDays)
+      predictionsFor,
+  required DailyActual? Function(DateTime targetDate) actualFor,
+}) {
+  var count = 0;
+  var cursor = yesterday;
+  while (!cursor.isBefore(earliestTargetDate)) {
+    final predictions =
+        predictionsFor(predictionRowDateForTarget(cursor, leadTimeDays), leadTimeDays);
+    if (predictions != null && actualFor(cursor) != null) {
+      for (final p in predictions) {
+        if (p.model != model) {
+          continue;
+        }
+
+        if (p.rain != null && isImpossible(p)) {
+          count++;
+        }
+        break;
+      }
+    }
+    cursor = addDays(cursor, -1);
+  }
+  return count;
 }
 
 /// Walks the ENTIRE record.
@@ -234,6 +273,14 @@ AllTimeResult rescoreAllTime({
     // collectScores walks backward, so the first entry is the most recent.
     earliestTargetDate: scored.isEmpty ? null : scored.last.key,
     latestTargetDate: scored.isEmpty ? null : scored.first.key,
+    setAside: _countSetAside(
+      model: model,
+      leadTimeDays: leadTimeDays,
+      yesterday: yesterday,
+      earliestTargetDate: earliestTargetDate,
+      predictionsFor: predictionsFor,
+      actualFor: actualFor,
+    ),
   );
 }
 
@@ -416,7 +463,12 @@ VerificationRunResult runVerification({
       // Safety rail. A derivation covering FEWER checks than last time means
       // observations are missing for dates we hold predictions for — a data
       // problem to surface, never a smaller number to quietly publish.
-      if (newChecks < track.allTimeChecks) {
+      //
+      // A row the impossibility rule set aside is not missing data, so it
+      // counts toward the comparison and not the published figure. The cost:
+      // on a day one actual goes missing while a set-aside row exists, the
+      // rail is that much less sensitive.
+      if (newChecks + allTime.setAside < track.allTimeChecks) {
         warnings.add(
           'All-time re-derivation for $model lead+$k found $newChecks checks '
           'but ${track.allTimeChecks} were recorded previously — observations '

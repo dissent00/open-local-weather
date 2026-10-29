@@ -27011,6 +27011,49 @@ hidden scored row.
 
 ---
 
+## 198. A figure no forecast can make is refused, then not scored · **SHIPPED 2026-10-29**
+
+On 2026-10-20 the model's own call stored a high of 305 C and a low of
+195 C, a dropped decimal the schema accepted, beside 25 mm that was
+probably 2.5. That one row was the whole of the track record's ten-day
+`olw_blend` high error of -26.6 C. Swept 2026-10-29: the only impossible
+row in 2,190 stored predictions. The raw response is not archived, so
+whether the model wrote 305 or a parse made it cannot be shown; JSON
+numbers cannot carry a comma, so a parse fault is unlikely.
+
+`models.impossible_figure` is the one rule, at the world records so a
+fork needs no configuration: temperatures in -89.2 to 56.7 C, low not
+above high, rain and wind not negative, wind at most 408 km/h, a
+probability in 0 to 100. Applied twice:
+
+1. **At parse.** `TodayProperties` and `ExtendedDayProperties` reject it.
+   A schema failure is a refusal, so the model's call adds no row and the
+   chain does not ask the next link.
+2. **At scoring.** `score_prediction` declines the WHOLE row, the
+   operator's choice 2026-10-29, because one impossible figure says the
+   generation was broken. The record is re-derived every run, so the
+   stored 10-20 row drops out without editing the log.
+
+**The all-time rail had to learn it.** Measured on a copy of the data: the
+first rebuild held 47 of 60 and warned that actuals were missing, because
+a derivation finding fewer checks keeps the old figures. `AllTimeResult`
+now counts the rows set aside, and the rail adds them back before
+comparing. The cost is written beside the rail. After the rebuild only
+`olw_blend` Day+0 moved: 47 of 59, high error 0.9 C, low 0.25 C.
+
+**Not caught:** a dropped decimal that lands in range, 25 mm for 2.5 or a
+3.05 C high. That needs a bound from the location's climate or the
+models' spread, measured against the record before it is set.
+
+**A correction to the 2026-10-29 review, recorded here so it is not made
+again.** The review rescored Day+0 rain against ERA5 alone and reported
+four airport thunderstorm days as misses on the record. They were not:
+`DailyActual.observed_convection` has ORed the station's thunder and
+precipitation into the truth since early September ("trust the
+positive", operator 2026-09-03), and all four days carry `thunder: true`
+in the actuals cache. Rescore against `observed_convection()`, never
+`rain`.
+
 ## 197. Clouds by height, and what the airport saw overhead · **Planned; raised 2026-10-11**
 
 The operator, on reading the floor: can the page say more about the
