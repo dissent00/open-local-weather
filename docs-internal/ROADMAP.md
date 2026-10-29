@@ -27579,6 +27579,24 @@ the judgment and then the brief minutes apart.
 The app's section toggles are the app's side of this step; the mini tier
 waits on an on-device route (the brief already renders it).
 
+**Groq's Today, 2026-10-29: code writes the observed line.** Live, Groq's
+Today passed 1 of 6 mornings from 10-22 while its other sections passed
+most days. The ledger's reasons, each day's brief rebuilt from the archive:
+the observed line reworded (10-26, 27); "39 km/h" where the briefs' gusts
+were 37 and 41 (10-23, 24), a figure in neither brief and in the prompt's
+own example, `gusts as "39 km/h (21 kt)"` (inferred: refused answers are not
+stored); one word over a cap the line's 30 words sat inside (10-22). Every
+model Today that passed (7 of 7) ended with the line verbatim. So the line
+is code's: the prompt no longer asks for it, the audit strips an exact copy
+and still refuses a part of one, and the page appends it after the model's
+text as the floor does (`strip_observed_line`, `compose_write_up(...,
+observed_line=)`, both languages, the app's `writeUpForecast` too). Today's
+cap is 125, the 155 less the line; the model's own text ran 66 to 104 words
+over the 7 passes. The example carries no figure now. Checked: the 7 passed
+Todays pass the new audit, and `tools/measure_audit.py` over 27 days
+rejects exactly what it did. Not addressed: the probe's reworded wind-shift
+phrase, absent from the live reasons since 10-22.
+
 **The gate — the audit's first line, shipped early 2026-10-09.** Four
 mornings running (10-05, 10-06, 10-08, 10-09) the gateway's free model
 answered 600 to 800 characters under none or one of the seven headings, and

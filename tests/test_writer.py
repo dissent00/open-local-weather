@@ -49,7 +49,7 @@ def test_the_prompt_asks_for_exactly_the_sections_and_stays_short():
 
     assert '"today", "extended"' in prompt
     assert "SEVERE WEATHER" not in prompt and "SYNOPTIC OVERVIEW" not in prompt
-    assert "today 155 words; extended 140 words" in prompt
+    assert "today 125 words; extended 140 words" in prompt
     assert len(prompt) < 6_000, len(prompt)
     full = build_writer_prompt(list(SECTIONS), place="Kisumu", secondary_name="Winam Gulf", met_service_name="Kenya Met")
     assert "WINAM GULF" in full and "Kenya Met's own figures" in full and len(full) < 7_000
@@ -235,3 +235,38 @@ def test_the_gulf_timeline_is_locked_by_bearing_and_figures():
     assert audit_section("today", "A southwesterly breeze later.", brief, inputs) == [], (
         "the brief says 'southwest'; its adverb form is the same bearing"
     )
+
+
+def test_code_writes_the_observed_line_and_the_model_does_not():
+    """Groq's gpt-oss lost Today on 10-26 and 10-27 for rewording the
+    observed line, and on 10-22 for one word over a cap the line's 30
+    words sat inside. Every passing model Today (7 of 7 to 10-29) ended
+    with the line verbatim, so it is code's: the prompt stops asking for
+    it, an exact copy is stripped, a part of it is still a refusal, and
+    the page appends it after the model's text as the floor does."""
+    i = _inputs()
+    line = i.observed_so_far
+    prompt = build_writer_prompt(["today"], place="Kisumu", secondary_name=None, met_service_name=None)
+    assert "OBSERVED SO FAR line verbatim" not in prompt
+    assert "today 125 words" in prompt
+
+    own = " ".join(["Dry"] * WORD_CAPS["today"])
+    assert audit_section("today", f"{own} {line}", _brief(i), i) == []
+    assert any(d.startswith("phrase not verbatim") for d in audit_section(
+        "today", "Dry. " + line.replace("no rain; no thunder", "no rain or thunder"), _brief(i), i))
+
+    for answer in ("Showers later.", f"Showers later. {line}"):
+        markdown, _ = compose_write_up(
+            {"today": answer}, {"today": []}, {}, ["today"],
+            secondary_name=None, model_name="Gemini 3.6 Flash", sign_off_line="Written by code.", observed_line=line,
+        )
+        assert f"## Today's Forecast\n\nShowers later. {line}\n" in markdown, markdown
+        assert markdown.count("As of 06:01") == 1, markdown
+
+
+def test_the_prompts_examples_carry_no_figure_to_copy():
+    """10-23 and 10-24: Groq's Today wrote "39 km/h" where the briefs'
+    gusts were 37 and 41. 39 was in neither brief, only in this prompt's
+    own example. An example with a figure is a figure offered."""
+    prompt = build_writer_prompt(list(SECTIONS), place="Kisumu", secondary_name="Winam Gulf", met_service_name="Kenya Met")
+    assert "39 km/h" not in prompt and "21 kt" not in prompt

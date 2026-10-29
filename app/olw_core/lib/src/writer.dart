@@ -17,8 +17,9 @@ import 'tiles.dart' show kmhPerKnot;
 const timelineJoin = ', then ';
 
 /// Word caps per section, near the record's 90th percentile — see writer.py.
+/// Today is 125 since 2026-10-29: code writes the observed line now.
 const Map<String, int> wordCaps = {
-  sectionToday: 155,
+  sectionToday: 125,
   sectionExtended: 140,
   sectionSevere: 90,
   sectionSecondary: 95,
@@ -75,10 +76,11 @@ String buildWriterPrompt(
   final guides = <String, String>{
     sectionToday: 'TODAY\'S FORECAST ("today"): open on a weather condition or a temperature, never on a time or the '
         'sun. What is still ahead, as the ISSUED line and WINDOWS say; the thunder phrase verbatim where '
-        'one is given; the sky in SKY\'s words for those hours; the WIND phrase verbatim; gusts as '
-        '"39 km/h (21 kt)"; the UV peak; air quality from the ground stations where given, the model '
-        'estimate otherwise; the OBSERVED SO FAR line verbatim at the end, the one place the past '
-        'tense is allowed. Nothing about humidity, feels-like or visibility: nothing measures them.',
+        'one is given; the sky in SKY\'s words for those hours; the WIND phrase verbatim; gusts in km/h '
+        'with knots in brackets, as the brief writes them; the UV peak; air quality from the ground '
+        'stations where given, the model estimate otherwise. Nothing about what has already happened: '
+        'code adds the OBSERVED SO FAR line after your text. Nothing about humidity, feels-like or '
+        'visibility: nothing measures them.',
     sectionExtended: 'EXTENDED OUTLOOK ("extended"): the NEXT THREE DAYS phrase verbatim first; the sky in SKY BY '
         'DAY\'s words; the days from DAYS AHEAD, rain as the models\' count ("three of four models wet") '
         'and thunder in the day\'s own word, possible staying possible; the Day+3 and Day+7 calls from '
@@ -164,9 +166,22 @@ String normaliseProse(String text) => text
     .replaceAll('\u202f', ' ')
     .replaceAll('\u2009', ' ');
 
+/// The model's text without an exact copy of the observed line, which code
+/// appends itself — mirrors `strip_observed_line`. A part of the line is
+/// left for the lock to refuse.
+String stripObservedLine(String text, String? line) {
+  if (line == null || line.isEmpty || !text.contains(line)) {
+    return text;
+  }
+  return stripLikePython(text.replaceAll(line, '').replaceAll(RegExp(r'[ \t]{2,}'), ' '));
+}
+
 List<String> auditSection(String section, String text, String brief, BriefInputs inputs) {
   final defects = <String>[];
-  final body = stripLikePython(normaliseProse(text));
+  var body = stripLikePython(normaliseProse(text));
+  if (section == sectionToday) {
+    body = stripObservedLine(body, inputs.observedSoFar);
+  }
   if (body.isEmpty) return ['empty'];
   if (RegExp(r'^\s*#', multiLine: true).hasMatch(body)) defects.add('carries a heading');
 
@@ -286,6 +301,7 @@ bool _usesPartOf(String text, String phrase, {int window = 4}) {
   required String? secondaryName,
   required String? modelName,
   required String signOffLine,
+  String? observedLine,
 }) {
   final parts = <String>[];
   final sources = <String, String>{};
@@ -296,7 +312,10 @@ bool _usesPartOf(String text, String phrase, {int window = 4}) {
     final String text;
     final String source;
     if (answer.isNotEmpty && (verdicts[section] ?? const []).isEmpty) {
-      text = answer;
+      // Code's line, after the model's text, as the floor ends Today.
+      text = section == sectionToday && observedLine != null && observedLine.isNotEmpty
+          ? '${stripObservedLine(answer, observedLine)} $observedLine'
+          : answer;
       source = 'llm';
     } else if ((codeSections[section] ?? '').isNotEmpty) {
       text = codeSections[section]!;

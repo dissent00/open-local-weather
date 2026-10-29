@@ -7279,6 +7279,10 @@ def export_writer() -> None:
                        + ". Into the evening " + inputs.secondary_wind["timeline"].split(", then ")[2] + "."),
             audit_case("a bearing shortened in the Gulf timeline", "secondary",
                        "The wind is " + inputs.secondary_wind["timeline"].replace("south-southwesterly", "southwesterly") + "."),
+            audit_case("an exact copy of the observed line is code's, not counted", "today",
+                       " ".join(["Dry"] * 125) + " " + inputs.observed_so_far),
+            audit_case("the observed line reworded", "today",
+                       "Dry. " + inputs.observed_so_far.replace("no rain; no thunder", "no rain or thunder")),
             audit_case("a model's non-breaking hyphens and narrow spaces", "today",
                        "Winds north\u2011northeasterly overnight, turning south\u2011southwest by midday and south into the "
                        "evening, with gusts to 39\u202fkm/h (21\u202fkt)."),
@@ -7305,6 +7309,10 @@ def export_writer() -> None:
                          {"synoptic": [], "confidence": []}, {}, ("synoptic", "confidence"), secondary_name=None),
             compose_case("nothing from the model keeps the floor's sign-off", {}, {}, {"today": "Code's today."}, ("today", "severe"), secondary_name=None),
             compose_case("every section the model's", {s: f"Model's {s}." for s in SECTIONS}, {s: [] for s in SECTIONS}, {}, SECTIONS, model_name="dots-3-note-preview"),
+            compose_case("code appends the observed line to the model's today", {"today": "Showers later."}, {"today": []}, {},
+                         ("today",), secondary_name=None, observed_line=inputs.observed_so_far),
+            compose_case("an exact copy of the observed line is not doubled", {"today": f"Showers later. {inputs.observed_so_far}"},
+                         {"today": []}, {}, ("today",), secondary_name=None, observed_line=inputs.observed_so_far),
         ],
     )
 

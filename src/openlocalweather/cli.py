@@ -2024,6 +2024,7 @@ def _run_write_up(args) -> int:
     markdown, sources = compose_write_up(
         {s: getattr(answer, s) for s in sections}, verdicts, floor_section_texts(floor_inputs), sections,
         secondary_name=secondary_name, model_name=model_display_name(served_model), sign_off_line=sign_off(floor_inputs),
+        observed_line=inputs.observed_so_far,
     )
     apply_write_up_sections(entry, markdown, sources, served_model)
     write_log_entry(data_dir, entry)

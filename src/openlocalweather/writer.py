@@ -52,8 +52,12 @@ from openlocalweather.tiles import KMH_PER_KNOT
 # boaters 94, synoptic 141, confidence 207). A cap is a ceiling the audit
 # enforces, so it refuses the tails: the 300-to-400-word confidence notes
 # were the ones reciting raw figures.
+#
+# TODAY IS 125 SINCE 2026-10-29: the 155 held the observed line, 28 to 30
+# words, which code now writes (`strip_observed_line`). Without it the
+# model's own Today ran 66 to 104 words over the 7 that passed.
 WORD_CAPS = {
-    SECTION_TODAY: 155,
+    SECTION_TODAY: 125,
     SECTION_EXTENDED: 140,
     SECTION_SEVERE: 90,
     SECTION_SECONDARY: 95,
@@ -134,10 +138,11 @@ def build_writer_prompt(
         SECTION_TODAY: (
             "TODAY'S FORECAST (\"today\"): open on a weather condition or a temperature, never on a time or the "
             "sun. What is still ahead, as the ISSUED line and WINDOWS say; the thunder phrase verbatim where "
-            "one is given; the sky in SKY's words for those hours; the WIND phrase verbatim; gusts as "
-            "\"39 km/h (21 kt)\"; the UV peak; air quality from the ground stations where given, the model "
-            "estimate otherwise; the OBSERVED SO FAR line verbatim at the end, the one place the past "
-            "tense is allowed. Nothing about humidity, feels-like or visibility: nothing measures them."
+            "one is given; the sky in SKY's words for those hours; the WIND phrase verbatim; gusts in km/h "
+            "with knots in brackets, as the brief writes them; the UV peak; air quality from the ground "
+            "stations where given, the model estimate otherwise. Nothing about what has already happened: "
+            "code adds the OBSERVED SO FAR line after your text. Nothing about humidity, feels-like or "
+            "visibility: nothing measures them."
         ),
         SECTION_EXTENDED: (
             "EXTENDED OUTLOOK (\"extended\"): the NEXT THREE DAYS phrase verbatim first; the sky in SKY BY "
@@ -247,11 +252,23 @@ def normalise_prose(text: str) -> str:
     return text.translate(_TYPOGRAPHY)
 
 
+def strip_observed_line(text: str, line: str | None) -> str:
+    """The model's text without an exact copy of the observed line, which
+    code appends itself. A part of the line is left for the lock to refuse:
+    stripping a rewording would hide a second, different account of the
+    morning beside code's."""
+    if not line or line not in text:
+        return text
+    return re.sub(r"[ \t]{2,}", " ", text.replace(line, "")).strip()
+
+
 def audit_section(section: str, text: str, brief: str, inputs: BriefInputs) -> list[str]:
     """Why a section is not publishable, or [] when it is. Each reason is a
     short clause for the ledger; the first is enough to drop the section."""
     defects: list[str] = []
     body = normalise_prose(text).strip()
+    if section == SECTION_TODAY:
+        body = strip_observed_line(body, inputs.observed_so_far)
     if not body:
         return ["empty"]
     if re.search(r"^\s*#", body, flags=re.M):
@@ -361,10 +378,12 @@ def compose_write_up(
     secondary_name: str | None,
     model_name: str | None,
     sign_off_line: str,
+    observed_line: str | None = None,
 ) -> tuple[str, dict[str, str]]:
     """The page's Markdown and who wrote each section: the model's text where
     it answered and the audit passed, code's otherwise, a section with
-    neither absent. The sign-off names the sections the model wrote."""
+    neither absent. The model's Today ends with `observed_line`, written by
+    code. The sign-off names the sections the model wrote."""
     parts: list[str] = []
     sources: dict[str, str] = {}
     discussion_open = False
@@ -374,6 +393,9 @@ def compose_write_up(
         answer = normalise_prose(answers.get(section) or "").strip()
         if answer and not verdicts.get(section):
             text, source = answer, "llm"
+            # Code's line, after the model's text, as the floor ends Today.
+            if section == SECTION_TODAY and observed_line:
+                text = f"{strip_observed_line(answer, observed_line)} {observed_line}"
         elif code_sections.get(section):
             text, source = code_sections[section], "code"
         else:

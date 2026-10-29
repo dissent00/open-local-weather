@@ -133,6 +133,56 @@
           "confidence": "llm"
         }
       }
+    },
+    {
+      "name": "code appends the observed line to the model's today",
+      "input": {
+        "answers": {
+          "today": "Showers later."
+        },
+        "verdicts": {
+          "today": []
+        },
+        "code_sections": {},
+        "enabled": [
+          "today"
+        ],
+        "secondary_name": null,
+        "model_name": "Gemini 3.6 Flash",
+        "sign_off_line": "Written by code; a discussion follows when a model answers.",
+        "observed_line": "As of 06:01, reports through 04:00: no rain; no thunder; high so far 21\u00b0C / 70\u00b0F; low so far 20\u00b0C / 68\u00b0F; peak sustained 7 km/h; sky 4/8."
+      },
+      "expected": {
+        "markdown": "## Today's Forecast\n\nShowers later. As of 06:01, reports through 04:00: no rain; no thunder; high so far 21\u00b0C / 70\u00b0F; low so far 20\u00b0C / 68\u00b0F; peak sustained 7 km/h; sky 4/8.\n\nToday's Forecast by Gemini 3.6 Flash; the rest written by code.\n",
+        "sources": {
+          "today": "llm"
+        }
+      }
+    },
+    {
+      "name": "an exact copy of the observed line is not doubled",
+      "input": {
+        "answers": {
+          "today": "Showers later. As of 06:01, reports through 04:00: no rain; no thunder; high so far 21\u00b0C / 70\u00b0F; low so far 20\u00b0C / 68\u00b0F; peak sustained 7 km/h; sky 4/8."
+        },
+        "verdicts": {
+          "today": []
+        },
+        "code_sections": {},
+        "enabled": [
+          "today"
+        ],
+        "secondary_name": null,
+        "model_name": "Gemini 3.6 Flash",
+        "sign_off_line": "Written by code; a discussion follows when a model answers.",
+        "observed_line": "As of 06:01, reports through 04:00: no rain; no thunder; high so far 21\u00b0C / 70\u00b0F; low so far 20\u00b0C / 68\u00b0F; peak sustained 7 km/h; sky 4/8."
+      },
+      "expected": {
+        "markdown": "## Today's Forecast\n\nShowers later. As of 06:01, reports through 04:00: no rain; no thunder; high so far 21\u00b0C / 70\u00b0F; low so far 20\u00b0C / 68\u00b0F; peak sustained 7 km/h; sky 4/8.\n\nToday's Forecast by Gemini 3.6 Flash; the rest written by code.\n",
+        "sources": {
+          "today": "llm"
+        }
+      }
     }
   ]
 }

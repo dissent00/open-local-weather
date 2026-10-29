@@ -1796,6 +1796,7 @@ void main() {
           secondaryName: i['secondary_name'] as String?,
           modelName: i['model_name'] as String?,
           signOffLine: i['sign_off_line'] as String,
+          observedLine: i['observed_line'] as String?,
         );
         expect({'markdown': markdown, 'sources': sources}, c['expected'], reason: c['name'] as String);
       }

@@ -1267,11 +1267,20 @@ void main() {
       trackRecordContext: null,
       reviewContext: null,
       nowLocal: DateTime(2026, 8, 19, 18, 15),
+      observedSoFar: const ObservedSoFar(
+          precipitation: false, thunder: false, highC: 23, lowC: 21, peakWindKmh: 7.41, reportedThrough: '05:00'),
     );
 
     final written = await writeUpForecast(provider: llm, run: run, place: 'Kisumu');
 
     expect(written.markdown, startsWith("## Today's Forecast\n\nShowers likely this afternoon, clearing overnight."));
+    // Code writes the observed line after the model's Today, upstream
+    // 2026-10-29; the stub's Today does not carry it.
+    final line = BriefInputs.fromUserPrompt(run.userPrompt, run.briefEntry,
+            secondaryName: run.floorInputs.secondaryName, metServiceName: null, metServiceModelId: null)
+        .observedSoFar;
+    expect(line, isNotNull);
+    expect(written.markdown, contains('clearing overnight. $line\n'));
     expect(written.markdown, contains('## Extended Outlook\n\n'));
     expect(written.sources, {'today': 'llm', 'extended': 'code'});
     expect(written.markdown.trimRight(), endsWith("Today's Forecast by stub-model; the rest written by code."));

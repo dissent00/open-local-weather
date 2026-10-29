@@ -1037,6 +1037,7 @@ Future<WriteUp> writeUpForecast({
     secondaryName: run.floorInputs.secondaryName,
     modelName: writer.modelDisplayName(provider.model),
     signOffLine: signOff(run.floorInputs),
+    observedLine: inputs.observedSoFar,
   );
   return WriteUp(markdown: markdown, sources: sources, model: provider.model);
 }
