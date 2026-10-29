@@ -27596,6 +27596,11 @@ over the 7 passes. The example carries no figure now. Checked: the 7 passed
 Todays pass the new audit, and `tools/measure_audit.py` over 27 days
 rejects exactly what it did. Not addressed: the probe's reworded wind-shift
 phrase, absent from the live reasons since 10-22.
+**Probed the same day** (run 40874121278, gpt-oss-120b, 10-22 to 10-29,
+one call each): Today 8 of 8, all sections 45 of 48 (93%), GO. Left: the
+synoptic pressure change, "1.6hPa" (10-23) and "0.1hPa" (10-24), refused
+in the probe as it was live, and severe's per-model CAPE figures once
+(10-29). The hPa pair is the next candidate.
 
 **The gate — the audit's first line, shipped early 2026-10-09.** Four
 mornings running (10-05, 10-06, 10-08, 10-09) the gateway's free model
