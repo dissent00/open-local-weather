@@ -2,38 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-10-23T03:08:31.870305+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 2.921
-    },
-    {
-      "at": "2026-10-23T03:11:34.793213+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 4.393
-    },
-    {
-      "at": "2026-10-23T03:18:39.187882+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 8.704
-    },
-    {
-      "at": "2026-10-23T03:18:47.893829+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.8-flash",
-      "purpose": "write-up",
-      "outcome": "timeout",
-      "elapsed_s": 90.035
-    },
-    {
       "at": "2026-10-23T03:20:17.931382+00:00",
       "provider": "OpenAICompatProvider",
       "model": "openai/gpt-oss-120b",
@@ -315,6 +283,47 @@
       "outcome": "http_200",
       "elapsed_s": 128.495,
       "served_model": "dots-studio/dots-3-note-preview:free"
+    },
+    {
+      "at": "2026-10-30T03:05:40.472885+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 12.351
+    },
+    {
+      "at": "2026-10-30T03:08:52.826387+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 3.012
+    },
+    {
+      "at": "2026-10-30T03:15:55.841224+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "timeout",
+      "elapsed_s": 90.167
+    },
+    {
+      "at": "2026-10-30T03:17:26.012019+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "write-up",
+      "outcome": "timeout",
+      "elapsed_s": 90.099
+    },
+    {
+      "at": "2026-10-30T03:18:56.114559+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "openai/gpt-oss-120b",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 3.002,
+      "audit": "passed: today, extended, secondary, confidence; refused: severe (figures not in the brief: 340J/kg); synoptic (figures not in the brief: 0.4hPa)"
     }
   ]
 }
