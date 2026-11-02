@@ -151,7 +151,7 @@ def build_writer_prompt(
             "THE CALL; highs as the range when the models spread; the RECORD line where given."
         ),
         SECTION_SEVERE: (
-            "SEVERE WEATHER (\"severe\"): thunder today from PEAK CAPE TODAY, per model, with the hazard any "
+            "SEVERE WEATHER (\"severe\"): thunder ahead from PEAK CAPE AHEAD, per model, with the hazard any "
             "thunderstorm brings: sudden gusts well above the forecast wind. A warning from the met "
             "service's bulletin where it carries one; otherwise none."
         ),

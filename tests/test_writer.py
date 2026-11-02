@@ -303,3 +303,8 @@ def test_a_narrow_space_inside_a_figure_groups_thousands():
     assert audit_section("severe", "ECMWF builds 1\u202f320\u202fJ/kg.", _brief(i), i) == [
         "figures not in the brief: 1320J/kg"
     ]
+
+
+def test_severe_reads_the_cape_block_by_its_name():
+    prompt = build_writer_prompt(["severe"], place="Kisumu", secondary_name=None, met_service_name=None)
+    assert "thunder ahead from PEAK CAPE AHEAD" in prompt and "PEAK CAPE TODAY" not in prompt

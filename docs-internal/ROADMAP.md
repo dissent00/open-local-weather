@@ -27635,6 +27635,23 @@ Day+0 call's calendar-day peak (`extract.py`). Both are right for their
 hours, and a writer cannot tell which "today" it quotes. Not fixed; a
 candidate for the brief.
 
+**The brief's two CAPE figures, 2026-11-02: one per model now.** The CAPE
+column left MODELS TODAY, and the block is PEAK CAPE AHEAD, "over the
+hours the THUNDER line covers" — the forward window's, from which the
+THUNDER line and the convective flag already come. Over 39 archived days
+the two figures differed on 55 of 195 model-days (43 the window higher,
+12 lower), never across 1000 J/kg, so no thunder decision moves. Scoring
+and the stored predictions keep the calendar-day figure; code's Severe
+section still writes it, consistent with the scored call, and moving it
+would change what code publishes on those 55 model-days — not done.
+MEASURED THE RIGHT WAY ROUND. Re-auditing the old probe texts against the
+new brief said Severe 5 of 8, and against a calendar-only variant 3 of 8:
+those texts were written from the two-figure brief and quoted each figure
+on different days, so either variant fails the days that quoted the other.
+A fresh probe from a branch (run 41432449285, Groq gpt-oss-120b, 10-26 to
+11-02) wrote from the one-figure brief: Severe 8 of 8, all sections 44 of
+48, the four refusals locked phrases unrelated to CAPE.
+
 **The gate — the audit's first line, shipped early 2026-10-09.** Four
 mornings running (10-05, 10-06, 10-08, 10-09) the gateway's free model
 answered 600 to 800 characters under none or one of the seven headings, and

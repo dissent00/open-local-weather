@@ -114,7 +114,9 @@ def test_model_ids_never_reach_the_brief():
 def test_whole_numbers_show_without_a_point():
     full = render_brief(_inputs(), sections=SECTIONS)
 
-    assert "320.0" not in full and "\t320\n" in full
+    # Kenya Met's row is stored as 32.0 and 20.0; the CAPE column that held
+    # the old witness, GFS 320, left the brief on 2026-11-02.
+    assert "\t32.0\t20.0\n" not in full and "\t32\t20\n" in full
     assert "33.5" in full, "a decimal stays a decimal"
 
 
@@ -169,3 +171,18 @@ def test_the_default_sections_are_the_floors():
 def test_an_unknown_tier_is_refused():
     with pytest.raises(ValueError, match="tier"):
         render_brief(_inputs(), tier="huge")
+
+
+def test_one_cape_figure_per_model_named_for_its_hours():
+    """10-29: the brief gave ECMWF 1870 in PEAK CAPE TODAY and 1620 in
+    MODELS TODAY's CAPE column, both "today". The block is the forward
+    window's peak, issuance to midday tomorrow at 06:00; the column the
+    Day+0 calendar day's. They differed on 55 of 195 model-days from
+    09-24 (43 the window higher), never across the threshold. The writer
+    quoted the column. One figure stays, the one the THUNDER line comes
+    from, named for those hours."""
+    full = render_brief(_inputs(), sections=SECTIONS)
+    assert "PEAK CAPE TODAY" not in full
+    assert "PEAK CAPE AHEAD (J/kg, per model, over the hours the THUNDER line covers): " in full
+    header = next(line for line in full.splitlines() if line.startswith("model\train"))
+    assert "CAPE" not in header, header

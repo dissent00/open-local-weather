@@ -85,7 +85,7 @@ String buildWriterPrompt(
         'DAY\'s words; the days from DAYS AHEAD, rain as the models\' count ("three of four models wet") '
         'and thunder in the day\'s own word, possible staying possible; the Day+3 and Day+7 calls from '
         'THE CALL; highs as the range when the models spread; the RECORD line where given.',
-    sectionSevere: 'SEVERE WEATHER ("severe"): thunder today from PEAK CAPE TODAY, per model, with the hazard any '
+    sectionSevere: 'SEVERE WEATHER ("severe"): thunder ahead from PEAK CAPE AHEAD, per model, with the hazard any '
         'thunderstorm brings: sudden gusts well above the forecast wind. A warning from the met '
         'service\'s bulletin where it carries one; otherwise none.',
     sectionSecondary: '${(secondaryName ?? 'THE SECONDARY POINT').toUpperCase()} ("secondary"): the wind timeline\'s bearings and figures verbatim, the '

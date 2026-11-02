@@ -363,7 +363,10 @@ def _cape_block(i: BriefInputs, tier: str) -> str | None:
         return None
     parts = [f"{short_model_name(m)} {_num(v, 0)}" for m, v in by_model.items() if v is not None]
     above = [short_model_name(m) for m in inst.get("models_above_threshold") or []]
-    line = "PEAK CAPE TODAY (J/kg, per model): " + "; ".join(parts)
+    # AHEAD, NOT TODAY: the forward window's peak, which runs into tomorrow;
+    # MODELS TODAY no longer carries the calendar day's, so the writer has one
+    # figure per model (2026-11-02, item 191).
+    line = "PEAK CAPE AHEAD (J/kg, per model, over the hours the THUNDER line covers): " + "; ".join(parts)
     if above:
         line += f". Above the thunderstorm threshold: {', '.join(above)}"
     peak_hour = inst.get("peak_hour")
@@ -499,7 +502,7 @@ def _days_ahead_block(i: BriefInputs, tier: str) -> str | None:
 
 _MODEL_COLUMNS_TODAY = (
     ("rain", "rain"), ("onset", "onset"), ("precip_mm", "mm"), ("rain_probability_pct", "%"),
-    ("wind_kmh", "gust km/h"), ("high_c", "high"), ("low_c", "low"), ("peak_cape_jkg", "CAPE"),
+    ("wind_kmh", "gust km/h"), ("high_c", "high"), ("low_c", "low"),
 )
 _MODEL_COLUMNS_AHEAD = (("rain", "rain"), ("precip_mm", "mm"), ("rain_probability_pct", "%"), ("high_c", "high"), ("low_c", "low"))
 

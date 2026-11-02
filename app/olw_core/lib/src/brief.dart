@@ -421,7 +421,9 @@ String? _capeBlock(BriefInputs i, String tier) {
     for (final e in byModel.entries) if (e.value != null) '${shortModelName(e.key)} ${_num(e.value, 0)}',
   ];
   final above = [for (final m in inst['models_above_threshold'] as List? ?? const []) shortModelName('$m')];
-  var line = 'PEAK CAPE TODAY (J/kg, per model): ${parts.join('; ')}';
+  // Ahead, not today: the forward window's peak; MODELS TODAY no longer
+  // carries the calendar day's — see brief.py.
+  var line = 'PEAK CAPE AHEAD (J/kg, per model, over the hours the THUNDER line covers): ${parts.join('; ')}';
   if (above.isNotEmpty) line += '. Above the thunderstorm threshold: ${above.join(', ')}';
   final peakHour = inst['peak_hour'];
   if (_truthy(peakHour)) line += '; peak at $peakHour';
@@ -556,7 +558,7 @@ String? _daysAheadBlock(BriefInputs i, String tier) {
 
 const List<(String, String)> _modelColumnsToday = [
   ('rain', 'rain'), ('onset', 'onset'), ('precip_mm', 'mm'), ('rain_probability_pct', '%'),
-  ('wind_kmh', 'gust km/h'), ('high_c', 'high'), ('low_c', 'low'), ('peak_cape_jkg', 'CAPE'),
+  ('wind_kmh', 'gust km/h'), ('high_c', 'high'), ('low_c', 'low'),
 ];
 const List<(String, String)> _modelColumnsAhead = [
   ('rain', 'rain'), ('precip_mm', 'mm'), ('rain_probability_pct', '%'), ('high_c', 'high'), ('low_c', 'low'),
