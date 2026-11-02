@@ -270,3 +270,18 @@ def test_the_prompts_examples_carry_no_figure_to_copy():
     own example. An example with a figure is a figure offered."""
     prompt = build_writer_prompt(list(SECTIONS), place="Kisumu", secondary_name="Winam Gulf", met_service_name="Kenya Met")
     assert "39 km/h" not in prompt and "21 kt" not in prompt
+
+
+def test_an_en_dash_before_a_figure_after_a_space_is_a_minus():
+    """Groq's gpt-oss (probe, 2026-10-29) wrote "Trend –1.6 hPa" for the
+    brief's "trend -1.6 hPa" with U+2013, and the audit read an unsigned
+    1.6 that no brief carried. The en dash is mostly a range — 285 of 287
+    before a digit in the stored texts, every one after a digit, letter
+    or degree sign — and the 2 minus signs both followed a space."""
+    from openlocalweather.writer import normalise_prose
+
+    assert normalise_prose("Trend –1.6 hPa (–0.1 hPa)") == "Trend -1.6 hPa (-0.1 hPa)"
+    assert normalise_prose("–3°C at dawn") == "-3°C at dawn"
+    assert normalise_prose("29°C–31, August 17th–19, 10–12, gradient – a spread") == (
+        "29°C–31, August 17th–19, 10–12, gradient – a spread"
+    )

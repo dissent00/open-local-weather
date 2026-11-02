@@ -27602,6 +27602,19 @@ synoptic pressure change, "1.6hPa" (10-23) and "0.1hPa" (10-24), refused
 in the probe as it was live, and severe's per-model CAPE figures once
 (10-29). The hPa pair is the next candidate.
 
+**The hPa pair, 2026-11-02: an en dash as a minus sign.** The figures were
+right: Groq wrote "Trend –1.6 hPa" for the brief's "trend -1.6 hPa" with
+U+2013, which the typography map did not carry, so the audit read an
+unsigned 1.6. The en dash is mostly a range (285 of 287 before a digit in
+the stored texts, each after a digit, letter or degree sign), so only an en
+dash after a space or "(" and before a digit becomes "-", in
+`normalise_prose`, both languages, audit and page alike. Re-audited from
+the probe's stored texts, no new calls: synoptic 8 of 8, all sections 47 of
+48; `tools/measure_audit.py` unchanged over 27 days. It also closes a
+wrong-sign accept: "–0.5 hPa" against a brief's +0.5 passed before. Swept
+across the languages, 3,000 random strings: 46 apart until both said
+`[0-9]` rather than `\d`, 0 after. Left: severe's per-model CAPE on 10-29.
+
 **The gate — the audit's first line, shipped early 2026-10-09.** Four
 mornings running (10-05, 10-06, 10-08, 10-09) the gateway's free model
 answered 600 to 800 characters under none or one of the seven headings, and

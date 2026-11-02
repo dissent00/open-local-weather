@@ -164,7 +164,10 @@ String normaliseProse(String text) => text
     .replaceAll('\u2212', '-')
     .replaceAll('\u00a0', ' ')
     .replaceAll('\u202f', ' ')
-    .replaceAll('\u2009', ' ');
+    .replaceAll('\u2009', ' ')
+    // An en dash after a space or bracket, before a digit, is a minus sign;
+    // after anything else it is a range — see writer.py.
+    .replaceAll(RegExp(r'(?<![^\s(])\u2013(?=[0-9])'), '-');
 
 /// The model's text without an exact copy of the observed line, which code
 /// appends itself — mirrors `strip_observed_line`. A part of the line is

@@ -248,8 +248,20 @@ _TYPOGRAPHY = str.maketrans({
 })
 
 
+# AN EN DASH AS A MINUS SIGN: "Trend \u20131.6 hPa" (gpt-oss, probe of
+# 2026-10-29) read as an unsigned 1.6. Not mapped whole above because it is
+# mostly a range: 285 of 287 en dashes before a digit in the stored texts
+# followed a digit, letter or degree sign ("29°C\u201331"); the 2 minus signs
+# followed a space. Only that shape becomes "-".
+# Before it, "\u20130.5 hPa" against a brief's +0.5 passed with the wrong sign.
+# ASCII digits on purpose: Python's \d takes non-ASCII digits and Dart's
+# does not, and 46 of 3,000 swept strings came out apart until both
+# said [0-9].
+_EN_DASH_MINUS = re.compile(r"(?<![^\s(])\u2013(?=[0-9])")
+
+
 def normalise_prose(text: str) -> str:
-    return text.translate(_TYPOGRAPHY)
+    return _EN_DASH_MINUS.sub("-", text.translate(_TYPOGRAPHY))
 
 
 def strip_observed_line(text: str, line: str | None) -> str:
