@@ -7285,6 +7285,9 @@ def export_writer() -> None:
                        "Dry. " + inputs.observed_so_far.replace("no rain; no thunder", "no rain or thunder")),
             audit_case("an en dash as a minus sign is read as one", "synoptic", "The trend is \u20130.5 hPa."),
             audit_case("the brief's own sign passes", "synoptic", "The trend is +0.5 hPa."),
+            audit_case("a narrow space grouping thousands, a right figure", "severe", "UKMO builds 3\u202f440\u202fJ/kg by 17:00."),
+            audit_case("a narrow space grouping thousands, a wrong figure whose halves the brief carries", "severe",
+                       "ECMWF builds 1\u202f320\u202fJ/kg."),
             audit_case("a model's non-breaking hyphens and narrow spaces", "today",
                        "Winds north\u2011northeasterly overnight, turning south\u2011southwest by midday and south into the "
                        "evening, with gusts to 39\u202fkm/h (21\u202fkt)."),

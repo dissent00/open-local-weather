@@ -27615,6 +27615,26 @@ wrong-sign accept: "–0.5 hPa" against a brief's +0.5 passed before. Swept
 across the languages, 3,000 random strings: 46 apart until both said
 `[0-9]` rather than `\d`, 0 after. Left: severe's per-model CAPE on 10-29.
 
+**Severe on 10-29, 2026-11-02: a narrow space grouping thousands.** Groq
+wrote CAPE as "1 710 J/kg" with U+202F, which the map turned into a
+space, so each figure read as two, 1 and 710, each checked alone: a right
+figure refused, and a wrong one passable when the brief carries both
+halves ("1 320" against this fixture's GFS 320). The other 109 of 113
+grouped thousands in the stored texts used a comma, already read. A U+202F
+between a digit and exactly three digits is removed before the map, both
+languages; one before a unit stays spacing. Re-audited, no new calls: the
+probe's texts 48 of 48; `tools/measure_audit.py` unchanged; 3,000 strings
+swept across the languages built around digit groupings, 0 apart.
+
+**Corrected the same day: the brief gives two CAPE figures per model, both
+called today.** The design expected Groq's ECMWF "1620" to stay refused against
+PEAK CAPE TODAY's 1870. It passed, because MODELS TODAY's CAPE column
+carries 1620. The block is the forward window's peak (`summarize_instability`
+over `forward_hours`, which runs into tomorrow); the column is the stored
+Day+0 call's calendar-day peak (`extract.py`). Both are right for their
+hours, and a writer cannot tell which "today" it quotes. Not fixed; a
+candidate for the brief.
+
 **The gate — the audit's first line, shipped early 2026-10-09.** Four
 mornings running (10-05, 10-06, 10-08, 10-09) the gateway's free model
 answered 600 to 800 characters under none or one of the seven headings, and

@@ -158,6 +158,9 @@ double? _value(String token) => double.tryParse(token.replaceAll(',', ''));
 /// A model's typography the page does not use — mirrors `normalise_prose`
 /// (2026-10-12): non-breaking hyphens and narrow spaces to the plain forms.
 String normaliseProse(String text) => text
+    // A narrow space grouping thousands goes first, so "1\u202f710" reads as
+    // the brief's 1710 rather than 1 and 710 — see writer.py.
+    .replaceAll(RegExp(r'(?<=[0-9])\u202f(?=[0-9]{3}(?![0-9]))'), '')
     .replaceAll('\u2010', '-')
     .replaceAll('\u2011', '-')
     .replaceAll('\u2012', '-')

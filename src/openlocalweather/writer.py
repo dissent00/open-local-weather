@@ -260,8 +260,16 @@ _TYPOGRAPHY = str.maketrans({
 _EN_DASH_MINUS = re.compile(r"(?<![^\s(])\u2013(?=[0-9])")
 
 
+# A NARROW SPACE GROUPING THOUSANDS: "1\u202f710 J/kg" (gpt-oss, probe of
+# 2026-10-29) became "1 710" above and read as 1 and 710, each checked alone
+# — refusing a right figure, and able to pass a wrong one whose halves the
+# brief carried. Removed before the map, so the figure reads as the brief
+# writes it. Between a digit and exactly three; a unit after it is spacing.
+_THOUSANDS_SPACE = re.compile(r"(?<=[0-9])\u202f(?=[0-9]{3}(?![0-9]))")
+
+
 def normalise_prose(text: str) -> str:
-    return _EN_DASH_MINUS.sub("-", text.translate(_TYPOGRAPHY))
+    return _EN_DASH_MINUS.sub("-", _THOUSANDS_SPACE.sub("", text).translate(_TYPOGRAPHY))
 
 
 def strip_observed_line(text: str, line: str | None) -> str:

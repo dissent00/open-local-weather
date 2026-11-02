@@ -285,3 +285,21 @@ def test_an_en_dash_before_a_figure_after_a_space_is_a_minus():
     assert normalise_prose("29°C–31, August 17th–19, 10–12, gradient – a spread") == (
         "29°C–31, August 17th–19, 10–12, gradient – a spread"
     )
+
+
+def test_a_narrow_space_inside_a_figure_groups_thousands():
+    """Groq's gpt-oss (probe, 2026-10-29) wrote CAPE as "1\u202f710\u202fJ/kg",
+    and the narrow space, mapped to a space, split each figure in two: 1
+    and 710, each checked alone. That refused correct figures and could
+    pass a wrong one whose halves the brief happened to carry. Only
+    there, of 113 grouped thousands in the stored texts; the other 109
+    used a comma."""
+    from openlocalweather.writer import normalise_prose
+
+    assert normalise_prose("1\u202f710\u202fJ/kg, 12\u202f000 m, 3\u202f340") == "1710 J/kg, 12000 m, 3340"
+    assert normalise_prose("1\u202f7100, 18\u202f00, at 5\u202fkm/h") == "1 7100, 18 00, at 5 km/h"
+    i = _inputs()
+    assert audit_section("severe", "UKMO builds 3\u202f440\u202fJ/kg by 17:00.", _brief(i), i) == []
+    assert audit_section("severe", "ECMWF builds 1\u202f320\u202fJ/kg.", _brief(i), i) == [
+        "figures not in the brief: 1320J/kg"
+    ]
