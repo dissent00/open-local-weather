@@ -4397,7 +4397,7 @@ when a function is being edited for another reason, bring it into line.
 
 ---
 
-## 41. Satellite analysis · **Planned**
+## 41. Satellite analysis · **Planned — terms and access surveyed 2026-11-02**
 
 Raised by the operator on 2026-08-26, in the same session that established
 why it matters: a thunderstorm was observed at Kisumu Airport on 2026-08-24
@@ -4505,6 +4505,94 @@ does not prove the swath covered this point at that instant. Polar-orbiting
 products in particular must be queried for extent or point value, with
 "outside swath" treated as no observation rather than as no cloud — the
 same absence-is-not-evidence rule everything else here follows.
+
+### Terms and access, surveyed 2026-11-02
+
+The operator wants satellite in the app for three things: verification,
+the nowcast gap, and display. Read from the primary sources and tried live
+from this machine at about 13:00–14:10 UTC. Nothing was built.
+
+**Terms.**
+
+- **EUMETSAT** — Data Policy, last amended 25 November 2025 (read from the
+  PDF itself; the licensing overview page would not load). Article 4 sorts
+  Meteosat data into "Core" and "Recommended". Core is "Free and
+  Unrestricted ... regardless of when and how" it is obtained, under CC BY
+  4.0 (Art. 5.1), and anyone may redistribute it (Art. 6.1). Core covers
+  ALL SEVIRI, FCI and LI Derived Products (Level 2, including the SAFs'),
+  all Advanced Image Products (RGBs, single-channel visualisations "e.g.
+  used in Web Map Services") and hourly Level 1 imagery. Recommended is
+  full-rate Level 1: free for any use at a latency of one hour or more
+  (Art. 14.1), but its original numerical data may not be redistributed
+  (Art. 6.2), so not into this repository; under one hour it costs EUR
+  4,000 a year for an End User and EUR 8,000 for a Service Provider (Art.
+  14.2). "Personal Use" gets that newest data free (Art. 12.2) but excludes
+  operational and commercial use, so a published app is not personal use.
+  Attribution, Art. 6.3: "[Contains modified] EUMETSAT [Meteosat] [data/
+  product] [year]".
+- **NASA (IMERG)** — Earthdata's data use policy: NASA-led mission data are
+  CC0, may be reproduced and distributed without permission; acknowledge
+  NASA, imply no endorsement. The GPM policy page: free at all levels.
+- **RealEarth** — free with the credit "Source: SSEC RealEarth, UW-Madison"
+  (apps included); no availability guarantee, not staffed around the
+  clock; silent on storing or redistributing API values.
+
+So everything this item needs for verification, nowcasting and display is
+Core or CC0: usable in the app and committable here. Only sub-hourly raw
+imagery under an hour old costs money, and nothing here needs it.
+
+**Access, tried live.**
+
+- **EUMETSAT Data Store.** Browse and search need no key. MTG at 0 degrees
+  carries, among others: LI Lightning Flashes (EO:EUM:DAT:0691), Groups
+  (0782), Events Filtered (0690), Accumulated Flashes (0686), Accumulated
+  Flash Area (0687); FCI Cloud Top Temperature and Height (0681), Cloud
+  Type (0680), Global Instability Indices (0683); H SAF blended FCI/LEO
+  precipitation rate at ground (1086) and accumulated precipitation (1087).
+  Latency at 14:04 UTC, newest sensing window: LI flashes 13:50–14:00 (a
+  579 KB full-disc file per 10 minutes), cloud top and instability
+  13:40–13:50, precipitation rate 13:40, accumulation hourly at 13:00.
+  DOWNLOAD needs a key: a free EO Portal account and an API key pair
+  (consumer key and secret) exchanged for a token, which `eumdac`
+  handles — from third-party guides, not EUMETSAT's own page. Without one
+  the download returned HTTP 404 rather than the expected 401.
+- **EUMETView WMS** (view.eumetsat.int/geoserver). No key; its capabilities
+  declare "Fees: none", "AccessConstraints: none". 116 layers, MTG among
+  them: IR 10.5 um (ir105_hrfi), VIS 0.6, GeoColour and other RGBs, LI
+  Accumulated Flash Area (li_afa), and the blended precipitation (h40b).
+  Steps: IR every 10 minutes, newest 13:40 at 14:05; LI every 5 minutes,
+  newest 13:50. GetMap rendered a Kisumu box for each (the IR showed a
+  convective cell just south of the point). GetFeatureInfo at Kisumu:
+  IR returns a display grey level (GRAY_INDEX 182) and LI an RGB colour —
+  pictures, not values — but h40b returns physical fields,
+  Instantaneous_rain_rate 0 and Quality_index 36. Units not confirmed.
+- **RealEarth.** The point query 09-03 could not run works:
+  Met11-SEVIRI-FD-BAND09 at Kisumu returned 68 (116 at Nakuru) against
+  metadata saying deg C — a display value, not a temperature. Hourly frames,
+  the 12:00 UTC one newest at 12:59. MIRS-RainRate returned "No value"
+  (outside the swath, as predicted). Its product search does not filter.
+- **IMERG** (GES DISC). Directory listings are public; a file download
+  redirects to Earthdata Login. Early run (3IMERGHHE V07C): newest half hour
+  08:30–09:00 UTC at 14:06, about 5 hours. Late run (3IMERGHHL): newest
+  yesterday 22:30–23:00, about 15 hours. Kisumu's day ends 21:00 UTC, so the
+  Early run covers yesterday whole by the 03:01Z run; the Late run does not.
+
+**What this settles for the three uses.**
+
+- **Verification:** LI flashes for `DailyActual.lightning` (item 65) and the
+  H SAF or IMERG precipitation as a rain cross-check — both need a key
+  (EUMETSAT, Earthdata), both committable. The store-beside-before-scoring
+  rule above holds.
+- **Nowcast:** LI every 5–10 minutes at about 5–15 minutes' delay, and the
+  blended rain rate at about 25 minutes, are free and keyless through
+  EUMETView for display; as numbers, the Data Store with a key.
+- **Display in the app:** EUMETView WMS, keyless, attribution as Art. 6.3.
+
+**Not checked:** whether a LI file holds Kisumu's flashes as point-queryable
+records (needs a key to download one); the h40b rain rate's units and
+quality scale; that EO Portal and Earthdata registration cost nothing (both
+widely described so, not read from the providers' own pages); EUMETView's
+rate limits and uptime.
 
 ## 42. The reanalysis does not see thunderstorms · **Shipped**
 
