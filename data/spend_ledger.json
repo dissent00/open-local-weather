@@ -2,14 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-10-26T03:02:03.010089+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 3.166
-    },
-    {
       "at": "2026-10-26T03:05:06.177592+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -275,6 +267,32 @@
       "purpose": "forecast",
       "outcome": "http_200",
       "elapsed_s": 27.1
+    },
+    {
+      "at": "2026-11-02T03:02:19.675760+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 58.368,
+      "audit": "refused: today (4227 words, cap 125); unanswered: extended, severe, secondary, synoptic, confidence"
+    },
+    {
+      "at": "2026-11-02T03:03:18.057995+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "write-up",
+      "outcome": "timeout",
+      "elapsed_s": 90.12
+    },
+    {
+      "at": "2026-11-02T03:04:48.180237+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "openai/gpt-oss-120b",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 2.981,
+      "audit": "passed: today, extended, severe, secondary, synoptic, confidence"
     }
   ]
 }
