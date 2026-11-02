@@ -33,7 +33,7 @@ from typing import Any
 
 from openlocalweather.llm.prompt_size import prompt_block_sizes
 from openlocalweather.outlook import MODEL_SHORT_NAMES, short_model_name
-from openlocalweather.tiles import KMH_PER_KNOT
+from openlocalweather.models import format_kmh
 
 # The sections a write-up can hold, in the page's order. `severe` is rendered
 # only while the convective flag or a warning is live; `secondary` only where
@@ -720,8 +720,9 @@ def _cell(value: Any) -> str:
 
 
 def _kmh_and_kt(kmh: float) -> str:
-    # floor.py's own formatting, kept private there; the same two numbers.
-    return f"{float(kmh):.0f} km/h ({float(kmh) / KMH_PER_KNOT:.0f} kt)"
+    # The page's own formatter, so a figure the brief locks is the one the
+    # page prints.
+    return format_kmh(float(kmh))
 
 
 def _day_for_date(i: BriefInputs, date: str) -> str | None:

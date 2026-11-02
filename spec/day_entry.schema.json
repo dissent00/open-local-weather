@@ -2116,6 +2116,21 @@
       "default": null,
       "title": "Forecast Reach"
     },
+    "forward_cape_by_model": {
+      "anyOf": [
+        {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Forward Cape By Model"
+    },
     "ground_aqi": {
       "items": {
         "$ref": "#/$defs/GroundAQIReading"

@@ -83,7 +83,7 @@
         ],
         "issued_hour": 0
       },
-      "expected": "north-northeasterly overnight at 10 km/h (5 kt) gusting 16 km/h (8 kt), then southwesterly by midday at 19 km/h (10 kt) gusting 29 km/h (16 kt), then westerly into the evening at 12 km/h (6 kt) gusting 21 km/h (11 kt)"
+      "expected": "north-northeasterly overnight at 10 km/h (5 kt) gusting 16 km/h (8 kt), then southwesterly by midday at 18 km/h (10 kt) gusting 29 km/h (16 kt), then westerly into the evening at 12 km/h (6 kt) gusting 20 km/h (11 kt)"
     },
     {
       "name": "an anchor the models split on keeps its speed and loses its bearing",
@@ -165,7 +165,7 @@
         ],
         "issued_hour": 0
       },
-      "expected": "north-northeasterly overnight at 10 km/h (5 kt) gusting 16 km/h (8 kt), then southwesterly by midday at 19 km/h (10 kt) gusting 29 km/h (16 kt), then into the evening at 12 km/h (6 kt) gusting 21 km/h (11 kt)"
+      "expected": "north-northeasterly overnight at 10 km/h (5 kt) gusting 16 km/h (8 kt), then southwesterly by midday at 18 km/h (10 kt) gusting 29 km/h (16 kt), then into the evening at 12 km/h (6 kt) gusting 20 km/h (11 kt)"
     },
     {
       "name": "no gust series says the sustained wind alone",
@@ -227,7 +227,7 @@
         ],
         "issued_hour": 0
       },
-      "expected": "north-northeasterly overnight at 10 km/h (5 kt), then southwesterly by midday at 19 km/h (10 kt), then westerly into the evening at 12 km/h (6 kt)"
+      "expected": "north-northeasterly overnight at 10 km/h (5 kt), then southwesterly by midday at 18 km/h (10 kt), then westerly into the evening at 12 km/h (6 kt)"
     },
     {
       "name": "an anchor with no speed series is skipped",
@@ -309,7 +309,7 @@
         ],
         "issued_hour": 0
       },
-      "expected": "north-northeasterly overnight at 10 km/h (5 kt) gusting 16 km/h (8 kt), then southwesterly by midday at 19 km/h (10 kt) gusting 29 km/h (16 kt)"
+      "expected": "north-northeasterly overnight at 10 km/h (5 kt) gusting 16 km/h (8 kt), then southwesterly by midday at 18 km/h (10 kt) gusting 29 km/h (16 kt)"
     },
     {
       "name": "no speeds anywhere is nothing, not calm",
@@ -515,7 +515,7 @@
         ],
         "issued_hour": 12
       },
-      "expected": "north-northeasterly overnight at 10 km/h (5 kt) gusting 16 km/h (8 kt), then southwesterly by midday at 19 km/h (10 kt) gusting 29 km/h (16 kt), then westerly into the evening at 12 km/h (6 kt) gusting 21 km/h (11 kt)"
+      "expected": "north-northeasterly overnight at 10 km/h (5 kt) gusting 16 km/h (8 kt), then southwesterly by midday at 18 km/h (10 kt) gusting 29 km/h (16 kt), then westerly into the evening at 12 km/h (6 kt) gusting 20 km/h (11 kt)"
     },
     {
       "name": "a mean on the half rounds up on both surfaces",
@@ -597,7 +597,7 @@
         ],
         "issued_hour": 0
       },
-      "expected": "north-northeasterly overnight at 19 km/h (10 kt) gusting 25 km/h (13 kt), then southwesterly by midday at 9 km/h (5 kt) gusting 37 km/h (20 kt), then westerly into the evening at 11 km/h (6 kt) gusting 31 km/h (16 kt)"
+      "expected": "north-northeasterly overnight at 18 km/h (10 kt) gusting 24 km/h (13 kt), then southwesterly by midday at 9 km/h (5 kt) gusting 37 km/h (20 kt), then westerly into the evening at 10 km/h (6 kt) gusting 30 km/h (16 kt)"
     }
   ]
 }

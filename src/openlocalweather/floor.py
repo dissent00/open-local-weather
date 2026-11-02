@@ -41,12 +41,12 @@ from openlocalweather.disagreement import (
     notable_disagreements,
 )
 from openlocalweather.instability import convective_tier
-from openlocalweather.models import DailyLogEntry, DeviationBands, ModelPrediction, format_temp_c, format_temp_range_c
+from openlocalweather.models import DailyLogEntry, DeviationBands, ModelPrediction, format_kmh, format_temp_c, format_temp_range_c
 from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.outlook import MODEL_SHORT_NAMES, short_model_name
 from openlocalweather.phrasing import phrase_defect
 from openlocalweather.scales import aqi_band, uv_band
-from openlocalweather.tiles import KMH_PER_KNOT, SKY_SOURCE_STATION
+from openlocalweather.tiles import SKY_SOURCE_STATION
 from openlocalweather.verify.scoring import mean, scored_predictions
 
 # Who wrote `narrative_markdown` — stored as `narrative_source` so the record
@@ -126,6 +126,10 @@ class FloorInputs:
     extended_calls: list[dict] = field(default_factory=list)
     highs_by_lead: dict[str, list[float]] = field(default_factory=dict)
     day0_peak_cape_jkg: list[float | None] = field(default_factory=list)
+    # The forward window's CAPE, {"model", "peak_cape_jkg"} per blend input:
+    # what the THUNDER line reads. Empty on an entry from before 2026-11-02,
+    # which keeps the calendar day's figures above.
+    forward_cape: list[dict] = field(default_factory=list)
     extended_trend: str | None = None
     # The two paragraphs of item 190 step 3, which replace the trend clause
     # and the lead lines in the Extended Outlook where the entry has them.
@@ -217,6 +221,10 @@ class FloorInputs:
                 for lead in EXTENDED_LEADS
             },
             day0_peak_cape_jkg=[p.peak_cape_jkg for p in scored.day0 if p.model in blend_inputs()],
+            forward_cape=[
+                {"model": short_model_name(m), "peak_cape_jkg": v}
+                for m, v in (entry.forward_cape_by_model or {}).items() if m in blend_inputs()
+            ],
             extended_trend=entry.extended_trend,
             extended_outlook=entry.extended_outlook,
             secondary_name=secondary_name,
@@ -534,11 +542,12 @@ def _severe_parts(i: FloorInputs) -> list[str | None]:
     tier = _thunder_tier(i)
     if tier is None:
         return []
-    with_cape = [(m["model"], m["peak_cape_jkg"]) for m in i.models_today if m.get("peak_cape_jkg") is not None]
+    rows, hours = (i.forward_cape, "in the hours ahead") if i.forward_cape else (i.models_today, "today")
+    with_cape = [(m["model"], m["peak_cape_jkg"]) for m in rows if m.get("peak_cape_jkg") is not None]
     cape = None
     if with_cape:
         ranked = sorted(with_cape, key=lambda mc: -mc[1])
-        cape = "Convective instability today: " + _join([f"{m} {int(round(c))} J/kg" for m, c in ranked]) + "."
+        cape = f"Convective instability {hours}: " + _join([f"{m} {int(round(c))} J/kg" for m, c in ranked]) + "."
     gust = i.peak_wind_primary_kmh
     hazard = (
         f"Thunder {tier}; any thunderstorm brings sudden gusts well above the {_kmh_and_kt(gust)} forecast."
@@ -658,8 +667,11 @@ def _sign_off_parts(i: FloorInputs) -> list[str | None]:
 
 
 def _thunder_tier(i: FloorInputs) -> str | None:
-    """The thunder word from the Day+0 inputs' CAPE maxima, the pipeline's
-    own rule (`convective_tier`)."""
+    """The thunder word from the CAPE maxima, the pipeline's own rule
+    (`convective_tier`): the forward window's where the entry has it, as
+    the THUNDER line does, the calendar day's before 2026-11-02."""
+    if i.forward_cape:
+        return convective_tier([m["peak_cape_jkg"] for m in i.forward_cape])
     return convective_tier(i.day0_peak_cape_jkg)
 
 
@@ -691,7 +703,7 @@ def _clock(i: FloorInputs, hhmm: str | None) -> datetime | None:
 
 
 def _kmh_and_kt(kmh: float) -> str:
-    return f"{kmh:.0f} km/h ({kmh / KMH_PER_KNOT:.0f} kt)"
+    return format_kmh(kmh)
 
 
 def _join(items: list[str]) -> str:

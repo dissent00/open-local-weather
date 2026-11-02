@@ -1994,6 +1994,14 @@ class DailyLogEntry(BaseModel):
     # coming" could not be asked. A few hundred bytes a day. None before
     # the field existed and on a run the ring did not arrive.
     synoptic_ring: dict | None = None
+    # THE FORWARD WINDOW'S CAPE, per model — 2026-11-02. The peaks
+    # `instability.summarize_instability` takes over the hours ahead, which
+    # run into tomorrow: the figures the THUNDER line and the writer's brief
+    # read. The entry held only the calendar day's (`predictions.day0`),
+    # and the two differed on 55 of 195 model-days, so code's Severe section
+    # quoted one window as "today" beside a thunder line built on the other.
+    # None before the field existed and on a run with no CAPE series.
+    forward_cape_by_model: dict[str, float] | None = None
     # The basin's pressure reduced the way the brief reduces it
     # (brief.basin_pressure): today's range across the points and the
     # three-day change. Code's Synoptic Overview reads it off the stored

@@ -27083,9 +27083,13 @@ mm alone 44 against 1. Code's pairs were a slash, "30°C / 86°F".
   completion and 20,000 values through each formatter, 0 apart. Mutations
   bite in both. Stored entries keep the display string they were written
   with, so a page re-rendered from before today keeps its slash.
-- **Not done.** hPa and J/kg stay single. The floor's `_kmh_and_kt` rounds
-  half to even and the wind timeline's half up; the new sites use the
-  shared formatter, and that older split is untouched.
+- **Not done.** hPa and J/kg stay single.
+- **One rounding, the same day.** The floor and the brief rounded km/h (kt)
+  half to even and the wind timeline half up, so one gust could print two
+  ways on a page. All three call `format_kmh` now, half to even with the
+  Dart helper already swept against it. Measured on the 59 archived
+  prompts' hourly winds: 38 of 3,540 cross-model means (1.07%) print
+  differently from before, every one an exact half.
 
 ---
 
@@ -27757,6 +27761,19 @@ model's own errors, read against their briefs: "consensus" in the
 outlook, "south-west" where 10-30's brief has only south-southwesterly,
 "north-northeast" where 10-26's has none, and a 27.9°C in the Confidence
 notes that the brief does not carry.
+
+**Code's Severe section reads the hours ahead, 2026-11-02.** It quoted the
+calendar day's CAPE as "today" beside a THUNDER line built on the forward
+window, which runs into tomorrow; the two differed on 55 of 195 model-days.
+The stored 24-hour `window_predictions` would not have matched either: they
+differ from the 30-hour window on 40 of 245 model-days, twice across 1000
+J/kg. So the run now stores the forward window's per-model peaks on the
+entry (`forward_cape_by_model`, `pipeline._forward_cape_record`), and the
+floor's Severe figures and its thunder tier read them: "Convective
+instability in the hours ahead: …". An entry from before the field keeps
+the calendar day's. No thunder tier moves on the record (calendar and
+30-hour never crossed the threshold). The app builds its floor from the
+run in memory, so its storage is untouched. Scoring is unchanged.
 
 **The gate — the audit's first line, shipped early 2026-10-09.** Four
 mornings running (10-05, 10-06, 10-08, 10-09) the gateway's free model

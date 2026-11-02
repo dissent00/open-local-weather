@@ -217,3 +217,16 @@ def test_no_speed_series_is_nothing_rather_than_calm():
     hourly = {"hourly": {"time": ["2026-09-18T03:00", "2026-09-18T12:00"],
                          "wind_direction_10m_a": [40.0, 225.0], "wind_direction_10m_b": [42.0, 227.0], "wind_direction_10m_c": [41.0, 226.0]}}
     assert describe_wind_timeline(hourly, _M, issued_hour=6) is None
+
+
+def test_every_km_h_and_knots_pair_rounds_as_the_shared_formatter():
+    """2026-11-02: the floor and the brief rounded half to even and the wind
+    timeline half up, so one gust could print two ways on one page — 18.5
+    km/h was 19 in the Gulf timeline and 18 beside it. All three are
+    `models.format_kmh` now."""
+    from openlocalweather import brief, floor, wind
+    from openlocalweather.models import format_kmh
+
+    values = [k / 2 for k in range(0, 200)] + [18.52, 28.6, 35.19, 0.25]
+    for v in values:
+        assert wind._kmh_and_kt(v) == brief._kmh_and_kt(v) == floor._kmh_and_kt(v) == format_kmh(v), v

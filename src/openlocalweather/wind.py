@@ -20,8 +20,8 @@ from __future__ import annotations
 
 import math
 
+from openlocalweather.models import format_kmh
 from openlocalweather.defaults import (
-    KNOTS_TO_KMH,
     WIND_DIRECTION_AGREEMENT_GATE,
     WIND_DIRECTION_MIN_MODELS,
 )
@@ -179,17 +179,14 @@ def values_at(hourly: dict, models: list[str], hour: int, variable: str) -> list
     return out
 
 
-def _half_up(x: float) -> int:
-    # Half-up on both sides of the boundary: Python's round() is half-even
-    # and Dart's is half-away, and an 18.5 km/h mean must print the same
-    # figure in both — AGENTS.md's rounding hazard, met before it bit.
-    return int(math.floor(x + 0.5))
-
-
 def _kmh_and_kt(kmh: float) -> str:
     # The prompt's own formatting rule, applied in code so the clause is
-    # finished: "18 km/h (10 kt)".
-    return f"{_half_up(kmh)} km/h ({_half_up(kmh / KNOTS_TO_KMH)} kt)"
+    # finished: "18 km/h (10 kt)". THROUGH `models.format_kmh` SINCE
+    # 2026-11-02: this rounded half up, for parity with Dart, while the floor
+    # and the brief rounded half to even, so an 18.5 km/h mean printed 19
+    # here and 18 beside it on the same page. The shared formatter rounds
+    # half to even with a Dart helper swept against it, so parity holds.
+    return format_kmh(kmh)
 
 
 def describe_wind_timeline(

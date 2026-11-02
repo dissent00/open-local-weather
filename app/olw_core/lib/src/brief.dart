@@ -11,7 +11,7 @@ import 'dart:convert';
 import 'outlook.dart' show modelShortNames, shortModelName;
 import 'py_text.dart';
 import 'rounding.dart';
-import 'tiles.dart' show kmhPerKnot;
+import 'models.dart' show formatKmh;
 
 const sectionToday = 'today';
 const sectionExtended = 'extended';
@@ -811,7 +811,7 @@ String _signed1(double value) {
   return negative ? '-$text' : '+$text';
 }
 
-String _kmhAndKt(double kmh) => '${_fixed(kmh, 0)} km/h (${_fixed(kmh / kmhPerKnot, 0)} kt)';
+String _kmhAndKt(double kmh) => formatKmh(kmh);
 
 bool _truthy(Object? value) => value != null && '$value'.isNotEmpty && value != false;
 

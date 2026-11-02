@@ -352,3 +352,44 @@ def test_only_enabled_sections_are_shown_but_every_text_is_offered_to_the_writer
 def test_the_six_inputs_round_trip_as_json():
     i = _six_inputs()
     assert FloorInputs.from_json(i.to_json()) == i
+
+
+_AHEAD = [{"model": "UKMO", "peak_cape_jkg": 3600.0}, {"model": "ECMWF", "peak_cape_jkg": 2150.0},
+          {"model": "ICON", "peak_cape_jkg": 1950.0}, {"model": "GFS", "peak_cape_jkg": 320.0}]
+
+
+def test_severe_weather_reads_the_hours_ahead_when_the_entry_has_them():
+    """2026-11-02: code's Severe quoted the calendar day's CAPE as "today"
+    while the writer's brief and the THUNDER line read the forward window,
+    which runs into tomorrow; the two differed on 55 of 195 model-days. The
+    entry stores the window's figures since that day, and code reads them,
+    named for their hours."""
+    severe = _section(compose_floor(_six_inputs(forward_cape=_AHEAD)), "## Severe Weather / Hazard Potential")
+
+    assert severe.startswith(
+        "Convective instability in the hours ahead: UKMO 3600 J/kg, ECMWF 2150 J/kg, ICON 1950 J/kg and GFS 320 J/kg. "
+    ), severe
+
+
+def test_the_thunder_tier_follows_the_hours_ahead():
+    calm_today = _six_inputs(day0_peak_cape_jkg=[100.0, 200.0], models_today=[], forward_cape=_AHEAD)
+    assert "Severe Weather" in compose_floor(calm_today)
+    stormy_today = _six_inputs(forward_cape=[{"model": "GFS", "peak_cape_jkg": 100.0}, {"model": "ICON", "peak_cape_jkg": 200.0}])
+    assert "Severe Weather" not in compose_floor(stormy_today)
+
+
+def test_an_entry_from_before_the_field_keeps_the_calendar_day():
+    severe = _section(compose_floor(_six_inputs()), "## Severe Weather / Hazard Potential")
+    assert severe.startswith("Convective instability today: ")
+
+
+def test_the_entrys_forward_cape_reaches_the_floor_by_blend_input():
+    entry = _entry("2026-09-30").model_copy(update={"forward_cape_by_model": {
+        "gfs_seamless": 880.0, "ecmwf_ifs025": 1870.0, "icon_seamless": 1640.0, "ukmo_seamless": 3340.0, "best_match": 1710.0,
+    }})
+    inputs = FloorInputs.from_entry(entry, secondary_name="Winam Gulf")
+    assert inputs.forward_cape == [
+        {"model": "GFS", "peak_cape_jkg": 880.0}, {"model": "ECMWF", "peak_cape_jkg": 1870.0},
+        {"model": "ICON", "peak_cape_jkg": 1640.0}, {"model": "UKMO", "peak_cape_jkg": 3340.0},
+    ], "the blend's inputs, as models_today takes them"
+    assert FloorInputs.from_entry(_entry("2026-09-30"), secondary_name="Winam Gulf").forward_cape == []

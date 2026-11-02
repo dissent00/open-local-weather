@@ -98,6 +98,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -217,6 +218,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -336,6 +338,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -380,6 +383,7 @@
         "extended_calls": [],
         "highs_by_lead": {},
         "day0_peak_cape_jkg": [],
+        "forward_cape": [],
         "extended_trend": null,
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -499,6 +503,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -618,6 +623,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": null,
@@ -731,6 +737,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -828,6 +835,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -939,6 +947,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -1045,6 +1054,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -1163,6 +1173,7 @@
           450.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -1279,6 +1290,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -1398,6 +1410,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -1517,6 +1530,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -1637,6 +1651,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -1761,6 +1776,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -1885,6 +1901,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -2008,6 +2025,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -2131,6 +2149,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -2253,6 +2272,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -2372,6 +2392,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -2576,6 +2597,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -2705,6 +2727,7 @@
           100.0,
           200.0
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -2735,6 +2758,140 @@
         "lead_records": []
       },
       "expected": "## Today's Forecast\n\nSlightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again. 32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low. Sky mostly cloudy early, partly cloudy at midday and mostly cloudy in the evening. Wind NNE early, SSW at midday and WSW in the evening; gusts to 33 km/h (18 kt). UV index 9.2 (very high). Air quality 103 (unhealthy for sensitive groups) at Kisumu Airport, the highest of 3 stations.\n\nFigures issued 06:01. Written by code; a discussion follows when a model answers.\n"
+    },
+    {
+      "name": "severe reads the hours ahead where the entry has them, and its tier follows",
+      "input": {
+        "date": "2026-09-30",
+        "temp_high_low_display": "32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low",
+        "issued_local_time": "06:01",
+        "sunrise": "06:27",
+        "sunset": "18:34",
+        "overview_comparison": "Slightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again.",
+        "cloud_anchors": [
+          {
+            "when": "early",
+            "cover": "Mostly cloudy"
+          },
+          {
+            "when": "midday",
+            "cover": "Partly cloudy"
+          },
+          {
+            "when": "evening",
+            "cover": "Mostly cloudy"
+          }
+        ],
+        "wind_anchors": [
+          {
+            "when": "early",
+            "direction": "NNE",
+            "sustained_kmh": 5.2,
+            "gust_kmh": 8.1
+          },
+          {
+            "when": "midday",
+            "direction": "SSW",
+            "sustained_kmh": 7.3,
+            "gust_kmh": 18.1
+          },
+          {
+            "when": "evening",
+            "direction": "WSW",
+            "sustained_kmh": 10.1,
+            "gust_kmh": 18.9
+          }
+        ],
+        "peak_wind_primary_kmh": 33.4,
+        "peak_wind_secondary_kmh": 30.3,
+        "uv_index": 9.15,
+        "air_quality_index": 103,
+        "ground_aqi": [
+          {
+            "name": "Kisumu Airport",
+            "aqi": 103
+          },
+          {
+            "name": "Ochieng' Avenue, Kisumu Central",
+            "aqi": 59
+          },
+          {
+            "name": "Dunga Beach",
+            "aqi": 40
+          }
+        ],
+        "served_today": {
+          "rain": false,
+          "onset_hour": null,
+          "precip_mm": 0.2
+        },
+        "extended_calls": [
+          {
+            "lead_time_days": 3,
+            "rain": false,
+            "rain_probability_pct": 28
+          },
+          {
+            "lead_time_days": 7,
+            "rain": true,
+            "rain_probability_pct": 82
+          }
+        ],
+        "highs_by_lead": {
+          "3": [
+            31.0,
+            32.5,
+            34.0
+          ],
+          "7": [
+            29.0,
+            35.0
+          ]
+        },
+        "day0_peak_cape_jkg": [
+          100.0,
+          200.0
+        ],
+        "forward_cape": [
+          {
+            "model": "UKMO",
+            "peak_cape_jkg": 3600.0
+          },
+          {
+            "model": "GFS",
+            "peak_cape_jkg": 320.0
+          }
+        ],
+        "extended_trend": "Warming through Saturday, with showers returning by Monday",
+        "extended_outlook": null,
+        "secondary_name": "Winam Gulf",
+        "model_configured": true,
+        "observed_line": null,
+        "observed": {},
+        "station_name": null,
+        "station_codes": [],
+        "enabled_sections": [
+          "today",
+          "severe"
+        ],
+        "models_today": [
+          {
+            "model": "GFS",
+            "high_c": 33.5,
+            "rain": false,
+            "wind_kmh": 21.6,
+            "peak_cape_jkg": 100.0
+          }
+        ],
+        "met_service_name": null,
+        "met_service_call": null,
+        "synoptic_statements": [],
+        "basin_pressure": null,
+        "mslp_trend_24h": null,
+        "review_findings": [],
+        "lead_records": []
+      },
+      "expected": "## Today's Forecast\n\nSlightly warmer than yesterday; winds and cloud little changed. Dry by day, with thunder possible, peaking this evening again. 32\u00b0C / 90\u00b0F high, 19\u00b0C / 66\u00b0F low. Sky mostly cloudy early, partly cloudy at midday and mostly cloudy in the evening. Wind NNE early, SSW at midday and WSW in the evening; gusts to 33 km/h (18 kt). UV index 9.2 (very high). Air quality 103 (unhealthy for sensitive groups) at Kisumu Airport, the highest of 3 stations.\n\n## Severe Weather / Hazard Potential\n\nConvective instability in the hours ahead: UKMO 3600 J/kg and GFS 320 J/kg. Thunder possible; any thunderstorm brings sudden gusts well above the 33 km/h (18 kt) forecast.\n\nFigures issued 06:01. Written by code; a discussion follows when a model answers.\n"
     },
     {
       "name": "the call at the warm end of the models, and the met service against it on rain",
@@ -2832,6 +2989,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": null,
         "secondary_name": "Winam Gulf",
@@ -2969,6 +3127,7 @@
           1100.0,
           null
         ],
+        "forward_cape": [],
         "extended_trend": "Warming through Saturday, with showers returning by Monday",
         "extended_outlook": "Temperatures and winds much the same through Thursday, with rain possible from Thursday. Thursday's call: rain, 68%, with two of four models wet; highs 31 to 34 \u00b0C.\n\nFurther out, cooling through Monday, with showers possible Friday and Saturday.",
         "secondary_name": "Winam Gulf",

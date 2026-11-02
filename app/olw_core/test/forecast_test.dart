@@ -1145,6 +1145,28 @@ void main() {
     expect(narrativeUser.length, lessThan(judgmentUser.length ~/ 4));
   });
 
+  test("the run's floor reads the forward window's CAPE, as the THUNDER line does", () async {
+    // Upstream 2026-11-02: code's Severe section and its thunder tier read
+    // the hours ahead where the run has them, not the calendar day.
+    final run = await generateForecast(
+      client: _capeClient(forwardFails: false),
+      llm: _StubProvider(),
+      location: _location,
+      today: DateTime.utc(2026, 8, 19),
+      nowLocal: DateTime.utc(2026, 8, 19, 12),
+      publicWebpageUrl: 'https://example.com/',
+      codeBlendFor: _noBlend,
+      gustBias: null,
+      verificationContext: null,
+      trackRecordContext: null,
+      reviewContext: null,
+    );
+
+    expect(run.floorInputs.forwardCape, [
+      {'model': 'UKMO', 'peak_cape_jkg': 1830.0},
+    ]);
+  });
+
   test('a refused judgment still produces the run from code', () async {
     // The hole upstream item 189 closes: a refused judgment used to throw
     // out of here and the app stored nothing, though extraction had run.

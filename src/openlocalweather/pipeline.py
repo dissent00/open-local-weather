@@ -2164,6 +2164,12 @@ def _ground_aqi_prompt_payload(guidance: ForwardGuidance) -> list[dict]:
     ]
 
 
+def _forward_cape_record(guidance: ForwardGuidance) -> dict[str, float] | None:
+    """The forward window's peak CAPE per model, as the THUNDER line has it."""
+    outlook = guidance.instability
+    return dict(outlook.peak_cape_by_model) if outlook is not None and outlook.peak_cape_by_model else None
+
+
 def _synoptic_ring_record(guidance: ForwardGuidance) -> dict | None:
     """The ring as the entry keeps it: the points as fetched and the labels
     the run reduced them to; None when the ring did not arrive."""
@@ -2840,6 +2846,7 @@ def _compose_log_entry(
         # The ring, the basin and the review's findings, kept — item 103
         # point 5 and item 191 step (c), 2026-10-10. See the entry's fields.
         synoptic_ring=_synoptic_ring_record(guidance),
+        forward_cape_by_model=_forward_cape_record(guidance),
         basin_pressure=basin_pressure(_regional_points(guidance.regional_pressure)),
         cloud_bands=cloud_bands_record(guidance.primary_hourly, MODELS),
         review_findings=review_findings,

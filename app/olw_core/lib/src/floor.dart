@@ -13,14 +13,14 @@ import 'comparison.dart' show describeDayRain;
 import 'dates.dart';
 import 'daypart.dart' show onsetWord;
 import 'instability.dart' show convectiveTier;
-import 'models.dart' show formatTempC, formatTempRangeC, disagreementRainWhileDry, disagreementHighExceeded, disagreementOnsetAlreadyPassed, disagreementGustExceeded;
+import 'models.dart' show formatKmh, formatTempC, formatTempRangeC, disagreementRainWhileDry, disagreementHighExceeded, disagreementOnsetAlreadyPassed, disagreementGustExceeded;
 import 'phrasing.dart';
 import 'rounding.dart';
 import 'scales.dart';
 import 'scoring.dart' show mean;
 import 'outlook.dart' show modelShortNames, shortModelName;
 import 'py_text.dart' show comparePython;
-import 'tiles.dart' show kmhPerKnot, skySourceStation;
+import 'tiles.dart' show skySourceStation;
 
 /// Who wrote the narrative — stored beside it as `narrative_source`.
 const String narrativeSourceCode = 'code';
@@ -77,6 +77,7 @@ class FloorInputs {
     this.extendedCalls = const [],
     this.highsByLead = const {},
     this.day0PeakCapeJkg = const [],
+    this.forwardCape = const [],
     this.extendedTrend,
     this.extendedOutlook,
     this.secondaryName,
@@ -114,6 +115,11 @@ class FloorInputs {
   final List<Map<String, Object?>> extendedCalls;
   final Map<String, List<double>> highsByLead;
   final List<double?> day0PeakCapeJkg;
+
+  /// The forward window's CAPE, {"model", "peak_cape_jkg"} per blend input:
+  /// what the THUNDER line reads — mirrors `FloorInputs.forward_cape`.
+  /// Empty keeps the calendar day's figures above.
+  final List<Map<String, Object?>> forwardCape;
   final String? extendedTrend;
 
   /// The two paragraphs of item 190 step 3, which replace the trend clause
@@ -181,6 +187,7 @@ class FloorInputs {
             ? defaultFloorSections
             : [for (final s in j['enabled_sections'] as List) s as String],
         modelsToday: _maps(j['models_today']),
+        forwardCape: _maps(j['forward_cape']),
         metServiceName: j['met_service_name'] as String?,
         metServiceCall: (j['met_service_call'] as Map?)?.cast<String, Object?>(),
         synopticStatements: [for (final s in (j['synoptic_statements'] as List?) ?? const []) s as String],
@@ -240,14 +247,15 @@ List<(String, String, String)> _floorSectionRows(FloorInputs i) {
 List<String?> _severeParts(FloorInputs i) {
   final tier = _thunderTier(i);
   if (tier == null) return const [];
+  final (rows, hours) = i.forwardCape.isNotEmpty ? (i.forwardCape, 'in the hours ahead') : (i.modelsToday, 'today');
   final withCape = [
-    for (final m in i.modelsToday) if (m['peak_cape_jkg'] != null) ('${m['model']}', (m['peak_cape_jkg'] as num).toDouble()),
+    for (final m in rows) if (m['peak_cape_jkg'] != null) ('${m['model']}', (m['peak_cape_jkg'] as num).toDouble()),
   ];
   String? cape;
   if (withCape.isNotEmpty) {
     final indexed = [for (var k = 0; k < withCape.length; k++) (k, withCape[k])];
     indexed.sort((a, b) => a.$2.$2 != b.$2.$2 ? (b.$2.$2 > a.$2.$2 ? 1 : -1) : a.$1 - b.$1);
-    cape = 'Convective instability today: '
+    cape = 'Convective instability $hours: '
         '${_join([for (final e in indexed) '${e.$2.$1} ${roundLikePython(e.$2.$2, 0).toInt()} J/kg'])}.';
   }
   final gust = i.peakWindPrimaryKmh;
@@ -570,7 +578,11 @@ List<String?> _signOffParts(FloorInputs i) => [
 
 // --- Shared ---
 
-String? _thunderTier(FloorInputs i) => convectiveTier(i.day0PeakCapeJkg);
+/// The forward window's CAPE where the run has it, as the THUNDER line
+/// reads it — mirrors `_thunder_tier`.
+String? _thunderTier(FloorInputs i) => i.forwardCape.isNotEmpty
+    ? convectiveTier([for (final m in i.forwardCape) (m['peak_cape_jkg'] as num?)?.toDouble()])
+    : convectiveTier(i.day0PeakCapeJkg);
 
 int? _issuedHour(FloorInputs i) {
   final issued = i.issuedLocalTime;
@@ -605,7 +617,7 @@ DateTime? _clock(FloorInputs i, String? hhmm) {
 /// Python's `f"{x:.{places}f}"`: half to even, then printed.
 String _fixed(double value, int places) => roundLikePython(value, places).toStringAsFixed(places);
 
-String _kmhAndKt(double kmh) => '${_fixed(kmh, 0)} km/h (${_fixed(kmh / kmhPerKnot, 0)} kt)';
+String _kmhAndKt(double kmh) => formatKmh(kmh);
 
 String _join(List<String> items) {
   if (items.length <= 1) return items.join();

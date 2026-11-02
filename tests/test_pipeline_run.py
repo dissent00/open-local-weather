@@ -5707,3 +5707,18 @@ def test_the_ring_record_keeps_the_points_and_the_labels():
     assert _regional_points([{"daily": {}}]) == [{"daily": {}}]
     assert _regional_points({"points": [{"daily": {}}]}) == [{"daily": {}}]
     assert _regional_points(None) is None
+
+
+def test_the_forward_windows_cape_is_kept_on_the_entry():
+    """The writer's brief and the THUNDER line read the forward window's CAPE;
+    the entry kept only the calendar day's until 2026-11-02, so code's
+    Severe section could not say the same figures."""
+    from types import SimpleNamespace
+
+    from openlocalweather.instability import InstabilityOutlook
+    from openlocalweather.pipeline import _forward_cape_record
+
+    outlook = InstabilityOutlook(peak_cape_jkg=3340.0, peak_model="ukmo_seamless", peak_hour="18:00", convective=True,
+                                 peak_cape_by_model={"gfs_seamless": 880.0, "ukmo_seamless": 3340.0})
+    assert _forward_cape_record(SimpleNamespace(instability=outlook)) == {"gfs_seamless": 880.0, "ukmo_seamless": 3340.0}
+    assert _forward_cape_record(SimpleNamespace(instability=None)) is None

@@ -16,7 +16,7 @@ library;
 
 import 'dart:math' as math;
 
-import 'comparison.dart' show knotsToKmh;
+import 'models.dart' show formatKmh;
 import 'config.dart';
 
 /// The 16-point rose, from north. Chosen over the 8-point compass because the
@@ -194,13 +194,9 @@ List<double> valuesAt(
   return out;
 }
 
-/// Half-up on both sides of the boundary — Python's round() is half-even and
-/// Dart's is half-away, and an 18.5 km/h mean must print the same figure in
-/// both. Mirrors `_half_up`.
-int _halfUp(double x) => (x + 0.5).floor();
-
-String _kmhAndKt(double kmh) =>
-    '${_halfUp(kmh)} km/h (${_halfUp(kmh / knotsToKmh)} kt)';
+/// Through `formatKmh` since 2026-11-02, as the floor and the brief — see
+/// `_kmh_and_kt` in wind.py.
+String _kmhAndKt(double kmh) => formatKmh(kmh);
 
 /// The wind on the water through the day, as one finished clause — upstream
 /// item 158 step 8; mirrors `describe_wind_timeline`, where the reasoning

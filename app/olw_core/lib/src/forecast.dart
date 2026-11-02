@@ -908,6 +908,10 @@ Future<ForecastRun> generateForecast({
         if (blendInputs().contains(p.model))
           {'model': shortModelName(p.model), 'high_c': p.highC, 'rain': p.rain, 'wind_kmh': p.windKmh, 'peak_cape_jkg': p.peakCapeJkg},
     ],
+    forwardCape: [
+      for (final e in (instability?.peakCapeByModel ?? const <String, double>{}).entries)
+        if (blendInputs().contains(e.key)) {'model': shortModelName(e.key), 'peak_cape_jkg': e.value},
+    ],
     synopticStatements: synoptic?.statements ?? const [],
     mslpTrend24h: tp.mslpTrend24h,
     reviewFindings: _establishedFindings(reviewContext),
