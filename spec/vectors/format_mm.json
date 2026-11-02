@@ -1,0 +1,511 @@
+{
+  "vector_format_version": 1,
+  "function": "format_mm",
+  "description": "Rain as mm (in), inches at two places: the second unit rounded from the true value; whole figures half to even, decimal ones ties away from zero.",
+  "cases": [
+    {
+      "name": "rain",
+      "input": {
+        "mm": 2.2,
+        "decimals": 1
+      },
+      "expected": "2.2 mm (0.09 in)"
+    },
+    {
+      "name": "rain at whole millimetres",
+      "input": {
+        "mm": 10.4,
+        "decimals": 0
+      },
+      "expected": "10 mm (0.41 in)"
+    },
+    {
+      "name": "no rain",
+      "input": {
+        "mm": 0.0,
+        "decimals": 1
+      },
+      "expected": "0.0 mm (0.00 in)"
+    },
+    {
+      "name": "spread 0",
+      "input": {
+        "mm": 63.1,
+        "decimals": 0
+      },
+      "expected": "63 mm (2.48 in)"
+    },
+    {
+      "name": "spread 1",
+      "input": {
+        "mm": 6.24,
+        "decimals": 1
+      },
+      "expected": "6.2 mm (0.25 in)"
+    },
+    {
+      "name": "spread 2",
+      "input": {
+        "mm": 2.84,
+        "decimals": 1
+      },
+      "expected": "2.8 mm (0.11 in)"
+    },
+    {
+      "name": "spread 3",
+      "input": {
+        "mm": 39.0,
+        "decimals": 1
+      },
+      "expected": "39.0 mm (1.54 in)"
+    },
+    {
+      "name": "spread 4",
+      "input": {
+        "mm": 72.37,
+        "decimals": 0
+      },
+      "expected": "72 mm (2.85 in)"
+    },
+    {
+      "name": "spread 5",
+      "input": {
+        "mm": 23.5,
+        "decimals": 0
+      },
+      "expected": "24 mm (0.93 in)"
+    },
+    {
+      "name": "spread 6",
+      "input": {
+        "mm": 61.78,
+        "decimals": 0
+      },
+      "expected": "62 mm (2.43 in)"
+    },
+    {
+      "name": "spread 7",
+      "input": {
+        "mm": 11.0,
+        "decimals": 1
+      },
+      "expected": "11.0 mm (0.43 in)"
+    },
+    {
+      "name": "spread 8",
+      "input": {
+        "mm": 8.0,
+        "decimals": 1
+      },
+      "expected": "8.0 mm (0.31 in)"
+    },
+    {
+      "name": "spread 9",
+      "input": {
+        "mm": 1.0,
+        "decimals": 1
+      },
+      "expected": "1.0 mm (0.04 in)"
+    },
+    {
+      "name": "spread 10",
+      "input": {
+        "mm": 76.49,
+        "decimals": 0
+      },
+      "expected": "76 mm (3.01 in)"
+    },
+    {
+      "name": "spread 11",
+      "input": {
+        "mm": 43.0,
+        "decimals": 0
+      },
+      "expected": "43 mm (1.69 in)"
+    },
+    {
+      "name": "spread 12",
+      "input": {
+        "mm": 2.73,
+        "decimals": 1
+      },
+      "expected": "2.7 mm (0.11 in)"
+    },
+    {
+      "name": "spread 13",
+      "input": {
+        "mm": 62.0,
+        "decimals": 1
+      },
+      "expected": "62.0 mm (2.44 in)"
+    },
+    {
+      "name": "spread 14",
+      "input": {
+        "mm": 3.94,
+        "decimals": 1
+      },
+      "expected": "3.9 mm (0.16 in)"
+    },
+    {
+      "name": "spread 15",
+      "input": {
+        "mm": 76.4,
+        "decimals": 1
+      },
+      "expected": "76.4 mm (3.01 in)"
+    },
+    {
+      "name": "spread 16",
+      "input": {
+        "mm": 10.03,
+        "decimals": 1
+      },
+      "expected": "10.0 mm (0.39 in)"
+    },
+    {
+      "name": "spread 17",
+      "input": {
+        "mm": 51.93,
+        "decimals": 0
+      },
+      "expected": "52 mm (2.04 in)"
+    },
+    {
+      "name": "spread 18",
+      "input": {
+        "mm": 39.0,
+        "decimals": 1
+      },
+      "expected": "39.0 mm (1.54 in)"
+    },
+    {
+      "name": "spread 19",
+      "input": {
+        "mm": 60.0,
+        "decimals": 1
+      },
+      "expected": "60.0 mm (2.36 in)"
+    },
+    {
+      "name": "spread 20",
+      "input": {
+        "mm": 4.0,
+        "decimals": 0
+      },
+      "expected": "4 mm (0.16 in)"
+    },
+    {
+      "name": "spread 21",
+      "input": {
+        "mm": 64.69,
+        "decimals": 1
+      },
+      "expected": "64.7 mm (2.55 in)"
+    },
+    {
+      "name": "spread 22",
+      "input": {
+        "mm": 61.0,
+        "decimals": 0
+      },
+      "expected": "61 mm (2.40 in)"
+    },
+    {
+      "name": "spread 23",
+      "input": {
+        "mm": 5.5,
+        "decimals": 0
+      },
+      "expected": "6 mm (0.22 in)"
+    },
+    {
+      "name": "spread 24",
+      "input": {
+        "mm": 47.0,
+        "decimals": 0
+      },
+      "expected": "47 mm (1.85 in)"
+    },
+    {
+      "name": "spread 25",
+      "input": {
+        "mm": 58.0,
+        "decimals": 1
+      },
+      "expected": "58.0 mm (2.28 in)"
+    },
+    {
+      "name": "spread 26",
+      "input": {
+        "mm": 48.87,
+        "decimals": 0
+      },
+      "expected": "49 mm (1.92 in)"
+    },
+    {
+      "name": "spread 27",
+      "input": {
+        "mm": 16.4,
+        "decimals": 0
+      },
+      "expected": "16 mm (0.65 in)"
+    },
+    {
+      "name": "spread 28",
+      "input": {
+        "mm": 74.01,
+        "decimals": 0
+      },
+      "expected": "74 mm (2.91 in)"
+    },
+    {
+      "name": "spread 29",
+      "input": {
+        "mm": 51.0,
+        "decimals": 0
+      },
+      "expected": "51 mm (2.01 in)"
+    },
+    {
+      "name": "spread 30",
+      "input": {
+        "mm": 6.0,
+        "decimals": 0
+      },
+      "expected": "6 mm (0.24 in)"
+    },
+    {
+      "name": "spread 31",
+      "input": {
+        "mm": 19.88,
+        "decimals": 0
+      },
+      "expected": "20 mm (0.78 in)"
+    },
+    {
+      "name": "spread 32",
+      "input": {
+        "mm": 34.64,
+        "decimals": 0
+      },
+      "expected": "35 mm (1.36 in)"
+    },
+    {
+      "name": "spread 33",
+      "input": {
+        "mm": 15.0,
+        "decimals": 0
+      },
+      "expected": "15 mm (0.59 in)"
+    },
+    {
+      "name": "spread 34",
+      "input": {
+        "mm": 50.4,
+        "decimals": 1
+      },
+      "expected": "50.4 mm (1.98 in)"
+    },
+    {
+      "name": "spread 35",
+      "input": {
+        "mm": 4.22,
+        "decimals": 1
+      },
+      "expected": "4.2 mm (0.17 in)"
+    },
+    {
+      "name": "spread 36",
+      "input": {
+        "mm": 40.09,
+        "decimals": 0
+      },
+      "expected": "40 mm (1.58 in)"
+    },
+    {
+      "name": "spread 37",
+      "input": {
+        "mm": 33.9,
+        "decimals": 0
+      },
+      "expected": "34 mm (1.33 in)"
+    },
+    {
+      "name": "spread 38",
+      "input": {
+        "mm": 75.0,
+        "decimals": 1
+      },
+      "expected": "75.0 mm (2.95 in)"
+    },
+    {
+      "name": "spread 39",
+      "input": {
+        "mm": 60.0,
+        "decimals": 1
+      },
+      "expected": "60.0 mm (2.36 in)"
+    },
+    {
+      "name": "spread 40",
+      "input": {
+        "mm": 45.0,
+        "decimals": 1
+      },
+      "expected": "45.0 mm (1.77 in)"
+    },
+    {
+      "name": "spread 41",
+      "input": {
+        "mm": 76.14,
+        "decimals": 0
+      },
+      "expected": "76 mm (3.00 in)"
+    },
+    {
+      "name": "spread 42",
+      "input": {
+        "mm": 11.98,
+        "decimals": 1
+      },
+      "expected": "12.0 mm (0.47 in)"
+    },
+    {
+      "name": "spread 43",
+      "input": {
+        "mm": 27.36,
+        "decimals": 1
+      },
+      "expected": "27.4 mm (1.08 in)"
+    },
+    {
+      "name": "spread 44",
+      "input": {
+        "mm": 74.0,
+        "decimals": 0
+      },
+      "expected": "74 mm (2.91 in)"
+    },
+    {
+      "name": "spread 45",
+      "input": {
+        "mm": 68.54,
+        "decimals": 0
+      },
+      "expected": "69 mm (2.70 in)"
+    },
+    {
+      "name": "spread 46",
+      "input": {
+        "mm": 59.3,
+        "decimals": 0
+      },
+      "expected": "59 mm (2.33 in)"
+    },
+    {
+      "name": "spread 47",
+      "input": {
+        "mm": 11.11,
+        "decimals": 1
+      },
+      "expected": "11.1 mm (0.44 in)"
+    },
+    {
+      "name": "spread 48",
+      "input": {
+        "mm": 29.0,
+        "decimals": 1
+      },
+      "expected": "29.0 mm (1.14 in)"
+    },
+    {
+      "name": "spread 49",
+      "input": {
+        "mm": 75.1,
+        "decimals": 1
+      },
+      "expected": "75.1 mm (2.96 in)"
+    },
+    {
+      "name": "spread 50",
+      "input": {
+        "mm": 18.5,
+        "decimals": 1
+      },
+      "expected": "18.5 mm (0.73 in)"
+    },
+    {
+      "name": "spread 51",
+      "input": {
+        "mm": 67.95,
+        "decimals": 0
+      },
+      "expected": "68 mm (2.68 in)"
+    },
+    {
+      "name": "spread 52",
+      "input": {
+        "mm": 20.9,
+        "decimals": 0
+      },
+      "expected": "21 mm (0.82 in)"
+    },
+    {
+      "name": "spread 53",
+      "input": {
+        "mm": 62.0,
+        "decimals": 0
+      },
+      "expected": "62 mm (2.44 in)"
+    },
+    {
+      "name": "spread 54",
+      "input": {
+        "mm": 68.0,
+        "decimals": 0
+      },
+      "expected": "68 mm (2.68 in)"
+    },
+    {
+      "name": "spread 55",
+      "input": {
+        "mm": 20.0,
+        "decimals": 1
+      },
+      "expected": "20.0 mm (0.79 in)"
+    },
+    {
+      "name": "spread 56",
+      "input": {
+        "mm": 51.0,
+        "decimals": 0
+      },
+      "expected": "51 mm (2.01 in)"
+    },
+    {
+      "name": "spread 57",
+      "input": {
+        "mm": 39.04,
+        "decimals": 0
+      },
+      "expected": "39 mm (1.54 in)"
+    },
+    {
+      "name": "spread 58",
+      "input": {
+        "mm": 58.63,
+        "decimals": 0
+      },
+      "expected": "59 mm (2.31 in)"
+    },
+    {
+      "name": "spread 59",
+      "input": {
+        "mm": 63.15,
+        "decimals": 1
+      },
+      "expected": "63.1 mm (2.49 in)"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "vector_format_version": 1,
+  "function": "format_temp_range_c",
+  "description": "A temperature range, its unit once per unit: the second unit rounded from the true value; whole figures half to even, decimal ones ties away from zero.",
+  "cases": [
+    {
+      "name": "a range",
+      "input": {
+        "low_c": 29.4,
+        "high_c": 33.0,
+        "decimals": 0,
+        "joiner": " to "
+      },
+      "expected": "29 to 33\u00b0C (85 to 91\u00b0F)"
+    },
+    {
+      "name": "a range with an en dash",
+      "input": {
+        "low_c": 29.0,
+        "high_c": 31.0,
+        "decimals": 0,
+        "joiner": "\u2013"
+      },
+      "expected": "29\u201331\u00b0C (84\u201388\u00b0F)"
+    },
+    {
+      "name": "a range at one place",
+      "input": {
+        "low_c": 18.25,
+        "high_c": 21.75,
+        "decimals": 1,
+        "joiner": " to "
+      },
+      "expected": "18.3 to 21.8\u00b0C (64.8 to 71.2\u00b0F)"
+    }
+  ]
+}

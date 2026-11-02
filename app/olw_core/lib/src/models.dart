@@ -7,6 +7,9 @@
 /// between implementations — see docs-internal/APP_ARCHITECTURE.md. A port
 /// that renamed fields would still pass its own tests while being unable to
 /// read anything the pipeline actually wrote.
+library;
+
+import 'comparison.dart' show knotsToKmh;
 
 /// Coerces a JSON number to double, tolerating ints.
 ///
@@ -289,9 +292,37 @@ String formatTempHighLow(double highC, double lowC) =>
 /// answers a different question. The committed pair was swept over the same
 /// 13,202 values at 1 and 2 input decimals with zero divergences.
 String formatTempC(double celsius, {int decimals = 0}) => decimals == 0
-    ? '${_roundHalfEven(celsius)}°C / ${_roundHalfEven(celsius * 9 / 5 + 32)}°F'
-    : '${_noNegativeZero(celsius.toStringAsFixed(decimals))}°C / '
-        '${_noNegativeZero((celsius * 9 / 5 + 32).toStringAsFixed(decimals))}°F';
+    ? '${_roundHalfEven(celsius)}°C (${fahrenheitFigure(celsius)}°F)'
+    : '${_noNegativeZero(celsius.toStringAsFixed(decimals))}°C (${fahrenheitFigure(celsius, decimals)}°F)';
+
+/// Both units as "primary (second)", 2026-11-02 — mirrors the Python
+/// formatters beside `format_temp_c`, which carry the measurement and why.
+const double mmPerInch = 25.4;
+
+/// "29 to 33°C (84 to 91°F)" — mirrors `format_temp_range_c`.
+String formatTempRangeC(double lowC, double highC, {int decimals = 0, String joiner = ' to '}) {
+  final c = [lowC, highC].map((v) => _tempFigure(v, decimals)).join(joiner);
+  final f = [lowC, highC].map((v) => fahrenheitFigure(v, decimals)).join(joiner);
+  return '$c°C ($f°F)';
+}
+
+/// "35 km/h (19 kt)" — mirrors `format_kmh`.
+String formatKmh(double kmh) => '${_roundHalfEven(kmh)} km/h (${knotsFigure(kmh)} kt)';
+
+/// "2.2 mm (0.09 in)" — mirrors `format_mm`.
+String formatMm(double mm, {int decimals = 1}) =>
+    '${_noNegativeZero(mm.toStringAsFixed(decimals))} mm (${inchesFigure(mm)} in)';
+
+/// The three conversions, one rounding site each — mirrors
+/// `fahrenheit_figure`, `knots_figure` and `inches_figure`.
+String fahrenheitFigure(double celsius, [int decimals = 0]) => _tempFigure(celsius * 9 / 5 + 32, decimals);
+
+String knotsFigure(double kmh) => '${_roundHalfEven(kmh / knotsToKmh)}';
+
+String inchesFigure(double mm) => _noNegativeZero((mm / mmPerInch).toStringAsFixed(2));
+
+String _tempFigure(double value, int decimals) =>
+    decimals == 0 ? '${_roundHalfEven(value)}' : _noNegativeZero(value.toStringAsFixed(decimals));
 
 /// "-0.0" is a real output of both languages here — -17.8 C is -0.04 F — and
 /// it is not wrong so much as unreadable in a sentence a person is meant to

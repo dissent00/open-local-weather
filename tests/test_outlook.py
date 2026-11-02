@@ -62,7 +62,7 @@ def test_a_day_that_stands_out_for_wind_is_named_with_its_gust():
 
     text = describe_extended_outlook(_inputs(days))
 
-    assert "Windier on Wednesday, gusts to 41 km/h." in text
+    assert "Windier on Wednesday, gusts to 41 km/h (22 kt)." in text
 
 
 def test_a_wind_already_in_the_trend_clause_is_not_said_twice():
@@ -81,7 +81,7 @@ def test_the_scored_call_carries_the_served_probability_the_votes_and_the_met_se
 
     text = describe_extended_outlook(inputs)
 
-    assert ("Thursday's call: rain, 68%, with two of four models wet; highs 29 to 34 °C. "
+    assert ("Thursday's call: rain, 68%, with two of four models wet; highs 29 to 34°C (84 to 93°F). "
             "Kenya Meteorological Department (KMD) calls it dry.") in text
 
 
@@ -160,13 +160,13 @@ def test_the_unscored_days_are_said_one_by_one():
     text = describe_extended_outlook(_inputs(near + far, served={"7": {"rain": True, "rain_probability_pct": 100}}))
     _, middle, end = text.split("\n\n")
 
-    assert "Friday: three of four models wet, highs 29 to 33 °C." in middle
+    assert "Friday: three of four models wet, highs 29 to 33°C (84 to 91°F)." in middle
     assert "Saturday: all four models wet, highs much the same." in middle
-    assert ("Sunday: all three models that reach it wet, the week's wettest day at 15 mm on average, "
-            "highs 24 to 32 °C, thunder possible rather than likely.") in middle
+    assert ("Sunday: all three models that reach it wet, the week's wettest day at 15 mm (0.60 in) on average, "
+            "highs 24 to 32°C (75 to 90°F), thunder possible rather than likely.") in middle
     assert "Monday:" not in middle, "the scored day has its call instead"
     assert end.startswith("Only GFS, ECMWF and ICON reach past Saturday.")
-    assert "Monday's call: rain, 100%, with both models wet; highs 24 to 30 °C." in end
+    assert "Monday's call: rain, 100%, with both models wet; highs 24 to 30°C (76 to 85°F)." in end
     assert phrase_defect(middle) is None
 
 

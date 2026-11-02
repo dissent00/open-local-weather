@@ -22,8 +22,8 @@ def test_every_dimension_reported_in_the_contract_order():
         cloud_oktas=5.5,
     )
     assert describe_observed_so_far(observed, as_of="14:00") == (
-        "As of 14:00: rain from 13:00; thunder; high so far 27°C / 81°F; "
-        "low so far 18°C / 65°F; peak sustained 31 km/h; sky mostly cloudy."
+        "As of 14:00: rain from 13:00; thunder; high so far 27°C (81°F); "
+        "low so far 18°C (65°F); peak sustained 31 km/h (17 kt); sky mostly cloudy."
     )
 
 
@@ -33,7 +33,7 @@ def test_a_negative_is_reported_and_an_absence_is_omitted():
     not a calm day and must not read as one."""
     observed = ObservedSoFar(precipitation=False, thunder=False, high_c=22.0)
     assert describe_observed_so_far(observed, as_of="09:00") == (
-        "As of 09:00: no rain; no thunder; high so far 22°C / 72°F."
+        "As of 09:00: no rain; no thunder; high so far 22°C (72°F)."
     )
 
 
@@ -56,7 +56,7 @@ def test_without_an_issuance_time_it_says_so_far_today():
 
 @pytest.mark.parametrize(
     "celsius,expected",
-    [(32.5, "32°C / 90°F"), (33.5, "34°C / 92°F"), (-0.5, "0°C / 31°F")],
+    [(32.5, "32°C (90°F)"), (33.5, "34°C (92°F)"), (-0.5, "0°C (31°F)")],
 )
 def test_temperature_ties_go_half_to_even(celsius, expected):
     """The tie cases, because Dart's .round() is half AWAY from zero and would
@@ -66,16 +66,16 @@ def test_temperature_ties_go_half_to_even(celsius, expected):
     assert got == f"So far today: high so far {expected}."
 
 
-@pytest.mark.parametrize("kmh,expected", [(30.5, 30), (31.5, 32), (0.5, 0)])
+@pytest.mark.parametrize("kmh,expected", [(30.5, "30 km/h (16 kt)"), (31.5, "32 km/h (17 kt)"), (0.5, "0 km/h (0 kt)")])
 def test_sustained_ties_go_half_to_even(kmh, expected):
     got = describe_observed_so_far(ObservedSoFar(peak_wind_kmh=kmh))
-    assert got == f"So far today: peak sustained {expected} km/h."
+    assert got == f"So far today: peak sustained {expected}."
 
 
-@pytest.mark.parametrize("kmh,expected", [(30.5, 30), (31.5, 32), (0.5, 0)])
+@pytest.mark.parametrize("kmh,expected", [(30.5, "30 km/h (16 kt)"), (31.5, "32 km/h (17 kt)"), (0.5, "0 km/h (0 kt)")])
 def test_gust_ties_go_half_to_even(kmh, expected):
     got = describe_observed_so_far(ObservedSoFar(peak_gust_kmh=kmh))
-    assert got == f"So far today: peak gust {expected} km/h."
+    assert got == f"So far today: peak gust {expected}."
 
 
 @pytest.mark.parametrize("oktas,expected", [
@@ -252,7 +252,7 @@ def test_the_reach_is_stated_beside_the_clock():
     "so far" reaches, or a two-report night at 06:01 reads as the day."""
     observed = ObservedSoFar(precipitation=False, high_c=22.0, reported_through="05:45")
     assert describe_observed_so_far(observed, as_of="06:01") == (
-        "As of 06:01, reports through 05:45: no rain; high so far 22°C / 72°F."
+        "As of 06:01, reports through 05:45: no rain; high so far 22°C (72°F)."
     )
 
 

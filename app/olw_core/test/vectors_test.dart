@@ -2194,6 +2194,34 @@ void main() {
       }
     });
 
+    test('format_temp_c, format_temp_range_c, format_kmh, format_mm', () {
+      Map<String, Object?> inputOf(Object c) => ((c as Map)['input'] as Map).cast<String, Object?>();
+      double d(Object? v) => (v as num).toDouble();
+      for (final c in loadVectors('format_temp_c.json')['cases'] as List) {
+        final i = inputOf(c);
+        expect(formatTempC(d(i['celsius']), decimals: i['decimals'] as int), (c as Map)['expected'], reason: c['name'] as String);
+      }
+      for (final c in loadVectors('format_temp_range_c.json')['cases'] as List) {
+        final i = inputOf(c);
+        expect(formatTempRangeC(d(i['low_c']), d(i['high_c']), decimals: i['decimals'] as int, joiner: i['joiner'] as String),
+            (c as Map)['expected'], reason: c['name'] as String);
+      }
+      for (final c in loadVectors('format_kmh.json')['cases'] as List) {
+        expect(formatKmh(d(inputOf(c)['kmh'])), (c as Map)['expected'], reason: c['name'] as String);
+      }
+      for (final c in loadVectors('format_mm.json')['cases'] as List) {
+        final i = inputOf(c);
+        expect(formatMm(d(i['mm']), decimals: i['decimals'] as int), (c as Map)['expected'], reason: c['name'] as String);
+      }
+    });
+
+    test('complete_units', () {
+      for (final c in loadVectors('complete_units.json')['cases'] as List) {
+        final text = (((c as Map)['input'] as Map)['text']) as String;
+        expect(completeUnits(text), c['expected'], reason: c['name'] as String);
+      }
+    });
+
     test('impossible_figure', () {
       for (final c in loadVectors('impossible_figure.json')['cases'] as List) {
         final input = ((c as Map)['input'] as Map).cast<String, Object?>();
@@ -2537,6 +2565,11 @@ void main() {
       'false_weekday_claims.json',
       'overlong_display_values.json',
       'impossible_figure.json',
+      'format_temp_c.json',
+      'format_temp_range_c.json',
+      'format_kmh.json',
+      'format_mm.json',
+      'complete_units.json',
       'cloud_anchors.json',
       'sky_by_day.json',
       'period_summary.json',

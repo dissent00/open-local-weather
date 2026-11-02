@@ -308,3 +308,50 @@ def test_a_narrow_space_inside_a_figure_groups_thousands():
 def test_severe_reads_the_cape_block_by_its_name():
     prompt = build_writer_prompt(["severe"], place="Kisumu", secondary_name=None, met_service_name=None)
     assert "thunder ahead from PEAK CAPE AHEAD" in prompt and "PEAK CAPE TODAY" not in prompt
+
+
+@pytest.mark.parametrize("text, expected", [
+    ("A high of 30 °C.", "A high of 30°C (86°F)."),
+    ("A high of 30°C / 86°F.", "A high of 30°C (86°F)."),
+    ("A high of 30°C (87°F).", "A high of 30°C (87°F)."),
+    ("A high of 30°C (91°F).", "A high of 30°C (86°F)."),
+    ("Highs range from 30 °C to 31 °C.", "Highs range from 30°C (86°F) to 31°C (88°F)."),
+    ("Highs 29 to 31 °C.", "Highs 29 to 31°C (84 to 88°F)."),
+    ("Highs 29–31°C.", "Highs 29–31°C (84–88°F)."),
+    ("The call's 31.5 °C sits between.", "The call's 31.5°C (88.7°F) sits between."),
+    ("Lows near -3 °C.", "Lows near -3°C (27°F)."),
+    ("Gusts to 35 km/h.", "Gusts to 35 km/h (19 kt)."),
+    ("Gusts to 35 km/h (19 kt).", "Gusts to 35 km/h (19 kt)."),
+    ("Gusts to 29 km/h (15 kt).", "Gusts to 29 km/h (15 kt)."),
+    ("Gusts to 35 km/h (25 kt).", "Gusts to 35 km/h (19 kt)."),
+    ("Winds 6–8 km/h.", "Winds 6–8 km/h (3–4 kt)."),
+    ("Highs 29-31°C (85-88°F).", "Highs 29-31°C (85-88°F)."),
+    ("Lows -3 to -1 °C (27 to 30 °F).", "Lows -3 to -1°C (27 to 30°F)."),
+    ("Rain of 0.2–2.1 mm.", "Rain of 0.2–2.1 mm (0.01–0.08 in)."),
+    ("Bringing 14.5 mm (0.57 in) of rain.", "Bringing 14.5 mm (0.57 in) of rain."),
+    ("About 10 mm.", "About 10 mm (0.39 in)."),
+    ("All four models wet (0.8–6.1 mm).", "All four models wet (0.8–6.1 mm [0.03–0.24 in])."),
+    ("Highs (29 °C) then (31 °C).", "Highs (29°C [84°F]) then (31°C [88°F])."),
+    ("No figure at all, 1009 hPa, 1710 J/kg, 13:00.", "No figure at all, 1009 hPa, 1710 J/kg, 13:00."),
+])
+def test_code_completes_the_models_units(text, expected):
+    """The model writes °C, km/h and mm; code adds °F, knots and inches
+    from the figure as written (2026-11-02). A pair the model wrote stays
+    when its second figure is within one display step of code's: the
+    brief's own pairs convert from the TRUE value, so "29 km/h (15 kt)"
+    (28.5 to 28.7 km/h) is right and recomputing it from 29 would print 16, the
+    rounding-twice bug. Further off is a mis-conversion, and code's
+    replaces it. Inside a bracket the second unit takes square ones."""
+    from openlocalweather.writer import complete_units
+
+    assert complete_units(text) == expected
+
+
+def test_the_page_completes_the_models_units_and_not_codes():
+    markdown, _ = compose_write_up(
+        {"today": "A high of 30 °C."}, {"today": []}, {"extended": "Code's 29°C (84°F)."}, ["today", "extended"],
+        secondary_name=None, model_name="Gemini 3.6 Flash", sign_off_line="Written by code.",
+        observed_line="As of 06:01, reports through 05:00: high so far 21°C (70°F).",
+    )
+    assert "A high of 30°C (86°F). As of 06:01, reports through 05:00: high so far 21°C (70°F)." in markdown
+    assert "Code's 29°C (84°F)." in markdown

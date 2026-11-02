@@ -1,0 +1,112 @@
+{
+  "vector_format_version": 1,
+  "function": "complete_units",
+  "description": "The model's text with every temperature, wind and rain figure carrying its second unit: a model's pair kept within one display step of code's conversion, replaced otherwise; square brackets inside a bracket.",
+  "cases": [
+    {
+      "name": "a bare temperature",
+      "input": {
+        "text": "A high of 30 \u00b0C."
+      },
+      "expected": "A high of 30\u00b0C (86\u00b0F)."
+    },
+    {
+      "name": "a slash pair",
+      "input": {
+        "text": "A high of 30\u00b0C / 86\u00b0F."
+      },
+      "expected": "A high of 30\u00b0C (86\u00b0F)."
+    },
+    {
+      "name": "a pair within a step stays",
+      "input": {
+        "text": "A high of 30\u00b0C (87\u00b0F)."
+      },
+      "expected": "A high of 30\u00b0C (87\u00b0F)."
+    },
+    {
+      "name": "a mis-converted pair is replaced",
+      "input": {
+        "text": "A high of 30\u00b0C (91\u00b0F)."
+      },
+      "expected": "A high of 30\u00b0C (86\u00b0F)."
+    },
+    {
+      "name": "a range in words",
+      "input": {
+        "text": "Highs 29 to 31 \u00b0C."
+      },
+      "expected": "Highs 29 to 31\u00b0C (84 to 88\u00b0F)."
+    },
+    {
+      "name": "a range with an en dash",
+      "input": {
+        "text": "Highs 29\u201331\u00b0C."
+      },
+      "expected": "Highs 29\u201331\u00b0C (84\u201388\u00b0F)."
+    },
+    {
+      "name": "a hyphen range pair within a step",
+      "input": {
+        "text": "Highs 29-31\u00b0C (85-88\u00b0F)."
+      },
+      "expected": "Highs 29-31\u00b0C (85-88\u00b0F)."
+    },
+    {
+      "name": "negatives",
+      "input": {
+        "text": "Lows -3 to -1 \u00b0C (27 to 30 \u00b0F)."
+      },
+      "expected": "Lows -3 to -1\u00b0C (27 to 30\u00b0F)."
+    },
+    {
+      "name": "one place",
+      "input": {
+        "text": "The call's 31.5 \u00b0C sits between."
+      },
+      "expected": "The call's 31.5\u00b0C (88.7\u00b0F) sits between."
+    },
+    {
+      "name": "a wind",
+      "input": {
+        "text": "Gusts to 35 km/h."
+      },
+      "expected": "Gusts to 35 km/h (19 kt)."
+    },
+    {
+      "name": "a brief pair kept",
+      "input": {
+        "text": "Gusts to 29 km/h (15 kt)."
+      },
+      "expected": "Gusts to 29 km/h (15 kt)."
+    },
+    {
+      "name": "a wind range",
+      "input": {
+        "text": "Winds 6\u20138 km/h."
+      },
+      "expected": "Winds 6\u20138 km/h (3\u20134 kt)."
+    },
+    {
+      "name": "a rain range",
+      "input": {
+        "text": "Rain of 0.2\u20132.1 mm."
+      },
+      "expected": "Rain of 0.2\u20132.1 mm (0.01\u20130.08 in)."
+    },
+    {
+      "name": "inside a bracket",
+      "input": {
+        "text": "All four models wet (0.8\u20136.1 mm)."
+      },
+      "expected": "All four models wet (0.8\u20136.1 mm [0.03\u20130.24 in])."
+    },
+    {
+      "name": "no unit to complete",
+      "input": {
+        "text": "No figure at all, 1009 hPa, 1710 J/kg, 13:00."
+      },
+      "expected": "No figure at all, 1009 hPa, 1710 J/kg, 13:00."
+    }
+  ]
+}

@@ -105,6 +105,11 @@ absent values are `null`, never omitted keys.
 | `phrase_defect.json` | `phrase_defect` | 18 |
 | `overlong_display_values.json` | `overlong_display_values` | 11 |
 | `impossible_figure.json` | `impossible_figure` | 18 |
+| `format_temp_c.json` | `format_temp_c` | 63 |
+| `format_temp_range_c.json` | `format_temp_range_c` | 3 |
+| `format_kmh.json` | `format_kmh` | 62 |
+| `format_mm.json` | `format_mm` | 63 |
+| `complete_units.json` | `complete_units` | 15 |
 | `cloud_anchors.json` | `cloud_anchors` | 12 |
 | `sky_by_day.json` | `sky_by_day` | 7 |
 | `period_summary.json` | `summarize_periods` | 9 |

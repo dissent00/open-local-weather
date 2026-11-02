@@ -20,6 +20,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from openlocalweather.defaults import MM_PER_INCH
 from openlocalweather.brief import (
     SECTION_CONFIDENCE,
     SECTION_EXTENDED,
@@ -43,6 +44,7 @@ from openlocalweather.floor import (
 )
 from openlocalweather.llm.fallback import FallbackProvider
 from openlocalweather.llm.schema import WriteUpResponse
+from openlocalweather.models import fahrenheit_figure, inches_figure, knots_figure
 from openlocalweather.outlook import MODEL_SHORT_NAMES
 from openlocalweather.phrasing import phrase_defect
 from openlocalweather.tiles import KMH_PER_KNOT
@@ -74,7 +76,6 @@ NO_MODEL_NAME_SECTIONS = frozenset({SECTION_TODAY, SECTION_SECONDARY})
 # What the Gulf timeline's legs are joined by (wind.py).
 TIMELINE_JOIN = ", then "
 PIPELINE_WORDS = ("calibrated", "consensus", "pre-computed", "precomputed", "blend", "guidance", "the brief")
-MM_PER_INCH = 25.4
 
 _NUMBER = re.compile(r"(?<![\w.])-?\d[\d,]*(?:\.\d+)?")
 # A figure with the unit it carries, as the page writes them. UNIT-AWARE on
@@ -139,7 +140,7 @@ def build_writer_prompt(
             "TODAY'S FORECAST (\"today\"): open on a weather condition or a temperature, never on a time or the "
             "sun. What is still ahead, as the ISSUED line and WINDOWS say; the thunder phrase verbatim where "
             "one is given; the sky in SKY's words for those hours; the WIND phrase verbatim; gusts in km/h "
-            "with knots in brackets, as the brief writes them; the UV peak; air quality from the ground "
+            "as the brief writes them; the UV peak; air quality from the ground "
             "stations where given, the model estimate otherwise. Nothing about what has already happened: "
             "code adds the OBSERVED SO FAR line after your text. Nothing about humidity, feels-like or "
             "visibility: nothing measures them."
@@ -186,7 +187,7 @@ RULES CHECKED IN CODE. A section that breaks one is dropped and the reader gets 
 
 {paragraphs}
 
-Plain prose in complete sentences: no lists, no emojis, no headings. Both units for temperatures and rain where the brief gives both; wind as km/h with knots in brackets."""
+Plain prose in complete sentences: no lists, no emojis, no headings. Temperatures in °C, wind in km/h, rain in mm: the page adds °F, knots and inches itself."""
 
 
 # --- the audit --------------------------------------------------------------
@@ -270,6 +271,67 @@ _THOUSANDS_SPACE = re.compile(r"(?<=[0-9])\u202f(?=[0-9]{3}(?![0-9]))")
 
 def normalise_prose(text: str) -> str:
     return _EN_DASH_MINUS.sub("-", _THOUSANDS_SPACE.sub("", text).translate(_TYPOGRAPHY))
+
+
+# THE SECOND UNIT IS CODE'S, 2026-11-02. The model writes °C, km/h and mm;
+# the page shows each with its conversion in brackets, as code's own text
+# does. Measured before: since 10-11 the model wrote °C alone 121 times
+# against 46 pairs, km/h alone 24, mm alone 40 against 1, though the prompt
+# asked for both. The model's figure is kept as written; the bracket is
+# code's, except where the model's own bracket is right.
+#
+# A MODEL'S PAIR STAYS WHEN ITS SECOND FIGURE IS WITHIN ONE DISPLAY STEP of
+# code's conversion of the first. The brief's pairs convert from the TRUE
+# value: "29 km/h (15 kt)" is between 28.5 and 28.7 km/h, and recomputing from 29
+# printed 16 kt in the first cut (2026-10-30's Gulf section) — rounding
+# twice, the bug `models.format_temp_high_low` exists to prevent. Rounding
+# the first figure moves the second by less than one step, so further off
+# is a mis-conversion and code's replaces it.
+_FIG = r"-?\d+(?:\.\d+)?"
+_JOIN = r"\s+to\s+|–|-"
+_RANGE = rf"(?<![\w.:])(?P<a>{_FIG})(?:(?P<j>{_JOIN})(?P<b>{_FIG}))?"
+_SECOND = rf"{_FIG}(?:\s*(?:{_JOIN})\s*{_FIG})?"
+# The slash pair and the bracket pair each name their group, since a name
+# may appear once per pattern and Dart has no conditional group.
+_TEMP = re.compile(
+    _RANGE + rf"\s?°\s?C(?:\s*/\s*(?P<slash>{_SECOND})\s?°\s?F|\s*\(\s*(?P<second>{_SECOND})\s?°\s?F\s*\))?"
+)
+_WIND = re.compile(_RANGE + rf"\s?km/h(?:\s*\(\s*(?P<second>{_SECOND})\s?(?:kt|knots?)\s*\))?")
+_RAIN = re.compile(_RANGE + rf"\s?mm\b(?:\s*\(\s*(?P<second>{_SECOND})\s?(?:in|inch|inches)\s*\))?")
+
+
+def complete_units(text: str) -> str:
+    """The model's text with every temperature, wind speed and rain amount
+    carrying its second unit — "30 °C" reads "30°C (86°F)"."""
+    text = _TEMP.sub(lambda m: _completed(m, "°C", "°F", fahrenheit_figure), text)
+    text = _WIND.sub(lambda m: _completed(m, " km/h", " kt", lambda v, d: knots_figure(v)), text)
+    return _RAIN.sub(lambda m: _completed(m, " mm", " in", lambda v, d: inches_figure(v)), text)
+
+
+def _completed(m: re.Match, unit: str, second_unit: str, convert) -> str:
+    figures = [f for f in (m.group("a"), m.group("b")) if f is not None]
+    joiner = " to " if m.group("j") and m.group("j").strip() == "to" else (m.group("j") or "")
+    converted = [convert(float(f), _decimals(f)) for f in figures]
+    pair = m.groupdict().get("slash") or m.group("second") or ""
+    # Split on a joiner after a digit, so "29-31" is two figures, not 29 and -31.
+    written = [w for w in re.split(rf"(?<=\d)\s*(?:{_JOIN})\s*", pair) if w]
+    if len(written) == len(converted) and all(_within_a_step(w, c) for w, c in zip(written, converted)):
+        converted = written
+
+    # Inside a bracket already, the second unit takes square ones rather
+    # than nest a round pair: "(0.8–6.1 mm [0.03–0.24 in])".
+    before = m.string[:m.start()]
+    opened, closed = ("[", "]") if before.count("(") > before.count(")") else ("(", ")")
+    return f"{joiner.join(figures)}{unit} {opened}{joiner.join(converted)}{second_unit}{closed}"
+
+
+def _decimals(figure: str) -> int:
+    return len(figure.split(".")[1]) if "." in figure else 0
+
+
+def _within_a_step(written: str, converted: str) -> bool:
+    step = 10 ** -max(_decimals(written), _decimals(converted))
+    return abs(float(written) - float(converted)) <= step + 1e-9
 
 
 def strip_observed_line(text: str, line: str | None) -> str:
@@ -414,8 +476,9 @@ def compose_write_up(
         if answer and not verdicts.get(section):
             text, source = answer, "llm"
             # Code's line, after the model's text, as the floor ends Today.
+            text = complete_units(answer)
             if section == SECTION_TODAY and observed_line:
-                text = f"{strip_observed_line(answer, observed_line)} {observed_line}"
+                text = f"{complete_units(strip_observed_line(answer, observed_line))} {observed_line}"
         elif code_sections.get(section):
             text, source = code_sections[section], "code"
         else:

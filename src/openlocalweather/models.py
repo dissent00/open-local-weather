@@ -24,6 +24,8 @@ from dataclasses import dataclass
 
 from pydantic import AliasChoices, BaseModel, Field
 
+from openlocalweather.defaults import KNOTS_TO_KMH, MM_PER_INCH
+
 LeadTime = int  # one of 0, 3, 7 — not a real enum, kept as int to match defaults.LEAD_TIMES_DAYS
 
 
@@ -347,9 +349,61 @@ def format_temp_c(celsius: float, *, decimals: int = 0) -> str:
     stays in one place.
     """
     if not decimals:
-        return f"{round(celsius)}°C / {round(celsius * 9 / 5 + 32)}°F"
+        return f"{round(celsius)}°C ({fahrenheit_figure(celsius)}°F)"
 
-    return f"{_fixed(celsius, decimals)}°C / {_fixed(celsius * 9 / 5 + 32, decimals)}°F"
+    return f"{_fixed(celsius, decimals)}°C ({fahrenheit_figure(celsius, decimals)}°F)"
+
+
+# BOTH UNITS AS "PRIMARY (SECOND)", 2026-11-02 — the operator, on readers'
+# feedback. Since 10-11 the page carried °C alone 152 times against 92 pairs,
+# km/h alone 35 against 182, mm alone 44 against 1. The second unit is
+# rounded from the true value, never from the rounded first, for the reason
+# `format_temp_high_low` gives. Whole figures round half-to-even and decimal
+# ones through `_fixed`, the two roundings already swept against Dart.
+
+
+def format_temp_range_c(low_c: float, high_c: float, *, decimals: int = 0, joiner: str = " to ") -> str:
+    """"29 to 33°C (84 to 91°F)" — a range carries its unit once per unit."""
+    c = joiner.join(_temp_figure(v, decimals) for v in (low_c, high_c))
+    f = joiner.join(fahrenheit_figure(v, decimals) for v in (low_c, high_c))
+    return f"{c}°C ({f}°F)"
+
+
+def format_kmh(kmh: float) -> str:
+    """"35 km/h (19 kt)"."""
+    return f"{round(kmh)} km/h ({knots_figure(kmh)} kt)"
+
+
+def format_mm(mm: float, *, decimals: int = 1) -> str:
+    """"2.2 mm (0.09 in)"."""
+    return f"{_fixed(mm, decimals)} mm ({inches_figure(mm)} in)"
+
+
+# The three conversions, one rounding site each: the formatters above and
+# the writer's completion of a model's text (`writer.complete_units`) both
+# call these, so a figure converts the same wherever it is printed.
+
+
+def fahrenheit_figure(celsius: float, decimals: int = 0) -> str:
+    return _temp_figure(_to_f(celsius), decimals)
+
+
+def knots_figure(kmh: float) -> str:
+    return str(round(kmh / KNOTS_TO_KMH))
+
+
+def inches_figure(mm: float) -> str:
+    """Two places, since a tenth of an inch is 2.5 mm and most days' amounts
+    are smaller than that."""
+    return _fixed(mm / MM_PER_INCH, 2)
+
+
+def _to_f(celsius: float) -> float:
+    return celsius * 9 / 5 + 32
+
+
+def _temp_figure(value: float, decimals: int) -> str:
+    return str(round(value)) if not decimals else _fixed(value, decimals)
 
 
 def _fixed(value: float, decimals: int) -> str:

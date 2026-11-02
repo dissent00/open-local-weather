@@ -6,7 +6,14 @@ RIGHT, where the vectors only say the two implementations AGREE.
 
 import re
 
-from openlocalweather.models import DailyActual, format_temp_high_low
+from openlocalweather.models import (
+    DailyActual,
+    format_kmh,
+    format_mm,
+    format_temp_c,
+    format_temp_high_low,
+    format_temp_range_c,
+)
 
 
 def test_temp_high_low_is_computed_not_transcribed():
@@ -14,14 +21,14 @@ def test_temp_high_low_is_computed_not_transcribed():
     "34C / 93F" by the model, which rounded to 34 and converted that. 33.5 C
     is 92.3 F, so a third of the apparent jump from yesterday's 90 F was
     invented in the rounding."""
-    assert format_temp_high_low(33.5, 18.0) == "34\u00b0C / 92\u00b0F high, 18\u00b0C / 64\u00b0F low"
+    assert format_temp_high_low(33.5, 18.0) == "34\u00b0C (92\u00b0F) high, 18\u00b0C (64\u00b0F) low"
 
 
 def test_each_unit_is_rounded_from_the_true_value():
     """And so the pair deliberately does not round-trip: 34 C is 93.2 F, but
     the true 33.5 C is 92.3 F and 92 is the closest whole number to it.
     Rounding twice is the bug this replaced, not a property to restore."""
-    assert "34\u00b0C / 92\u00b0F" in format_temp_high_low(33.5, 18.0)
+    assert "34\u00b0C (92\u00b0F)" in format_temp_high_low(33.5, 18.0)
 
 
 def test_format_is_fixed_rather_than_reinvented_each_day():
@@ -30,7 +37,7 @@ def test_format_is_fixed_rather_than_reinvented_each_day():
     26th and "34C / 93F high, 18C / 64F low" on the 27th. The shape is now the
     same whatever the numbers are."""
     shape = re.compile(
-        r"^-?\d+\u00b0C / -?\d+\u00b0F high, -?\d+\u00b0C / -?\d+\u00b0F low$"
+        r"^-?\d+\u00b0C \(-?\d+\u00b0F\) high, -?\d+\u00b0C \(-?\d+\u00b0F\) low$"
     )
     for high, low in [(32.3, 18.0), (33.5, 18.5), (-2.5, -7.5), (40.0, 25.0)]:
         assert shape.match(format_temp_high_low(high, low)), (high, low)
@@ -167,3 +174,19 @@ def test_a_summary_right_about_both_quantities_survives():
         "At Day+0, under-forecasts peak wind and runs cold on overnight lows.",
         low_error_c=+2.0, wind_error_kmh=+12.0,
     ) is False
+
+
+def test_both_units_are_written_as_a_primary_and_its_bracket():
+    """The operator, 2026-11-02, on readers' feedback: °C (°F), km/h (kt),
+    mm (in). Since 10-11 the page carried °C alone 152 times against 92
+    pairs, km/h alone 35, mm alone 44 against one pair. Each second unit is
+    rounded from the true value, as the temperature pair always was."""
+    assert format_temp_c(33.5) == "34°C (92°F)"
+    assert format_temp_c(18.2, decimals=1) == "18.2°C (64.8°F)"
+    assert format_temp_range_c(29.4, 33.0) == "29 to 33°C (85 to 91°F)"
+    assert format_temp_range_c(29.0, 31.0, joiner="–") == "29–31°C (84–88°F)"
+    assert format_kmh(35.19) == "35 km/h (19 kt)"
+    assert format_kmh(18.52) == "19 km/h (10 kt)"
+    assert format_mm(2.2) == "2.2 mm (0.09 in)"
+    assert format_mm(10.4, decimals=0) == "10 mm (0.41 in)"
+    assert format_mm(0.0) == "0.0 mm (0.00 in)"

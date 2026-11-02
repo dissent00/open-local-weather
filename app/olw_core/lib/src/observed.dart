@@ -21,7 +21,6 @@ library;
 
 import 'disagreement.dart';
 import 'models.dart';
-import 'rounding.dart';
 import 'tiles.dart' as tiles;
 
 /// One finished sentence for what has been measured today, or null when
@@ -99,7 +98,7 @@ String? _temperature(String label, double? celsius) {
 String? _sustained(double? kmh) {
   if (kmh == null) return null;
 
-  return 'peak sustained ${roundLikePython(kmh, 0).toInt()} km/h';
+  return 'peak sustained ${formatKmh(kmh)}';
 }
 
 /// The gust the station actually filed, or nothing. Absent on almost every
@@ -108,10 +107,9 @@ String? _sustained(double? kmh) {
 String? _gust(double? kmh) {
   if (kmh == null) return null;
 
-  // roundLikePython at zero places, which is half-to-EVEN and verified
-  // against Python on every tie including -0.5. Dart's own .round() goes
-  // half away from zero and would publish 33 where Python publishes 32.
-  return 'peak gust ${roundLikePython(kmh, 0).toInt()} km/h';
+  // formatKmh rounds half-to-EVEN, as Python does. Dart's own .round()
+  // goes half away from zero and would publish 33 where Python publishes 32.
+  return 'peak gust ${formatKmh(kmh)}';
 }
 
 String? _sky(double? oktas) {

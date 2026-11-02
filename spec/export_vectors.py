@@ -390,6 +390,66 @@ def export_impossible_figure() -> None:
     )
 
 
+def export_units() -> None:
+    """Both units on the page — 2026-11-02, the operator on readers'
+    feedback. One file per formatter, chosen cases and a seeded spread, ties
+    and negatives among them; `complete_units.json`
+    pins the writer's completion of a model's text."""
+    import random
+
+    from openlocalweather.models import format_kmh, format_mm, format_temp_c, format_temp_range_c
+    from openlocalweather.writer import complete_units
+
+    rng = random.Random(1102)
+
+    temp, ranges, kmh, mm = [], [], [], []
+    for name, c, d in [("a half degree rounds to even, the other unit from the true value", 33.5, 0),
+                       ("one place", 18.2, 1), ("below freezing", -17.8, 0)]:
+        temp.append({"name": name, "input": {"celsius": c, "decimals": d}, "expected": format_temp_c(c, decimals=d)})
+    for name, lo, hi, d, j in [("a range", 29.4, 33.0, 0, " to "), ("a range with an en dash", 29.0, 31.0, 0, "\u2013"),
+                               ("a range at one place", 18.25, 21.75, 1, " to ")]:
+        ranges.append({"name": name, "input": {"low_c": lo, "high_c": hi, "decimals": d, "joiner": j},
+                       "expected": format_temp_range_c(lo, hi, decimals=d, joiner=j)})
+    for name, v in [("a wind", 35.19), ("a wind at a knot tie", 18.52)]:
+        kmh.append({"name": name, "input": {"kmh": v}, "expected": format_kmh(v)})
+    for name, v, d in [("rain", 2.2, 1), ("rain at whole millimetres", 10.4, 0), ("no rain", 0.0, 1)]:
+        mm.append({"name": name, "input": {"mm": v, "decimals": d}, "expected": format_mm(v, decimals=d)})
+    for k in range(60):
+        c, d = round(rng.uniform(-30, 50), rng.choice((0, 1, 2))), rng.choice((0, 1))
+        temp.append({"name": f"spread {k}", "input": {"celsius": c, "decimals": d}, "expected": format_temp_c(c, decimals=d)})
+        v = round(rng.uniform(0, 120), rng.choice((0, 1, 2)))
+        kmh.append({"name": f"spread {k}", "input": {"kmh": v}, "expected": format_kmh(v)})
+        v, d = round(rng.uniform(0, 80), rng.choice((0, 1, 2))), rng.choice((0, 1))
+        mm.append({"name": f"spread {k}", "input": {"mm": v, "decimals": d}, "expected": format_mm(v, decimals=d)})
+    rule = "the second unit rounded from the true value; whole figures half to even, decimal ones ties away from zero."
+    write("format_temp_c.json", "format_temp_c", "One temperature as \u00b0C (\u00b0F): " + rule, temp)
+    write("format_temp_range_c.json", "format_temp_range_c", "A temperature range, its unit once per unit: " + rule, ranges)
+    write("format_kmh.json", "format_kmh", "A wind as km/h (kt): " + rule, kmh)
+    write("format_mm.json", "format_mm", "Rain as mm (in), inches at two places: " + rule, mm)
+
+    texts = [
+        ("a bare temperature", "A high of 30 \u00b0C."),
+        ("a slash pair", "A high of 30\u00b0C / 86\u00b0F."),
+        ("a pair within a step stays", "A high of 30\u00b0C (87\u00b0F)."),
+        ("a mis-converted pair is replaced", "A high of 30\u00b0C (91\u00b0F)."),
+        ("a range in words", "Highs 29 to 31 \u00b0C."),
+        ("a range with an en dash", "Highs 29\u201331\u00b0C."),
+        ("a hyphen range pair within a step", "Highs 29-31\u00b0C (85-88\u00b0F)."),
+        ("negatives", "Lows -3 to -1 \u00b0C (27 to 30 \u00b0F)."),
+        ("one place", "The call's 31.5 \u00b0C sits between."),
+        ("a wind", "Gusts to 35 km/h."),
+        ("a brief pair kept", "Gusts to 29 km/h (15 kt)."),
+        ("a wind range", "Winds 6\u20138 km/h."),
+        ("a rain range", "Rain of 0.2\u20132.1 mm."),
+        ("inside a bracket", "All four models wet (0.8\u20136.1 mm)."),
+        ("no unit to complete", "No figure at all, 1009 hPa, 1710 J/kg, 13:00."),
+    ]
+    write("complete_units.json", "complete_units",
+          "The model's text with every temperature, wind and rain figure carrying its second unit: a model's "
+          "pair kept within one display step of code's conversion, replaced otherwise; square brackets inside a "
+          "bracket.", [{"name": n, "input": {"text": t}, "expected": complete_units(t)} for n, t in texts])
+
+
 def export_overlong_display_values() -> None:
     """The stat-grid tiles, checked against the box they render in.
 
@@ -7316,6 +7376,9 @@ def export_writer() -> None:
             compose_case("every section the model's", {s: f"Model's {s}." for s in SECTIONS}, {s: [] for s in SECTIONS}, {}, SECTIONS, model_name="dots-3-note-preview"),
             compose_case("code appends the observed line to the model's today", {"today": "Showers later."}, {"today": []}, {},
                          ("today",), secondary_name=None, observed_line=inputs.observed_so_far),
+            compose_case("the model's units completed, code's left alone", {"today": "A high of 30 \u00b0C.", "extended": "Highs 29\u201331 \u00b0C."},
+                         {"today": [], "extended": []}, {"extended": "Code's 29\u00b0C (84\u00b0F)."}, ("today", "extended"),
+                         secondary_name=None, observed_line="As of 06:01, reports through 05:00: high so far 21\u00b0C (70\u00b0F)."),
             compose_case("an exact copy of the observed line is not doubled", {"today": f"Showers later. {inputs.observed_so_far}"},
                          {"today": []}, {}, ("today",), secondary_name=None, observed_line=inputs.observed_so_far),
         ],
@@ -7400,6 +7463,7 @@ def main() -> None:
     export_forward_calendar()
     export_false_weekday_claims()
     export_overlong_display_values()
+    export_units()
     export_impossible_figure()
     export_tile_comparison()
     export_cloud_anchors()

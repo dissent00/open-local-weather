@@ -24,7 +24,7 @@
         "station_name": "Kisumu International Airport"
       },
       "expected": [
-        "Kisumu International Airport has already recorded 31.2\u00b0C / 88.2\u00b0F today against a forecast high of 28.0\u00b0C / 82.4\u00b0F. That is this one station, not the wider area: it does not say everywhere has passed the forecast high."
+        "Kisumu International Airport has already recorded 31.2\u00b0C (88.2\u00b0F) today against a forecast high of 28.0\u00b0C (82.4\u00b0F). That is this one station, not the wider area: it does not say everywhere has passed the forecast high."
       ]
     },
     {
@@ -75,7 +75,7 @@
         "station_name": "Kisumu International Airport"
       },
       "expected": [
-        "Kisumu International Airport has already recorded 31.2\u00b0C / 88.2\u00b0F today against a forecast high of 28.0\u00b0C / 82.4\u00b0F. That is this one station, not the wider area: it does not say everywhere has passed the forecast high.",
+        "Kisumu International Airport has already recorded 31.2\u00b0C (88.2\u00b0F) today against a forecast high of 28.0\u00b0C (82.4\u00b0F). That is this one station, not the wider area: it does not say everywhere has passed the forecast high.",
         "Kisumu International Airport saw rain from 14:20, against a forecast onset of 16:00. That is this one station, not the wider area: it does not say rain has started everywhere."
       ]
     },

@@ -15,6 +15,7 @@ import 'config.dart';
 import 'dates.dart';
 import 'extract.dart';
 import 'instability.dart' show convectiveTier;
+import 'models.dart' show formatKmh, formatMm, formatTempC, formatTempRangeC;
 import 'phrasing.dart';
 import 'rounding.dart';
 import 'scoring.dart' show mean;
@@ -337,7 +338,7 @@ String? _windier(List<ExtendedDay> days, String? trend) {
   for (final (name, wind) in winds) {
     final others = [for (final (n, w) in winds) if (n != name) w];
     if (wind - others.reduce((a, b) => a > b ? a : b) >= band) {
-      return 'Windier on $name, gusts to ${_fixed(wind, 0)} km/h.';
+      return 'Windier on $name, gusts to ${formatKmh(wind)}.';
     }
   }
   return null;
@@ -417,7 +418,7 @@ List<String> _dayLines(OutlookInputs i, List<ExtendedDay> near, List<ExtendedDay
     final bits = [_wetVotes(day, near.first.models)];
     final standsOut = wettest != null && wettest != 0 && day.precipMm == wettest &&
         amounts.where((a) => a == wettest).length == 1;
-    if (standsOut) bits.add("the week's wettest day at ${_fixed(wettest, 0)} mm on average");
+    if (standsOut) bits.add("the week's wettest day at ${formatMm(wettest, decimals: 0)} on average");
     final highs = _highs(day);
     if (highs != null) {
       bits.add(previous != null && _highs(previous) == highs ? 'highs much the same' : highs);
@@ -498,9 +499,9 @@ String? _solutions(List<ExtendedDay> far) {
 String? _highs(ExtendedDay day) {
   if (day.highMinC == null || day.highMaxC == null) return null;
   if (day.highMaxC! - day.highMinC! > 2.0) {
-    return 'highs ${_fixed(day.highMinC!, 0)} to ${_fixed(day.highMaxC!, 0)} °C';
+    return 'highs ${formatTempRangeC(day.highMinC!, day.highMaxC!)}';
   }
-  return 'highs around ${_fixed(day.highC!, 0)} °C';
+  return 'highs around ${formatTempC(day.highC!)}';
 }
 
 String _votes(int wet, int total) {

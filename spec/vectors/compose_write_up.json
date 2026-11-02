@@ -160,6 +160,37 @@
       }
     },
     {
+      "name": "the model's units completed, code's left alone",
+      "input": {
+        "answers": {
+          "today": "A high of 30 \u00b0C.",
+          "extended": "Highs 29\u201331 \u00b0C."
+        },
+        "verdicts": {
+          "today": [],
+          "extended": []
+        },
+        "code_sections": {
+          "extended": "Code's 29\u00b0C (84\u00b0F)."
+        },
+        "enabled": [
+          "today",
+          "extended"
+        ],
+        "secondary_name": null,
+        "model_name": "Gemini 3.6 Flash",
+        "sign_off_line": "Written by code; a discussion follows when a model answers.",
+        "observed_line": "As of 06:01, reports through 05:00: high so far 21\u00b0C (70\u00b0F)."
+      },
+      "expected": {
+        "markdown": "## Today's Forecast\n\nA high of 30\u00b0C (86\u00b0F). As of 06:01, reports through 05:00: high so far 21\u00b0C (70\u00b0F).\n\n## Extended Outlook\n\nHighs 29\u201331\u00b0C (84\u201388\u00b0F).\n\nToday's Forecast and Extended Outlook by Gemini 3.6 Flash; the rest written by code.\n",
+        "sources": {
+          "today": "llm",
+          "extended": "llm"
+        }
+      }
+    },
+    {
       "name": "an exact copy of the observed line is not doubled",
       "input": {
         "answers": {

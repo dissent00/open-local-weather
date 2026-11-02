@@ -41,7 +41,7 @@ from openlocalweather.disagreement import (
     notable_disagreements,
 )
 from openlocalweather.instability import convective_tier
-from openlocalweather.models import DailyLogEntry, DeviationBands, ModelPrediction, format_temp_c
+from openlocalweather.models import DailyLogEntry, DeviationBands, ModelPrediction, format_temp_c, format_temp_range_c
 from openlocalweather.observed import describe_observed_so_far
 from openlocalweather.outlook import MODEL_SHORT_NAMES, short_model_name
 from openlocalweather.phrasing import phrase_defect
@@ -508,8 +508,8 @@ def _highs(highs: list[float]) -> str | None:
     if not highs:
         return None
     if max(highs) - min(highs) > HIGH_RANGE_SPREAD_C:
-        return f"highs {min(highs):.0f} to {max(highs):.0f} °C"
-    return f"highs around {mean(highs):.0f} °C"
+        return f"highs {format_temp_range_c(min(highs), max(highs))}"
+    return f"highs around {format_temp_c(mean(highs))}"
 
 
 # --- Conditions for Boaters ---
@@ -611,15 +611,16 @@ def _confidence_parts(i: FloorInputs) -> list[str | None]:
                 else "at the warm end" if call_high >= warmest[1] else "at the cool end"
             )
             parts.append(
-                f"On today's high {warmest[0]} is the warmest model at {warmest[1]:.1f} °C and {coolest[0]} the "
-                f"coolest at {coolest[1]:.1f} °C; the call's {call_high:.1f} °C sits {where}."
+                f"On today's high {warmest[0]} is the warmest model at {format_temp_c(warmest[1], decimals=1)} and "
+                f"{coolest[0]} the coolest at {format_temp_c(coolest[1], decimals=1)}; the call's "
+                f"{format_temp_c(call_high, decimals=1)} sits {where}."
             )
 
     met = i.met_service_call
     if i.met_service_name and met:
         bits = []
         if met.get("high_c") is not None:
-            bits.append(f"a high of {float(met['high_c']):.1f} °C")
+            bits.append(f"a high of {format_temp_c(float(met['high_c']), decimals=1)}")
         if met.get("rain") is not None:
             bits.append("rain" if met["rain"] else "a dry day")
         if bits:

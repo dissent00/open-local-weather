@@ -1,0 +1,441 @@
+{
+  "vector_format_version": 1,
+  "function": "format_kmh",
+  "description": "A wind as km/h (kt): the second unit rounded from the true value; whole figures half to even, decimal ones ties away from zero.",
+  "cases": [
+    {
+      "name": "a wind",
+      "input": {
+        "kmh": 35.19
+      },
+      "expected": "35 km/h (19 kt)"
+    },
+    {
+      "name": "a wind at a knot tie",
+      "input": {
+        "kmh": 18.52
+      },
+      "expected": "19 km/h (10 kt)"
+    },
+    {
+      "name": "spread 0",
+      "input": {
+        "kmh": 51.0
+      },
+      "expected": "51 km/h (28 kt)"
+    },
+    {
+      "name": "spread 1",
+      "input": {
+        "kmh": 86.5
+      },
+      "expected": "86 km/h (47 kt)"
+    },
+    {
+      "name": "spread 2",
+      "input": {
+        "kmh": 13.0
+      },
+      "expected": "13 km/h (7 kt)"
+    },
+    {
+      "name": "spread 3",
+      "input": {
+        "kmh": 69.4
+      },
+      "expected": "69 km/h (37 kt)"
+    },
+    {
+      "name": "spread 4",
+      "input": {
+        "kmh": 1.0
+      },
+      "expected": "1 km/h (1 kt)"
+    },
+    {
+      "name": "spread 5",
+      "input": {
+        "kmh": 80.1
+      },
+      "expected": "80 km/h (43 kt)"
+    },
+    {
+      "name": "spread 6",
+      "input": {
+        "kmh": 86.2
+      },
+      "expected": "86 km/h (47 kt)"
+    },
+    {
+      "name": "spread 7",
+      "input": {
+        "kmh": 34.0
+      },
+      "expected": "34 km/h (18 kt)"
+    },
+    {
+      "name": "spread 8",
+      "input": {
+        "kmh": 81.0
+      },
+      "expected": "81 km/h (44 kt)"
+    },
+    {
+      "name": "spread 9",
+      "input": {
+        "kmh": 85.0
+      },
+      "expected": "85 km/h (46 kt)"
+    },
+    {
+      "name": "spread 10",
+      "input": {
+        "kmh": 48.0
+      },
+      "expected": "48 km/h (26 kt)"
+    },
+    {
+      "name": "spread 11",
+      "input": {
+        "kmh": 18.44
+      },
+      "expected": "18 km/h (10 kt)"
+    },
+    {
+      "name": "spread 12",
+      "input": {
+        "kmh": 77.0
+      },
+      "expected": "77 km/h (42 kt)"
+    },
+    {
+      "name": "spread 13",
+      "input": {
+        "kmh": 105.9
+      },
+      "expected": "106 km/h (57 kt)"
+    },
+    {
+      "name": "spread 14",
+      "input": {
+        "kmh": 4.0
+      },
+      "expected": "4 km/h (2 kt)"
+    },
+    {
+      "name": "spread 15",
+      "input": {
+        "kmh": 30.78
+      },
+      "expected": "31 km/h (17 kt)"
+    },
+    {
+      "name": "spread 16",
+      "input": {
+        "kmh": 106.9
+      },
+      "expected": "107 km/h (58 kt)"
+    },
+    {
+      "name": "spread 17",
+      "input": {
+        "kmh": 23.0
+      },
+      "expected": "23 km/h (12 kt)"
+    },
+    {
+      "name": "spread 18",
+      "input": {
+        "kmh": 30.77
+      },
+      "expected": "31 km/h (17 kt)"
+    },
+    {
+      "name": "spread 19",
+      "input": {
+        "kmh": 47.62
+      },
+      "expected": "48 km/h (26 kt)"
+    },
+    {
+      "name": "spread 20",
+      "input": {
+        "kmh": 29.2
+      },
+      "expected": "29 km/h (16 kt)"
+    },
+    {
+      "name": "spread 21",
+      "input": {
+        "kmh": 62.31
+      },
+      "expected": "62 km/h (34 kt)"
+    },
+    {
+      "name": "spread 22",
+      "input": {
+        "kmh": 2.0
+      },
+      "expected": "2 km/h (1 kt)"
+    },
+    {
+      "name": "spread 23",
+      "input": {
+        "kmh": 22.0
+      },
+      "expected": "22 km/h (12 kt)"
+    },
+    {
+      "name": "spread 24",
+      "input": {
+        "kmh": 114.0
+      },
+      "expected": "114 km/h (62 kt)"
+    },
+    {
+      "name": "spread 25",
+      "input": {
+        "kmh": 106.6
+      },
+      "expected": "107 km/h (58 kt)"
+    },
+    {
+      "name": "spread 26",
+      "input": {
+        "kmh": 6.4
+      },
+      "expected": "6 km/h (3 kt)"
+    },
+    {
+      "name": "spread 27",
+      "input": {
+        "kmh": 84.3
+      },
+      "expected": "84 km/h (46 kt)"
+    },
+    {
+      "name": "spread 28",
+      "input": {
+        "kmh": 46.65
+      },
+      "expected": "47 km/h (25 kt)"
+    },
+    {
+      "name": "spread 29",
+      "input": {
+        "kmh": 10.41
+      },
+      "expected": "10 km/h (6 kt)"
+    },
+    {
+      "name": "spread 30",
+      "input": {
+        "kmh": 88.08
+      },
+      "expected": "88 km/h (48 kt)"
+    },
+    {
+      "name": "spread 31",
+      "input": {
+        "kmh": 87.5
+      },
+      "expected": "88 km/h (47 kt)"
+    },
+    {
+      "name": "spread 32",
+      "input": {
+        "kmh": 68.5
+      },
+      "expected": "68 km/h (37 kt)"
+    },
+    {
+      "name": "spread 33",
+      "input": {
+        "kmh": 39.0
+      },
+      "expected": "39 km/h (21 kt)"
+    },
+    {
+      "name": "spread 34",
+      "input": {
+        "kmh": 117.0
+      },
+      "expected": "117 km/h (63 kt)"
+    },
+    {
+      "name": "spread 35",
+      "input": {
+        "kmh": 3.05
+      },
+      "expected": "3 km/h (2 kt)"
+    },
+    {
+      "name": "spread 36",
+      "input": {
+        "kmh": 16.7
+      },
+      "expected": "17 km/h (9 kt)"
+    },
+    {
+      "name": "spread 37",
+      "input": {
+        "kmh": 34.0
+      },
+      "expected": "34 km/h (18 kt)"
+    },
+    {
+      "name": "spread 38",
+      "input": {
+        "kmh": 38.4
+      },
+      "expected": "38 km/h (21 kt)"
+    },
+    {
+      "name": "spread 39",
+      "input": {
+        "kmh": 19.8
+      },
+      "expected": "20 km/h (11 kt)"
+    },
+    {
+      "name": "spread 40",
+      "input": {
+        "kmh": 49.5
+      },
+      "expected": "50 km/h (27 kt)"
+    },
+    {
+      "name": "spread 41",
+      "input": {
+        "kmh": 29.03
+      },
+      "expected": "29 km/h (16 kt)"
+    },
+    {
+      "name": "spread 42",
+      "input": {
+        "kmh": 112.73
+      },
+      "expected": "113 km/h (61 kt)"
+    },
+    {
+      "name": "spread 43",
+      "input": {
+        "kmh": 114.74
+      },
+      "expected": "115 km/h (62 kt)"
+    },
+    {
+      "name": "spread 44",
+      "input": {
+        "kmh": 70.7
+      },
+      "expected": "71 km/h (38 kt)"
+    },
+    {
+      "name": "spread 45",
+      "input": {
+        "kmh": 74.69
+      },
+      "expected": "75 km/h (40 kt)"
+    },
+    {
+      "name": "spread 46",
+      "input": {
+        "kmh": 87.0
+      },
+      "expected": "87 km/h (47 kt)"
+    },
+    {
+      "name": "spread 47",
+      "input": {
+        "kmh": 28.41
+      },
+      "expected": "28 km/h (15 kt)"
+    },
+    {
+      "name": "spread 48",
+      "input": {
+        "kmh": 88.4
+      },
+      "expected": "88 km/h (48 kt)"
+    },
+    {
+      "name": "spread 49",
+      "input": {
+        "kmh": 119.7
+      },
+      "expected": "120 km/h (65 kt)"
+    },
+    {
+      "name": "spread 50",
+      "input": {
+        "kmh": 25.22
+      },
+      "expected": "25 km/h (14 kt)"
+    },
+    {
+      "name": "spread 51",
+      "input": {
+        "kmh": 66.27
+      },
+      "expected": "66 km/h (36 kt)"
+    },
+    {
+      "name": "spread 52",
+      "input": {
+        "kmh": 64.5
+      },
+      "expected": "64 km/h (35 kt)"
+    },
+    {
+      "name": "spread 53",
+      "input": {
+        "kmh": 15.0
+      },
+      "expected": "15 km/h (8 kt)"
+    },
+    {
+      "name": "spread 54",
+      "input": {
+        "kmh": 100.76
+      },
+      "expected": "101 km/h (54 kt)"
+    },
+    {
+      "name": "spread 55",
+      "input": {
+        "kmh": 100.1
+      },
+      "expected": "100 km/h (54 kt)"
+    },
+    {
+      "name": "spread 56",
+      "input": {
+        "kmh": 87.0
+      },
+      "expected": "87 km/h (47 kt)"
+    },
+    {
+      "name": "spread 57",
+      "input": {
+        "kmh": 29.63
+      },
+      "expected": "30 km/h (16 kt)"
+    },
+    {
+      "name": "spread 58",
+      "input": {
+        "kmh": 79.07
+      },
+      "expected": "79 km/h (43 kt)"
+    },
+    {
+      "name": "spread 59",
+      "input": {
+        "kmh": 47.4
+      },
+      "expected": "47 km/h (26 kt)"
+    }
+  ]
+}

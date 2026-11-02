@@ -9,7 +9,7 @@
         "high_c": 33.5,
         "low_c": 18.0
       },
-      "expected": "34\u00b0C / 92\u00b0F high, 18\u00b0C / 64\u00b0F low"
+      "expected": "34\u00b0C (92\u00b0F) high, 18\u00b0C (64\u00b0F) low"
     },
     {
       "name": "yesterday, for the comparison",
@@ -17,7 +17,7 @@
         "high_c": 32.3,
         "low_c": 18.0
       },
-      "expected": "32\u00b0C / 90\u00b0F high, 18\u00b0C / 64\u00b0F low"
+      "expected": "32\u00b0C (90\u00b0F) high, 18\u00b0C (64\u00b0F) low"
     },
     {
       "name": "half to EVEN rounds down here",
@@ -25,7 +25,7 @@
         "high_c": 32.5,
         "low_c": 17.5
       },
-      "expected": "32\u00b0C / 90\u00b0F high, 18\u00b0C / 64\u00b0F low"
+      "expected": "32\u00b0C (90\u00b0F) high, 18\u00b0C (64\u00b0F) low"
     },
     {
       "name": "half to EVEN rounds up here",
@@ -33,7 +33,7 @@
         "high_c": 33.5,
         "low_c": 18.5
       },
-      "expected": "34\u00b0C / 92\u00b0F high, 18\u00b0C / 65\u00b0F low"
+      "expected": "34\u00b0C (92\u00b0F) high, 18\u00b0C (65\u00b0F) low"
     },
     {
       "name": "whole numbers stay put",
@@ -41,7 +41,7 @@
         "high_c": 30.0,
         "low_c": 20.0
       },
-      "expected": "30\u00b0C / 86\u00b0F high, 20\u00b0C / 68\u00b0F low"
+      "expected": "30\u00b0C (86\u00b0F) high, 20\u00b0C (68\u00b0F) low"
     },
     {
       "name": "a cold low",
@@ -49,7 +49,7 @@
         "high_c": 28.0,
         "low_c": -1.5
       },
-      "expected": "28\u00b0C / 82\u00b0F high, -2\u00b0C / 29\u00b0F low"
+      "expected": "28\u00b0C (82\u00b0F) high, -2\u00b0C (29\u00b0F) low"
     },
     {
       "name": "below freezing both ends",
@@ -57,7 +57,7 @@
         "high_c": -2.5,
         "low_c": -7.5
       },
-      "expected": "-2\u00b0C / 28\u00b0F high, -8\u00b0C / 18\u00b0F low"
+      "expected": "-2\u00b0C (28\u00b0F) high, -8\u00b0C (18\u00b0F) low"
     },
     {
       "name": "fahrenheit crossing a ten",
@@ -65,7 +65,7 @@
         "high_c": 37.2,
         "low_c": 21.7
       },
-      "expected": "37\u00b0C / 99\u00b0F high, 22\u00b0C / 71\u00b0F low"
+      "expected": "37\u00b0C (99\u00b0F) high, 22\u00b0C (71\u00b0F) low"
     }
   ]
 }

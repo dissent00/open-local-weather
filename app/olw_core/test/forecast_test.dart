@@ -1349,8 +1349,8 @@ void main() {
 
     expect(
       llm.seenUserPrompt,
-      contains('rain from 13:00; thunder; high so far 27°C / 81°F; '
-          'low so far 18°C / 65°F; peak sustained 31 km/h; sky mostly cloudy.'),
+      contains('rain from 13:00; thunder; high so far 27°C (81°F); '
+          'low so far 18°C (65°F); peak sustained 31 km/h (17 kt); sky mostly cloudy.'),
     );
     // Stamped with THIS issuance's clock, not the device's — the block and
     // the ISSUED line have to agree about when "so far" ended.

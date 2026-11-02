@@ -27011,6 +27011,42 @@ hidden scored row.
 
 ---
 
+## 199. Both units on the page: °C (°F), km/h (kt), mm (in) · **SHIPPED 2026-11-02**
+
+The operator, on readers' feedback: every temperature, wind speed and rain
+amount a reader reads carries its second unit in brackets. Measured first,
+write-ups since 10-11: °C alone 152 times against 92 pairs (121 of the 152
+the model's, though the prompt asked for both), km/h alone 35 against 182,
+mm alone 44 against 1. Code's pairs were a slash, "30°C / 86°F".
+
+- **Code's text.** `format_temp_c` writes brackets, so every pair it already
+  wrote follows (the headline, the observed line, the floor). New beside
+  it: `format_temp_range_c`, `format_kmh`, `format_mm`, over three
+  conversions with one rounding site each (`fahrenheit_figure`,
+  `knots_figure`, `inches_figure`; inches at two places). The outlook's and
+  floor's highs, the Confidence notes' figures, the outlook's gust and
+  wettest day, and the observed line's winds now carry both. Each second
+  unit is rounded from the true value. Python's f-string rounding at those
+  sites gave way to the shared formatters, which the Dart side matches.
+- **The model's text.** The prompt asks for °C, km/h and mm only; code adds
+  the bracket after the audit, on the page (`complete_units`). A pair the
+  model wrote stays when its second figure is within one display step of
+  code's conversion: the brief's pairs convert from the true value, and the
+  first cut, recomputing from the rounded figure, turned 10-30's "29 km/h
+  (15 kt)" into 16 kt. Further off is a mis-conversion and code's replaces
+  it. Inside a bracket the second unit takes square ones, "(0.8–6.1 mm
+  [0.03–0.24 in])". Over the 103 model sections since 10-11: 46 changed, 6
+  square-bracketed, no unit left outside a bracket.
+- **Checked.** Swept across the languages: 3,000 generated texts through the
+  completion and 20,000 values through each formatter, 0 apart. Mutations
+  bite in both. Stored entries keep the display string they were written
+  with, so a page re-rendered from before today keeps its slash.
+- **Not done.** hPa and J/kg stay single. The floor's `_kmh_and_kt` rounds
+  half to even and the wind timeline's half up; the new sites use the
+  shared formatter, and that older split is untouched.
+
+---
+
 ## 198. A figure no forecast can make is refused, then not scored · **SHIPPED 2026-10-29**
 
 On 2026-10-20 the model's own call stored a high of 305 C and a low of

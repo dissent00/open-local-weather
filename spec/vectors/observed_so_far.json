@@ -19,7 +19,7 @@
         },
         "as_of": "14:00"
       },
-      "expected": "As of 14:00: rain from 13:00; thunder; high so far 27\u00b0C / 81\u00b0F; low so far 18\u00b0C / 65\u00b0F; peak sustained 31 km/h; sky mostly cloudy."
+      "expected": "As of 14:00: rain from 13:00; thunder; high so far 27\u00b0C (81\u00b0F); low so far 18\u00b0C (65\u00b0F); peak sustained 31 km/h (17 kt); sky mostly cloudy."
     },
     {
       "name": "negatives are reported, absences omitted",
@@ -37,7 +37,7 @@
         },
         "as_of": "09:00"
       },
-      "expected": "As of 09:00: no rain; no thunder; high so far 22\u00b0C / 72\u00b0F."
+      "expected": "As of 09:00: no rain; no thunder; high so far 22\u00b0C (72\u00b0F)."
     },
     {
       "name": "rain with no first-seen time",
@@ -127,7 +127,7 @@
         },
         "as_of": "06:01"
       },
-      "expected": "As of 06:01: peak sustained 7 km/h."
+      "expected": "As of 06:01: peak sustained 7 km/h (4 kt)."
     },
     {
       "name": "a filed gust is reported beside the sustained wind",
@@ -145,7 +145,7 @@
         },
         "as_of": "18:01"
       },
-      "expected": "As of 18:01: peak sustained 22 km/h; peak gust 41 km/h."
+      "expected": "As of 18:01: peak sustained 22 km/h (12 kt); peak gust 41 km/h (22 kt)."
     },
     {
       "name": "a gust with no sustained reading still reports",
@@ -163,7 +163,7 @@
         },
         "as_of": "18:01"
       },
-      "expected": "As of 18:01: peak gust 41 km/h."
+      "expected": "As of 18:01: peak gust 41 km/h (22 kt)."
     },
     {
       "name": "temperature tie, rounds down to even",
@@ -181,7 +181,7 @@
         },
         "as_of": "15:00"
       },
-      "expected": "As of 15:00: high so far 32\u00b0C / 90\u00b0F."
+      "expected": "As of 15:00: high so far 32\u00b0C (90\u00b0F)."
     },
     {
       "name": "temperature tie, rounds up to even",
@@ -199,7 +199,7 @@
         },
         "as_of": "15:00"
       },
-      "expected": "As of 15:00: high so far 34\u00b0C / 92\u00b0F."
+      "expected": "As of 15:00: high so far 34\u00b0C (92\u00b0F)."
     },
     {
       "name": "temperature tie below zero",
@@ -217,7 +217,7 @@
         },
         "as_of": "15:00"
       },
-      "expected": "As of 15:00: high so far 0\u00b0C / 31\u00b0F."
+      "expected": "As of 15:00: high so far 0\u00b0C (31\u00b0F)."
     },
     {
       "name": "gust tie, rounds down to even",
@@ -235,7 +235,7 @@
         },
         "as_of": "15:00"
       },
-      "expected": "As of 15:00: peak sustained 30 km/h."
+      "expected": "As of 15:00: peak sustained 30 km/h (16 kt)."
     },
     {
       "name": "gust tie, rounds up to even",
@@ -253,7 +253,7 @@
         },
         "as_of": "15:00"
       },
-      "expected": "As of 15:00: peak sustained 32 km/h."
+      "expected": "As of 15:00: peak sustained 32 km/h (17 kt)."
     },
     {
       "name": "sky tie, rounds up to even",
@@ -343,7 +343,7 @@
         },
         "as_of": "06:01"
       },
-      "expected": "As of 06:01, reports through 05:45: no rain; high so far 22\u00b0C / 72\u00b0F."
+      "expected": "As of 06:01, reports through 05:45: no rain; high so far 22\u00b0C (72\u00b0F)."
     },
     {
       "name": "the reach without a clock",

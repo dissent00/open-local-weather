@@ -31,7 +31,7 @@ from openlocalweather.disagreement import (
     StandingCall,
 )
 from openlocalweather.models import LowDivergence, SOURCE_STATION, DailyActual, ObservedSoFar
-from openlocalweather.models import format_temp_c
+from openlocalweather.models import format_kmh, format_temp_c
 from openlocalweather.tiles import OKTAS, sky_word
 
 
@@ -129,7 +129,7 @@ def _sustained(kmh: float | None) -> str | None:
     if kmh is None:
         return None
 
-    return f"peak sustained {round(kmh)} km/h"
+    return f"peak sustained {format_kmh(kmh)}"
 
 
 def _gust(kmh: float | None) -> str | None:
@@ -144,7 +144,7 @@ def _gust(kmh: float | None) -> str | None:
     if kmh is None:
         return None
 
-    return f"peak gust {round(kmh)} km/h"
+    return f"peak gust {format_kmh(kmh)}"
 
 
 def _sky(oktas: float | None) -> str | None:

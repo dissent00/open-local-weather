@@ -13,7 +13,7 @@ import 'comparison.dart' show describeDayRain;
 import 'dates.dart';
 import 'daypart.dart' show onsetWord;
 import 'instability.dart' show convectiveTier;
-import 'models.dart' show formatTempC, disagreementRainWhileDry, disagreementHighExceeded, disagreementOnsetAlreadyPassed, disagreementGustExceeded;
+import 'models.dart' show formatTempC, formatTempRangeC, disagreementRainWhileDry, disagreementHighExceeded, disagreementOnsetAlreadyPassed, disagreementGustExceeded;
 import 'phrasing.dart';
 import 'rounding.dart';
 import 'scales.dart';
@@ -321,8 +321,9 @@ List<String?> _confidenceParts(FloorInputs i) {
               ? 'at the warm end'
               : 'at the cool end';
       parts.add(
-        "On today's high ${warmest.$1} is the warmest model at ${_fixed(warmest.$2, 1)} °C and ${coolest.$1} the "
-        "coolest at ${_fixed(coolest.$2, 1)} °C; the call's ${_fixed(callHigh, 1)} °C sits $where.",
+        "On today's high ${warmest.$1} is the warmest model at ${formatTempC(warmest.$2, decimals: 1)} and "
+        "${coolest.$1} the coolest at ${formatTempC(coolest.$2, decimals: 1)}; the call's "
+        "${formatTempC(callHigh, decimals: 1)} sits $where.",
       );
     }
   }
@@ -330,7 +331,7 @@ List<String?> _confidenceParts(FloorInputs i) {
   final met = i.metServiceCall;
   if (i.metServiceName != null && met != null) {
     final bits = <String>[];
-    if (met['high_c'] != null) bits.add('a high of ${_fixed((met['high_c'] as num).toDouble(), 1)} °C');
+    if (met['high_c'] != null) bits.add('a high of ${formatTempC((met['high_c'] as num).toDouble(), decimals: 1)}');
     if (met['rain'] != null) bits.add(met['rain'] == true ? 'rain' : 'a dry day');
     if (bits.isNotEmpty) {
       final servedRain = i.servedToday['rain'];
@@ -544,9 +545,9 @@ String? _highs(List<double> highs) {
   final lo = highs.reduce((a, b) => a < b ? a : b);
   final hi = highs.reduce((a, b) => a > b ? a : b);
   if (hi - lo > highRangeSpreadC) {
-    return 'highs ${_fixed(lo, 0)} to ${_fixed(hi, 0)} °C';
+    return 'highs ${formatTempRangeC(lo, hi)}';
   }
-  return 'highs around ${_fixed(mean(highs)!, 0)} °C';
+  return 'highs around ${formatTempC(mean(highs)!)}';
 }
 
 // --- Conditions for Boaters ---

@@ -36,6 +36,7 @@ from openlocalweather.dates import forward_calendar
 from openlocalweather.defaults import BEST_MATCH_MODEL_ID
 from openlocalweather.extract import extract_day_n_predictions_from_daily
 from openlocalweather.instability import convective_tier
+from openlocalweather.models import format_kmh, format_mm, format_temp_c, format_temp_range_c
 from openlocalweather.phrasing import phrase_defect
 from openlocalweather.tiles import sky_by_day
 from openlocalweather.verify.scoring import mean
@@ -288,7 +289,7 @@ def _windier(days: list[ExtendedDay], trend: str | None) -> str | None:
     for name, wind in winds:
         others = [w for n, w in winds if n != name]
         if wind - max(others) >= band:
-            return f"Windier on {name}, gusts to {wind:.0f} km/h."
+            return f"Windier on {name}, gusts to {format_kmh(wind)}."
     return None
 
 
@@ -377,7 +378,7 @@ def _day_lines(i: OutlookInputs, near: list[ExtendedDay], far: list[ExtendedDay]
         bits = [_wet_votes(day, near[0].models)]
         stands_out = bool(wettest) and day.precip_mm == wettest and amounts.count(wettest) == 1
         if stands_out:
-            bits.append(f"the week's wettest day at {wettest:.0f} mm on average")
+            bits.append(f"the week's wettest day at {format_mm(wettest, decimals=0)} on average")
         highs = _highs(day)
         if highs:
             bits.append("highs much the same" if previous is not None and _highs(previous) == highs else highs)
@@ -461,8 +462,8 @@ def _highs(day: ExtendedDay) -> str | None:
     if day.high_min_c is None or day.high_max_c is None:
         return None
     if day.high_max_c - day.high_min_c > 2.0:
-        return f"highs {day.high_min_c:.0f} to {day.high_max_c:.0f} °C"
-    return f"highs around {day.high_c:.0f} °C"
+        return f"highs {format_temp_range_c(day.high_min_c, day.high_max_c)}"
+    return f"highs around {format_temp_c(day.high_c)}"
 
 
 def _votes(wet: int, total: int) -> str:

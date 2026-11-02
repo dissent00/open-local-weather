@@ -997,6 +997,22 @@ def test_vectors_overlong_display_values():
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 
+@pytest.mark.parametrize("name", ["format_temp_c", "format_temp_range_c", "format_kmh", "format_mm"])
+def test_vectors_unit_formatters(name):
+    from openlocalweather import models
+
+    fn = getattr(models, name)
+    for case in load(f"{name}.json")["cases"]:
+        assert fn(**case["input"]) == case["expected"], f"vector case failed: {case['name']}"
+
+
+def test_vectors_complete_units():
+    from openlocalweather.writer import complete_units
+
+    for case in load("complete_units.json")["cases"]:
+        assert complete_units(case["input"]["text"]) == case["expected"], f"vector case failed: {case['name']}"
+
+
 def test_vectors_impossible_figure():
     from openlocalweather.models import impossible_figure
 
@@ -1263,6 +1279,11 @@ def test_every_vector_file_is_exercised():
         "writer_prompt.json",
         "sections_to_ask.json",
         "audit_section.json",
+        "format_temp_c.json",
+        "format_temp_range_c.json",
+        "format_kmh.json",
+        "format_mm.json",
+        "complete_units.json",
         "compose_write_up.json",
         "model_display_name.json",
         # The brief, item 191.

@@ -32,7 +32,7 @@ CONFIG = "config/location.yaml"
 PLACEHOLDER = "## Write-up unavailable"
 # A section the audit accepts: its figures are the brief's (the stored call's
 # 31/19 and the Fahrenheit code makes of 31). Item 191 step (b).
-TODAY = "Showers likely this afternoon with a high of 31°C / 88°F."
+TODAY = "Showers likely this afternoon with a high of 31°C (88°F)."
 # A section the audit refuses: 30.7 is nowhere in the brief.
 THIN = "Afternoon showers and thunderstorms, with a high of 30.7°C."
 

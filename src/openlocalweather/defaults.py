@@ -344,6 +344,7 @@ WIND_WARNING_BANDS_KT = [
 ]
 
 KNOTS_TO_KMH = 1.852
+MM_PER_INCH = 25.4
 
 # WHAT THIS SYSTEM HOLDS IS A DAILY PEAK, WHICH IS ONE GUST, and NOAA's
 # criterion is FREQUENT gusts. A single peak crossing 34 kt is therefore not a

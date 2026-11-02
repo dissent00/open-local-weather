@@ -53,8 +53,8 @@ def test_the_floor_is_the_write_up_shape_from_stored_fields():
     assert "Wind NNE early, SSW at midday and WSW in the evening; gusts to 33 km/h (18 kt)." in text
     assert "UV index 9.2 (very high)." in text
     assert "Air quality 103 (unhealthy for sensitive groups) at Kisumu Airport, the highest of 3 stations." in text
-    assert "## Extended Outlook\n\nSaturday (Day+3): dry, 28% chance of rain; highs 31 to 34 °C." in text
-    assert "Wednesday (Day+7): rain likely, 82% chance; highs 29 to 35 °C." in text
+    assert "## Extended Outlook\n\nSaturday (Day+3): dry, 28% chance of rain; highs 31 to 34°C (88 to 93°F)." in text
+    assert "Wednesday (Day+7): rain likely, 82% chance; highs 29 to 35°C (85 to 96°F)." in text
     assert "## Winam Gulf — Conditions for Boaters\n\nPeak gust 30 km/h (16 kt). Any thunderstorm" in text
     assert text.endswith(f"Figures issued 06:01. {SIGN_OFF_WITH_MODEL}\n")
     assert 600 <= len(text) <= 1500
@@ -109,8 +109,8 @@ def test_a_stored_served_call_decides_the_extended_leads():
 
     text = compose_floor_for_entry(entry)
 
-    assert "Saturday (Day+3): rain likely, 55% chance; highs 31 to 34 °C." in text
-    assert "Wednesday (Day+7): dry; highs 29 to 35 °C." in text
+    assert "Saturday (Day+3): rain likely, 55% chance; highs 31 to 34°C (88 to 93°F)." in text
+    assert "Wednesday (Day+7): dry; highs 29 to 35°C (85 to 96°F)." in text
 
 
 def test_a_thin_day_still_signs_off():
@@ -166,7 +166,7 @@ def test_the_inputs_round_trip_as_json():
 
 def _station_inputs(**changes) -> FloorInputs:
     base = dict(
-        date="2026-10-10", temp_high_low_display="30°C / 86°F high, 20°C / 68°F low",
+        date="2026-10-10", temp_high_low_display="30°C (86°F) high, 20°C (68°F) low",
         issued_local_time="06:01", sunrise="06:24", sunset="18:31",
         served_today={"rain": True, "onset_hour": "16:00", "precip_mm": 6.9, "high_c": 29.6},
         peak_wind_primary_kmh=38.9, station_name="Kisumu Airport", model_configured=False,
@@ -193,7 +193,7 @@ def test_the_stations_line_closes_todays_forecast():
     ("rain_observed_while_dry_called", {"precipitation": True},
      "Kisumu Airport has already reported rain today, against a dry call; the day is not dry."),
     ("high_already_exceeded", {"high_c": 31.4},
-     "Kisumu Airport has already recorded 31.4°C / 88.5°F, above the 29.6°C / 85.3°F called."),
+     "Kisumu Airport has already recorded 31.4°C (88.5°F), above the 29.6°C (85.3°F) called."),
     ("gust_already_exceeded", {"peak_gust_kmh": 46.3},
      "Kisumu Airport has already gusted to 46 km/h (25 kt), above the 39 km/h (21 kt) called."),
 ])
@@ -203,7 +203,7 @@ def test_a_reading_that_contradicts_the_call_is_said_right_after_the_opener(code
     today = _today(compose_floor(inputs))
 
     assert sentence in today
-    assert today.index(sentence) < today.index("30°C / 86°F high"), "before the figures, right after the opener"
+    assert today.index(sentence) < today.index("30°C (86°F) high"), "before the figures, right after the opener"
     assert phrase_defect(sentence) is None
 
 
@@ -239,7 +239,7 @@ ALL = ["today", "extended", "severe", "secondary", "synoptic", "confidence"]
 
 def _six_inputs(**changes) -> FloorInputs:
     base = dict(
-        date="2026-10-10", temp_high_low_display="30°C / 86°F high, 20°C / 68°F low", issued_local_time="06:01",
+        date="2026-10-10", temp_high_low_display="30°C (86°F) high, 20°C (68°F) low", issued_local_time="06:01",
         served_today={"rain": True, "onset_hour": "16:00", "precip_mm": 6.9, "high_c": 31.1},
         peak_wind_primary_kmh=38.9, model_configured=False, enabled_sections=ALL,
         day0_peak_cape_jkg=[320.0, 2030.0, 1950.0, 3440.0],
@@ -321,8 +321,8 @@ def test_the_confidence_notes_read_the_record_and_todays_models():
     assert notes.startswith(
         "On rain the record ranks ECMWF first at Day+0, right 83% of the last 30 checks and ECMWF first at Day+3, right 77% of the last 30 checks."
     )
-    assert "On today's high GFS is the warmest model at 33.5 °C and ECMWF the coolest at 29.1 °C; the call's 31.1 °C sits between them." in notes
-    assert "Kenya Met calls a high of 32.0 °C and rain, agreeing with the call on rain." in notes
+    assert "On today's high GFS is the warmest model at 33.5°C (92.3°F) and ECMWF the coolest at 29.1°C (84.4°F); the call's 31.1°C (88.0°F) sits between them." in notes
+    assert "Kenya Met calls a high of 32.0°C (89.6°F) and rain, agreeing with the call on rain." in notes
     # Three findings, rankings first, names as the page's.
     assert "At Day+0, no model is meaningfully better than the others here yet." in notes
     assert "At Day+0, GFS systematically over-forecasts daytime highs here." in notes

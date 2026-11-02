@@ -7,6 +7,7 @@ library;
 
 import 'brief.dart';
 import 'floor.dart' show confidenceHeading, discussionHeading, extendedHeading, severeHeading, synopticHeading, todayHeading;
+import 'models.dart' show fahrenheitFigure, inchesFigure, knotsFigure;
 import 'outlook.dart' show modelShortNames;
 import 'phrasing.dart';
 import 'py_text.dart';
@@ -77,7 +78,7 @@ String buildWriterPrompt(
     sectionToday: 'TODAY\'S FORECAST ("today"): open on a weather condition or a temperature, never on a time or the '
         'sun. What is still ahead, as the ISSUED line and WINDOWS say; the thunder phrase verbatim where '
         'one is given; the sky in SKY\'s words for those hours; the WIND phrase verbatim; gusts in km/h '
-        'with knots in brackets, as the brief writes them; the UV peak; air quality from the ground '
+        'as the brief writes them; the UV peak; air quality from the ground '
         'stations where given, the model estimate otherwise. Nothing about what has already happened: '
         'code adds the OBSERVED SO FAR line after your text. Nothing about humidity, feels-like or '
         'visibility: nothing measures them.',
@@ -113,7 +114,7 @@ RULES CHECKED IN CODE. A section that breaks one is dropped and the reader gets 
 
 $paragraphs
 
-Plain prose in complete sentences: no lists, no emojis, no headings. Both units for temperatures and rain where the brief gives both; wind as km/h with knots in brackets.''';
+Plain prose in complete sentences: no lists, no emojis, no headings. Temperatures in °C, wind in km/h, rain in mm: the page adds °F, knots and inches itself.''';
 }
 
 // --- the audit ----------------------------------------------------------
@@ -175,6 +176,52 @@ String normaliseProse(String text) => text
 /// The model's text without an exact copy of the observed line, which code
 /// appends itself — mirrors `strip_observed_line`. A part of the line is
 /// left for the lock to refuse.
+/// The second unit is code's — mirrors `complete_units` and the reasoning
+/// beside it in writer.py: the model's figure as written, code's bracket
+/// unless the model's own is within one display step of code's conversion,
+/// square brackets inside a bracket.
+const _unitFig = r'-?\d+(?:\.\d+)?';
+const _unitJoin = r'\s+to\s+|–|-';
+const _unitRange = '(?<![\\w.:])(?<a>$_unitFig)(?:(?<j>$_unitJoin)(?<b>$_unitFig))?';
+const _unitSecond = '$_unitFig(?:\\s*(?:$_unitJoin)\\s*$_unitFig)?';
+final _temp = RegExp(
+    '${_unitRange}\\s?°\\s?C(?:\\s*/\\s*(?<slash>$_unitSecond)\\s?°\\s?F|\\s*\\(\\s*(?<second>$_unitSecond)\\s?°\\s?F\\s*\\))?');
+final _wind = RegExp('${_unitRange}\\s?km/h(?:\\s*\\(\\s*(?<second>$_unitSecond)\\s?(?:kt|knots?)\\s*\\))?');
+final _rain = RegExp('${_unitRange}\\s?mm\\b(?:\\s*\\(\\s*(?<second>$_unitSecond)\\s?(?:in|inch|inches)\\s*\\))?');
+
+String completeUnits(String text) {
+  text = text.replaceAllMapped(_temp, (m) => _completed(m, '°C', '°F', fahrenheitFigure, slash: true));
+  text = text.replaceAllMapped(_wind, (m) => _completed(m, ' km/h', ' kt', (v, d) => knotsFigure(v)));
+  return text.replaceAllMapped(_rain, (m) => _completed(m, ' mm', ' in', (v, d) => inchesFigure(v)));
+}
+
+String _completed(Match match, String unit, String secondUnit, String Function(double, int) convert, {bool slash = false}) {
+  final m = match as RegExpMatch;
+  final figures = [m.namedGroup('a')!, if (m.namedGroup('b') != null) m.namedGroup('b')!];
+  final j = m.namedGroup('j');
+  final joiner = j != null && j.trim() == 'to' ? ' to ' : (j ?? '');
+  var converted = [for (final f in figures) convert(double.parse(f), _decimalsOf(f))];
+  final pair = (slash ? m.namedGroup('slash') : null) ?? m.namedGroup('second') ?? '';
+  // Split on a joiner after a digit, so "29-31" is two figures, not 29 and -31.
+  final written = pair.split(RegExp('(?<=\\d)\\s*(?:$_unitJoin)\\s*')).where((w) => w.isNotEmpty).toList();
+  if (written.length == converted.length && [for (var k = 0; k < written.length; k++) _withinAStep(written[k], converted[k])].every((ok) => ok)) {
+    converted = written;
+  }
+
+  final before = m.input.substring(0, m.start);
+  final nested = '('.allMatches(before).length > ')'.allMatches(before).length;
+  final (opened, closed) = nested ? ('[', ']') : ('(', ')');
+  return '${figures.join(joiner)}$unit $opened${converted.join(joiner)}$secondUnit$closed';
+}
+
+int _decimalsOf(String figure) => figure.contains('.') ? figure.split('.')[1].length : 0;
+
+bool _withinAStep(String written, String converted) {
+  final places = [_decimalsOf(written), _decimalsOf(converted)].reduce((a, b) => a > b ? a : b);
+  final step = 1 / [for (var k = 0; k < places; k++) 10].fold(1, (a, b) => a * b);
+  return (double.parse(written) - double.parse(converted)).abs() <= step + 1e-9;
+}
+
 String stripObservedLine(String text, String? line) {
   if (line == null || line.isEmpty || !text.contains(line)) {
     return text;
@@ -320,8 +367,8 @@ bool _usesPartOf(String text, String phrase, {int window = 4}) {
     if (answer.isNotEmpty && (verdicts[section] ?? const []).isEmpty) {
       // Code's line, after the model's text, as the floor ends Today.
       text = section == sectionToday && observedLine != null && observedLine.isNotEmpty
-          ? '${stripObservedLine(answer, observedLine)} $observedLine'
-          : answer;
+          ? '${completeUnits(stripObservedLine(answer, observedLine))} $observedLine'
+          : completeUnits(answer);
       source = 'llm';
     } else if ((codeSections[section] ?? '').isNotEmpty) {
       text = codeSections[section]!;

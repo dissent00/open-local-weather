@@ -38,7 +38,7 @@ def make_entry(d: date, **overrides) -> DailyLogEntry:
         onset_window="14:00-16:00",
         temp_high_c=26.0,
         temp_low_c=18.0,
-        temp_high_low_display="26°C / 79°F",
+        temp_high_low_display="26°C (79°F)",
         mslp_trend_24h="falling",
         synoptic_pattern="trough",
         uv_index_max="8 (Very High)",
@@ -90,7 +90,7 @@ def test_render_forecast_page_includes_key_stats_and_narrative():
     html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
 
     assert "Test Town" in html
-    assert "26°C / 79°F" in html
+    assert "26°C (79°F)" in html
     assert "14:00-16:00" in html
     assert "<h2>Overview</h2>" in html
     assert "<strong>likely</strong>" in html
@@ -116,8 +116,8 @@ def test_the_page_shows_what_the_station_had_already_seen():
     html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
 
     assert "Observed so far today" in html
-    assert "rain from 13:00; thunder; high so far 27°C / 81°F" in html
-    assert "peak sustained 31 km/h; sky mostly cloudy." in html
+    assert "rain from 13:00; thunder; high so far 27°C (81°F)" in html
+    assert "peak sustained 31 km/h (17 kt); sky mostly cloudy." in html
     # The withheld dimension is named rather than silently missing — C9.
     assert "never how much" in html
 
@@ -153,7 +153,7 @@ def _refreshed_entry(d=date(2026, 8, 11), **overrides):
             rain_expected="Dry all day",
             temp_high_c=26.0,
             temp_low_c=18.0,
-            temp_high_low_display="26°C / 79°F",
+            temp_high_low_display="26°C (79°F)",
             mslp_trend_24h="falling",
             synoptic_pattern="trough",
             narrative_markdown="## Overview\nMorning: dry and warm expected.",
@@ -859,7 +859,7 @@ def test_the_morning_view_shows_the_morning_s_own_degradation():
             rain_expected="Dry all day",
             temp_high_c=26.0,
             temp_low_c=18.0,
-            temp_high_low_display="26°C / 79°F",
+            temp_high_low_display="26°C (79°F)",
             mslp_trend_24h="falling",
             synoptic_pattern="trough",
             narrative_markdown="## Overview\nMorning: dry and warm expected.",
