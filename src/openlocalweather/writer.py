@@ -374,6 +374,10 @@ def audit_section(section: str, text: str, brief: str, inputs: BriefInputs) -> l
     for phrase in _locked_phrases(section, inputs):
         if _uses_part_of(body, phrase) and phrase.lower() not in body.lower():
             defects.append(f"phrase not verbatim: {phrase[:40]}")
+    if section == SECTION_TODAY:
+        defects.extend(_shift_defects(body, inputs.wind_shift))
+    if section == SECTION_SECONDARY:
+        defects.extend(_pair_defects(body, (inputs.secondary_wind or {}).get("timeline") or ""))
 
     lowered = body.lower()
     if any(model_id in lowered for model_id in _MODEL_IDS):
@@ -421,25 +425,64 @@ def _locked_phrases(section: str, i: BriefInputs) -> list[str]:
     # ("Overnight winds are 6 km/h (3 kt) gusting 8 km/h (5 kt)"), and a
     # leg locked whole refused 13 of 16 days. A leg's bearing and its
     # sustained-and-gust pair are what it means; the anchor wording is not.
+    # Its figure pairs are checked by `_pair_defects` since 2026-11-02, its
+    # bearings here. A leg not in wind.py's shape is no longer locked whole;
+    # wind.py composes every leg in that shape.
     timeline = (i.secondary_wind or {}).get("timeline") or ""
+    shift = i.wind_shift if i.wind_shift and not _SHIFT_PART.search(i.wind_shift) else None
     phrases = {
-        SECTION_TODAY: [(i.instability or {}).get("timing"), i.wind_shift, i.observed_so_far],
+        SECTION_TODAY: [(i.instability or {}).get("timing"), shift, i.observed_so_far],
         SECTION_EXTENDED: [i.next_three_days],
-        SECTION_SECONDARY: [part for leg in timeline.split(TIMELINE_JOIN) for part in _leg_parts(leg)],
+        SECTION_SECONDARY: [m.group("bearing") for leg in timeline.split(TIMELINE_JOIN) if (m := _LEG.match(leg)) and m.group("bearing")],
     }.get(section, [])
     return [p for p in phrases if p]
 
 
+# LOCKED BY MEANING, NOT BY CONNECTOR — 2026-11-02. Every Gulf and wind-shift
+# refusal on record (2 live and 2 probe for the pairs, 1 and 1 for the
+# shift) had every figure and bearing right and its own connector: "gusting
+# to 12 km/h", "with gusts to 18 km/h", "shift from a north-northeasterly
+# overnight to a south-southwest by midday". So a pair is checked as the
+# sustained figure and its gust, and a shift as the bearing at each time:
+# whatever the section writes in that shape must be the brief's. That also
+# closes a hole: a pair written in km/h only matched no part of the old lock,
+# so "12 km/h gusting 7 km/h" — swapped — passed.
+_SHIFT_WHEN = r"overnight|by midday|into the evening"
+_SHIFT_PART = re.compile(rf"(?P<bearing>[a-z][a-z-]*)\s+(?P<when>{_SHIFT_WHEN})\b", re.I)
+_GUST_CONNECTOR = re.compile(r"\s*\b(?:with\s+)?gust(?:s|ing)?(?:\s+up)?(?:\s+to)?\b\s*", re.I)
+_SECOND_UNIT = re.compile(r"\s*[(\[]\s*-?\d+(?:\.\d+)?\s?(?:kt|knots?)\s*[)\]]", re.I)
+_WRITTEN_PAIR = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)\s?km/h gusting (\d+(?:\.\d+)?)\s?km/h\b")
+
+
+def _shift_defects(body: str, shift: str | None) -> list[str]:
+    """Each bearing written at one of the shift's times must be the brief's
+    bearing for that time; "northerly" and "north" are one bearing."""
+    if not shift:
+        return []
+    brief = {m.group("when").lower(): _bearing_key(m.group("bearing")) for m in _SHIFT_PART.finditer(shift)}
+    wrong = [
+        f"{m.group('bearing')} {m.group('when')}" for m in _SHIFT_PART.finditer(body)
+        if m.group("when").lower() in brief and _BEARING.fullmatch(m.group("bearing"))
+        and _bearing_key(m.group("bearing")) != brief[m.group("when").lower()]
+    ]
+    return [f"wind shift not as the brief has it: {w}" for w in wrong]
+
+
+def _pair_defects(body: str, timeline: str) -> list[str]:
+    """Each "X km/h gusting Y km/h" written, knots aside and whatever the
+    connector, must be one of the timeline's pairs."""
+    if not timeline:
+        return []
+    brief = set(_WRITTEN_PAIR.findall(_canonical_pairs(timeline)))
+    written = _WRITTEN_PAIR.findall(_canonical_pairs(body))
+    return [f"gust pair not in the brief: {x} km/h gusting {y} km/h" for x, y in written if (x, y) not in brief]
+
+
+def _canonical_pairs(text: str) -> str:
+    return _GUST_CONNECTOR.sub(" gusting ", _SECOND_UNIT.sub("", text))
+
+
 _LEG = re.compile(r"^(?:(?P<bearing>[a-z-]+) )?(?:overnight|by midday|into the evening) at (?P<figures>.+)$")
-
-
-def _leg_parts(leg: str) -> list[str]:
-    """A leg's bearing, when it has one, and its figure pair; the whole
-    leg when it is not shaped as wind.py composes it."""
-    match = _LEG.match(leg)
-    if not match:
-        return [leg] if leg else []
-    return [p for p in (match.group("bearing"), match.group("figures")) if p]
 
 
 def _uses_part_of(text: str, phrase: str, window: int = 4) -> bool:

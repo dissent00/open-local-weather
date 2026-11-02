@@ -76,7 +76,7 @@ def test_the_extended_outlook_may_name_models_as_codes_own_does():
     ("Showers from 13:00, with a high of 31°C / 88°F and gusts to 39 km/h (21 kt).", None),
     ("A high near ABSENT°C is likely.", "figures not in the brief: ABSENT"),
     ("Rainfall near 2.2 mm (0.09 in) with a 82% chance.", None),
-    ("Winds to 39 km/h (21 kt), turning southwest by midday and south into the evening.", "phrase not verbatim"),
+    ("Winds to 39 km/h (21 kt), turning south by midday and southwest into the evening.", "wind shift not as the brief has it"),
     ("Thunder possible from midday, peaking this afternoon. Dry otherwise.", None),
     ("GFS runs warm today.", "names a model in a reader's section: GFS"),
     ("The gfs_seamless model is warm.", "names a model id"),
@@ -218,7 +218,8 @@ def test_the_gulf_timeline_is_locked_by_bearing_and_figures():
     inputs = _inputs()
     brief = render_brief(inputs, sections=list(SECTIONS))
     locked = _locked_phrases("secondary", inputs)
-    assert any(" gusting " in p for p in locked) and all("overnight" not in p and "midday" not in p for p in locked), locked
+    # The pairs moved to `_pair_defects` on 2026-11-02; the locks are the bearings.
+    assert locked == ["northeasterly", "south-southwesterly", "southerly"], locked
     legs = inputs.secondary_wind["timeline"].split(", then ")
     own_way = (
         f"Overnight winds on the Gulf are {legs[0].split(' at ', 1)[1]}. By midday the flow shifts "
@@ -355,3 +356,53 @@ def test_the_page_completes_the_models_units_and_not_codes():
     )
     assert "A high of 30°C (86°F). As of 06:01, reports through 05:00: high so far 21°C (70°F)." in markdown
     assert "Code's 29°C (84°F)." in markdown
+
+
+@pytest.mark.parametrize("text, reason", [
+    ("Overnight 7 km/h (4 kt) gusting to 12 km/h (6 kt); by midday 9 km/h (5 kt) with gusts to 22 km/h (12 kt).", None),
+    ("Overnight 7 km/h gusting 12 km/h, by midday 9 km/h gusting up to 22 km/h.", None),
+    ("Overnight 12 km/h (6 kt) gusting 7 km/h (4 kt).", "gust pair not in the brief: 12 km/h gusting 7 km/h"),
+    ("By midday 9 km/h gusting 16 km/h.", "gust pair not in the brief: 9 km/h gusting 16 km/h"),
+    ("Overnight 12 km/h with gusts to 7 km/h.", "gust pair not in the brief: 12 km/h gusting 7 km/h"),
+    ("Light, the peak gust 26 km/h on the Gulf.", None),
+])
+def test_a_gulf_pair_is_locked_by_its_figures_not_its_connector(text, reason):
+    """Groq's gpt-oss lost the Gulf section 2 of 8 probe days (10-30, 11-01)
+    and twice live for "gusting to 12 km/h" and "with gusts to 18 km/h",
+    every figure right. A pair means a sustained figure and its gust:
+    every "X km/h gusting Y km/h" the section writes, whatever the
+    connector and with or without knots, must be one of the brief's."""
+    i = _inputs()
+    defects = audit_section("secondary", text, _brief(i), i)
+    if reason is None:
+        assert not [d for d in defects if "gust pair" in d or "verbatim" in d], defects
+    else:
+        assert reason in defects, defects
+
+
+@pytest.mark.parametrize("text, reason", [
+    ("Winds shift from a north-northeasterly overnight to a southwest by midday and south into the evening.", None),
+    ("North-northeasterly overnight, then southwest by midday.", None),
+    ("Winds north-northeasterly overnight, south by midday.", "wind shift not as the brief has it: south by midday"),
+    ("Southwest overnight, turning south into the evening.", "wind shift not as the brief has it: Southwest overnight"),
+])
+def test_the_wind_shift_is_locked_by_bearing_and_time(text, reason):
+    """11-02's probe wrote "shift from a north-northeasterly overnight to a
+    south-southwest by midday and southwest into the evening": every
+    bearing at its time, the connectors its own, refused for not being
+    the phrase verbatim. What the phrase means is which bearing at which
+    time; a bearing written at a time must be the brief's for that time."""
+    i = _inputs()
+    defects = audit_section("today", text, _brief(i), i)
+    if reason is None:
+        assert not [d for d in defects if "wind shift" in d or "verbatim" in d], defects
+    else:
+        assert reason in defects, defects
+
+
+def test_a_steady_wind_stays_locked_verbatim():
+    """"Northerly throughout" names no time, so it has no parts to lock."""
+    from openlocalweather.writer import _locked_phrases
+
+    assert "northerly throughout" in _locked_phrases("today", _inputs(wind_shift="northerly throughout"))
+    assert _inputs().wind_shift not in _locked_phrases("today", _inputs())

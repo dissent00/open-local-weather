@@ -263,6 +263,10 @@ List<String> auditSection(String section, String text, String brief, BriefInputs
       defects.add('phrase not verbatim: ${headLikePython(phrase, 40)}');
     }
   }
+  if (section == sectionToday) defects.addAll(_shiftDefects(body, inputs.windShift));
+  if (section == sectionSecondary) {
+    defects.addAll(_pairDefects(body, '${(inputs.secondaryWind ?? const {})['timeline'] ?? ''}'));
+  }
 
   final lowered = body.toLowerCase();
   if (_modelIds.any(lowered.contains)) defects.add('names a model id');
@@ -301,13 +305,17 @@ List<String> auditSection(String section, String text, String brief, BriefInputs
 int _wordCount(String text) => [for (final w in text.split(RegExp(r'\s+'))) if (w.isNotEmpty) w].length;
 
 List<String> _lockedPhrases(String section, BriefInputs i) {
-  // The Gulf timeline by its bearings and figure pairs (2026-10-13) —
-  // mirrors `_locked_phrases`.
+  // The Gulf timeline by its bearings; its figure pairs and the timed wind
+  // shift are checked by meaning since 2026-11-02 — mirrors `_locked_phrases`.
   final timeline = '${(i.secondaryWind ?? const {})['timeline'] ?? ''}';
+  final shift = i.windShift != null && !_shiftPart.hasMatch(i.windShift!) ? i.windShift : null;
   final phrases = switch (section) {
-    sectionToday => [(i.instability ?? const {})['timing'], i.windShift, i.observedSoFar],
+    sectionToday => [(i.instability ?? const {})['timing'], shift, i.observedSoFar],
     sectionExtended => [i.nextThreeDays],
-    sectionSecondary => [for (final leg in timeline.split(timelineJoin)) ..._legParts(leg)],
+    sectionSecondary => [
+        for (final leg in timeline.split(timelineJoin))
+          if (_leg.firstMatch(leg)?.group(1) case final bearing? when bearing.isNotEmpty) bearing,
+      ],
     _ => const <Object?>[],
   };
   return [for (final p in phrases) if (p != null && '$p'.isNotEmpty) '$p'];
@@ -323,12 +331,42 @@ String _bearingKey(String word) {
 
 final _leg = RegExp(r'^(?:([a-z-]+) )?(?:overnight|by midday|into the evening) at (.+)$');
 
-/// A leg's bearing, when it has one, and its figure pair — mirrors `_leg_parts`.
-List<String> _legParts(String leg) {
-  final m = _leg.firstMatch(leg);
-  if (m == null) return leg.isEmpty ? const [] : [leg];
-  return [for (final p in [m.group(1), m.group(2)]) if (p != null && p.isNotEmpty) p];
+/// Locked by meaning, not by connector (2026-11-02) — mirrors
+/// `_shift_defects`, `_pair_defects` and the measurement beside them.
+final _shiftPart = RegExp(r'(?<bearing>[a-z][a-z-]*)\s+(?<when>overnight|by midday|into the evening)\b', caseSensitive: false);
+final _gustConnector = RegExp(r'\s*\b(?:with\s+)?gust(?:s|ing)?(?:\s+up)?(?:\s+to)?\b\s*', caseSensitive: false);
+final _secondUnit = RegExp(r'\s*[(\[]\s*-?\d+(?:\.\d+)?\s?(?:kt|knots?)\s*[)\]]', caseSensitive: false);
+final _writtenPair = RegExp(r'(?<![\w.])(\d+(?:\.\d+)?)\s?km/h gusting (\d+(?:\.\d+)?)\s?km/h\b');
+
+List<String> _shiftDefects(String body, String? shift) {
+  if (shift == null || shift.isEmpty) return const [];
+  final brief = {
+    for (final m in _shiftPart.allMatches(shift)) m.namedGroup('when')!.toLowerCase(): _bearingKey(m.namedGroup('bearing')!),
+  };
+  return [
+    for (final m in _shiftPart.allMatches(body))
+      if (brief.containsKey(m.namedGroup('when')!.toLowerCase()) &&
+          _isBearing(m.namedGroup('bearing')!) &&
+          _bearingKey(m.namedGroup('bearing')!) != brief[m.namedGroup('when')!.toLowerCase()])
+        'wind shift not as the brief has it: ${m.namedGroup('bearing')} ${m.namedGroup('when')}',
+  ];
 }
+
+bool _isBearing(String word) {
+  final m = _bearing.firstMatch(word);
+  return m != null && m.start == 0 && m.end == word.length;
+}
+
+List<String> _pairDefects(String body, String timeline) {
+  if (timeline.isEmpty) return const [];
+  final brief = {for (final m in _writtenPair.allMatches(_canonicalPairs(timeline))) '${m.group(1)}|${m.group(2)}'};
+  return [
+    for (final m in _writtenPair.allMatches(_canonicalPairs(body)))
+      if (!brief.contains('${m.group(1)}|${m.group(2)}')) 'gust pair not in the brief: ${m.group(1)} km/h gusting ${m.group(2)} km/h',
+  ];
+}
+
+String _canonicalPairs(String text) => text.replaceAll(_secondUnit, '').replaceAll(_gustConnector, ' gusting ');
 
 bool _usesPartOf(String text, String phrase, {int window = 4}) {
   final words = [for (final w in phrase.toLowerCase().split(RegExp(r'\s+'))) if (w.isNotEmpty) w];

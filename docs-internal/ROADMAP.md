@@ -15,6 +15,48 @@ follows `spec/README.md`.
 
 ---
 
+## Working order, as of 2026-11-02
+
+The 10-01 block below is kept for its reasoning; its plan is mostly done.
+
+### What changed, 2026-10-01 to 11-02
+
+- **Items 189 and 190 shipped**, both repositories: the code blend is the
+  served call and the entry publishes before any prose is asked; code
+  writes every section when no model does.
+- **Item 191 shipped on the full tier.** The brief, the writer prompt, the
+  per-section audit and the composition are live; Groq's gpt-oss-120b is
+  the link that writes when Gemini refuses. Fixes since: the observed line
+  is code's (10-29), an en dash read as a minus (11-02), a narrow space
+  grouping thousands (11-02), one CAPE figure per model (11-02), and the
+  Gulf pair and wind shift locked by meaning (11-02). The latest Groq probe
+  passed 44 of 48 sections before that last change. The mini tier waits on
+  an on-device route.
+- **Item 198**: a figure no forecast can make is refused, then not scored.
+- **Item 199**: both units on the page, °C (°F), km/h (kt), mm (in).
+
+### What is next
+
+1. **Groq re-probe** after the 11-02 lock change, then the live record.
+2. **Code's Severe section quotes calendar-day CAPE as "today"**; the
+   writer's brief now gives the forward window's. Moving code's would change
+   what it publishes on 55 of 195 model-days — the operator's call.
+3. **One rounding for km/h (kt).** The floor rounds half to even, the wind
+   timeline half up; the same gust can print two ways on one page. Route
+   both through `models.format_kmh`.
+4. **Item 192**, the route chains, ordered by the audit pass rate the
+   ledger already records.
+5. Older, smaller: `tools/measure_routes.py` reading the ledger's git
+   history; Gemini 3.8's 90 s timeout; whether to retire the model's own
+   scored call; item 197 step 2; item 103's re-check, due around 11-10.
+
+Waiting on the operator: probing gpt-oss-20b and Qwen 3.8 27B; the mini
+tier's route; pushing the Ensemble branch.
+
+Not reopened: the 15:01Z run, the Interactions queue (item 186), item 139.
+
+---
+
 ## Working order, as of 2026-10-01
 
 The 09-29 block below is kept for its reasoning. Its item 2, one reliable
@@ -27687,6 +27729,28 @@ on different days, so either variant fails the days that quoted the other.
 A fresh probe from a branch (run 41432449285, Groq gpt-oss-120b, 10-26 to
 11-02) wrote from the one-figure brief: Severe 8 of 8, all sections 44 of
 48, the four refusals locked phrases unrelated to CAPE.
+
+**The Gulf pair and the wind shift, 2026-11-02: locked by meaning.** Every
+locked-phrase refusal on record since 10-22, from the ledger's history and
+both probes: the Gulf pair 2 live and 2 probe, the wind shift 1 and 1, the
+"next three days" phrase 1 and 1, the thunder timing 1 live. The pair and
+shift refusals had every figure and bearing right and their own connector
+("gusting to 12 km/h", "with gusts to 18 km/h", "shift from a
+north-northeasterly overnight to a south-southwest by midday"). Now every
+"X km/h gusting Y km/h" a Gulf section writes, whatever the connector and
+knots aside, must be one of the timeline's pairs (`_pair_defects`), and
+every bearing written at one of the shift's times must be the brief's for
+that time (`_shift_defects`); "northerly throughout" stays verbatim. This
+closes a hole the old lock had: a pair written in km/h only matched no
+part of it, so a swapped pair passed. The "next three days" and thunder
+locks stay verbatim: the inserted word ("remain") sat inside the clause, so
+splitting the lock would not have passed it, and those locks hold the
+possible/likely words exactly. Re-audited, no new calls: 96 stored probe
+sections, 89 passed before and 92 after, the three expected and nothing
+else; `tools/measure_audit.py` unchanged. Swept across the languages, 3,000
+generated Today and Gulf texts each, 0 apart. NOT REFUSED, though the design
+said it would be: a pair written without a gust word ("7 km/h, rising to 12
+km/h") — it claims no gust, and the figure check still holds its numbers.
 
 **The gate — the audit's first line, shipped early 2026-10-09.** Four
 mornings running (10-05, 10-06, 10-08, 10-09) the gateway's free model
