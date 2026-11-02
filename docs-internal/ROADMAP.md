@@ -27751,6 +27751,12 @@ else; `tools/measure_audit.py` unchanged. Swept across the languages, 3,000
 generated Today and Gulf texts each, 0 apart. NOT REFUSED, though the design
 said it would be: a pair written without a gust word ("7 km/h, rising to 12
 km/h") — it claims no gust, and the figure check still holds its numbers.
+Probed the same day (run 41439987277, Groq gpt-oss-120b, 10-26 to 11-02):
+44 of 48, no locked-phrase refusal left. The four refused were the
+model's own errors, read against their briefs: "consensus" in the
+outlook, "south-west" where 10-30's brief has only south-southwesterly,
+"north-northeast" where 10-26's has none, and a 27.9°C in the Confidence
+notes that the brief does not carry.
 
 **The gate — the audit's first line, shipped early 2026-10-09.** Four
 mornings running (10-05, 10-06, 10-08, 10-09) the gateway's free model
