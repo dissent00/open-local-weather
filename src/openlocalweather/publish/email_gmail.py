@@ -32,7 +32,7 @@ from openlocalweather.models import DailyLogEntry
 from html import escape
 
 from openlocalweather.publish.narrative import narrative_to_html
-from openlocalweather.tiles import compose_tiles
+from openlocalweather.tiles import TileUnits, compose_tiles
 
 GMAIL_SMTP_HOST = "smtp.gmail.com"
 GMAIL_SMTP_PORT = 587
@@ -117,7 +117,7 @@ def render_tile_table(entry: DailyLogEntry) -> str:
     Empty when the record fills no tile, which renders no table rather than an
     empty one — the same rule the tiles themselves follow.
     """
-    tiles = compose_tiles(entry.model_dump(mode="json"), metric=True)
+    tiles = compose_tiles(entry.model_dump(mode="json"), units=TileUnits.BOTH)
     if not tiles:
         return ""
 

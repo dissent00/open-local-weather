@@ -117,7 +117,7 @@ absent values are `null`, never omitted keys.
 | `uv_band.json` | `uv_band` | 11 |
 | `aqi_band.json` | `aqi_band` | 13 |
 | `index_and_band.json` | `format_index_and_band` | 12 |
-| `compose_tiles.json` | `compose_tiles` | 12 |
+| `compose_tiles.json` | `compose_tiles` | 17 |
 | `last_known_absence.json` | `last_known_absence` | 4 |
 | `day_uv_index.json` | `day_uv_index` | 10 |
 | `sky_word.json` | `sky_word` | 11 |

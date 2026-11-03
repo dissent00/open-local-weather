@@ -5011,13 +5011,13 @@ def test_the_entry_carries_its_composed_tiles(tmp_path, monkeypatch):
     result rather than carried over from the morning — so this issues twice
     and changes the rain call in between.
     """
-    from openlocalweather.tiles import compose_tiles
+    from openlocalweather.tiles import TileUnits, compose_tiles
 
     deps = make_deps(tmp_path)
     issue(deps, today=date(2026, 8, 11))
 
     stored = log_store.read_log_entry(deps.data_dir, date(2026, 8, 11))
-    assert stored.tiles == compose_tiles(stored.model_dump(mode="json"), metric=True)
+    assert stored.tiles == compose_tiles(stored.model_dump(mode="json"), units=TileUnits.BOTH)
     assert [t["label"] for t in stored.tiles][:2] == ["High / Low", "Rain"]
 
     # a RE-ISSUE recomposes rather than inheriting: wet guidance flips the

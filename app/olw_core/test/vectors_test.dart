@@ -1432,7 +1432,7 @@ void main() {
         final i = (c as Map)['input'] as Map;
         final got = composeTiles(
           (i['properties'] as Map).cast<String, Object?>(),
-          metric: i['metric'] as bool,
+          units: TileUnits.values.byName(i['units'] as String),
         );
         expectMatches(got, c['expected'], c['name'] as String);
       }

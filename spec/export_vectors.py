@@ -804,7 +804,7 @@ def export_compose_tiles() -> None:
     2026-09-21 carries display strings and a peak gust rather than anchors and
     halves, and every surface reads whatever the site last published.
     """
-    from openlocalweather.tiles import compose_tiles
+    from openlocalweather.tiles import TileUnits, compose_tiles
 
     full = {
         "temp_high_c": 29.5, "temp_low_c": 19.0,
@@ -833,24 +833,33 @@ def export_compose_tiles() -> None:
         "sunrise": "06:30", "sunset": "18:37",
     }
     cases = [
-        ("a full record, metric", full, True),
-        ("the same record in knots and Fahrenheit", full, False),
-        ("a quiet day says nothing extra", quiet, True),
-        ("an entry from before the anchors and the split", legacy, True),
-        ("the same one in knots", legacy, False),
-        ("nothing at all renders nothing", {}, True),
+        ("a full record, metric", full, TileUnits.METRIC),
+        ("the same record in knots and Fahrenheit", full, TileUnits.IMPERIAL),
+        ("the same record in both, as the page and the email show it", full, TileUnits.BOTH),
+        ("a quiet day says nothing extra", quiet, TileUnits.METRIC),
+        ("an entry from before the anchors and the split", legacy, TileUnits.METRIC),
+        ("the same one in knots", legacy, TileUnits.IMPERIAL),
+        ("the same one in both", legacy, TileUnits.BOTH),
+        ("nothing at all renders nothing", {}, TileUnits.METRIC),
         ("half a sun pair is no sun tile",
-         {"temp_high_c": 20.0, "temp_low_c": 10.0, "sunrise": "06:30"}, True),
+         {"temp_high_c": 20.0, "temp_low_c": 10.0, "sunrise": "06:30"}, TileUnits.METRIC),
         ("a malformed anchor block renders no tile, not half a tile",
-         {"temp_high_c": 20.0, "temp_low_c": 10.0, "wind_anchors": "SW 15"}, True),
+         {"temp_high_c": 20.0, "temp_low_c": 10.0, "wind_anchors": "SW 15"}, TileUnits.METRIC),
         ("UV without air quality",
-         {"temp_high_c": 20.0, "temp_low_c": 10.0, "uv_index": 11.0}, True),
+         {"temp_high_c": 20.0, "temp_low_c": 10.0, "uv_index": 11.0}, TileUnits.METRIC),
         ("air quality without UV",
-         {"temp_high_c": 20.0, "temp_low_c": 10.0, "air_quality_index": 152}, True),
+         {"temp_high_c": 20.0, "temp_low_c": 10.0, "air_quality_index": 152}, TileUnits.METRIC),
         ("rain with no onset window is one line",
-         {"rain_expected": "Unlikely"}, True),
+         {"rain_expected": "Unlikely"}, TileUnits.METRIC),
         ("a comparison on a dimension with no tile says nothing",
-         {"rain_expected": "Unlikely", "comparison": {"cloud": "much cloudier"}}, True),
+         {"rain_expected": "Unlikely", "comparison": {"cloud": "much cloudier"}}, TileUnits.METRIC),
+        ("an exact tie rounds to even, as the prose does",
+         {"temp_high_c": 28.5, "temp_low_c": 18.5,
+          "wind_anchors": [{"when": "early", "sustained_kmh": 2.5, "gust_kmh": 10.5}]}, TileUnits.METRIC),
+        ("a gust with no sustained speed, in both",
+         {"wind_anchors": [{"when": "midday", "direction": "SW", "gust_kmh": 30.0}]}, TileUnits.BOTH),
+        ("an anchor with no speed at all keeps no empty brackets",
+         {"wind_anchors": [{"when": "early", "direction": "NE"}]}, TileUnits.BOTH),
     ]
     write(
         "compose_tiles.json",
@@ -861,9 +870,10 @@ def export_compose_tiles() -> None:
         "'a reading' and not 'important' -- paired data stays the same size, "
         "and the day-over-day modifier is the one supporting line. THE UNIT "
         "LIVES IN THE HEADER and never in a value, which is what makes "
-        "°C/°F and km/h/kt a one-label change.",
-        [{"name": n, "input": {"properties": p, "metric": m},
-          "expected": compose_tiles(p, metric=m)} for n, p, m in cases],
+        "°C/°F and km/h/kt a one-label change. `units` is metric, imperial or both; "
+        "both is what the page and the email show.",
+        [{"name": n, "input": {"properties": p, "units": u.value},
+          "expected": compose_tiles(p, units=u)} for n, p, u in cases],
     )
 
 def export_tile_comparison() -> None:

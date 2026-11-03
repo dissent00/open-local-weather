@@ -27178,6 +27178,24 @@ mm alone 44 against 1. Code's pairs were a slash, "30°C / 86°F".
   Dart helper already swept against it. Measured on the 59 archived
   prompts' hourly winds: 38 of 3,540 cross-model means (1.07%) print
   differently from before, every one an exact half.
+- **The tiles, 2026-11-03.** The operator saw the summary boxes still in
+  one unit: `compose_tiles` had been left at `metric=True`. It now takes
+  `TileUnits` (metric, imperial, both), an enum because a boolean cannot
+  hold the third state. The page, the email and the stored `tiles` the
+  Apps Script mailer renders use both: "30° (86°) / 19° (66°)" under
+  "High / Low (°C · °F)", "midday SSW 9G20 (5G11)" under "Wind (km/h ·
+  kt)". The header takes a dot because all three renderers wrap the unit
+  in brackets themselves, and "(°C (°F))" nested; the operator's call. The
+  app keeps its metric/imperial toggle. "3° cooler" stays under both,
+  since every figure leads with °C; imperial still drops it (item 165).
+  - **A parity bug on the way.** Dart rounded the tile figures with
+    `.round()`, ties away from zero, against Python's half to even: on a
+    28.5 °C day the app showed 29° where the page showed 28°. A vector
+    case failed before the fix. Swept 6,606 records over the three modes,
+    0 apart; with `.round()` put back, 120.
+  - **Stored entries** keep the metric tiles they were written with until
+    re-issued, so the mailer shows both from the next issuance. The page
+    composes when rendered, so a rebuilt page shows both at once.
 
 ---
 

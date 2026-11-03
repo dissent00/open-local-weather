@@ -921,11 +921,11 @@ def test_vectors_index_and_band():
 def test_vectors_compose_tiles():
     """ROADMAP item 159 step 6 — the tiles the app, the page and the email
     all render from."""
-    from openlocalweather.tiles import compose_tiles
+    from openlocalweather.tiles import TileUnits, compose_tiles
 
     for case in load("compose_tiles.json")["cases"]:
         i = case["input"]
-        got = compose_tiles(i["properties"], metric=i["metric"])
+        got = compose_tiles(i["properties"], units=TileUnits(i["units"]))
         assert got == case["expected"], f"vector case failed: {case['name']}"
 
 

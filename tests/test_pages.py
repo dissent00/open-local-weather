@@ -1194,7 +1194,7 @@ def test_the_page_renders_the_shared_tiles():
     surfaces agree; the shared vectors are, and this proves the page uses
     them.
     """
-    from openlocalweather.tiles import compose_tiles
+    from openlocalweather.tiles import TileUnits, compose_tiles
 
     entry = make_entry(
         date(2026, 8, 11),
@@ -1205,7 +1205,7 @@ def test_the_page_renders_the_shared_tiles():
     nav = build_nav_links("https://example.com", "owner/repo")
     html = render_forecast_page(entry, LOCATION, nav, is_latest=True)
 
-    tiles = compose_tiles(entry.model_dump(mode="json"), metric=True)
+    tiles = compose_tiles(entry.model_dump(mode="json"), units=TileUnits.BOTH)
     assert tiles, "the fixture produced no tiles, so this test proves nothing"
 
     grid = re.search(r'<div class="stat-grid">.*?\n  </div>', html, re.S)
@@ -1219,7 +1219,7 @@ def test_the_page_renders_the_shared_tiles():
     ]
 
     # a reading and a supporting line are not the same element
-    assert '<span class="value">26° / 18°</span>' in grid
+    assert '<span class="value">26° (79°) / 18° (64°)</span>' in grid
     assert '<span class="modifier">3° cooler</span>' in grid
 
     # and the seven ungrouped stats are gone
@@ -1242,10 +1242,10 @@ def test_the_email_carries_the_same_tiles_as_the_page():
     the page uses CSS grid. What must match is every line of text, in order.
     """
     from openlocalweather.publish.email_gmail import render_email_html
-    from openlocalweather.tiles import compose_tiles
+    from openlocalweather.tiles import TileUnits, compose_tiles
 
     entry = make_entry(date(2026, 8, 11), uv_index=9.4, air_quality_index=70)
-    tiles = compose_tiles(entry.model_dump(mode="json"), metric=True)
+    tiles = compose_tiles(entry.model_dump(mode="json"), units=TileUnits.BOTH)
     assert tiles, "the fixture produced no tiles, so this test proves nothing"
 
     html = render_email_html(entry, "Kisumu")

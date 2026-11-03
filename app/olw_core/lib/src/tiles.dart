@@ -18,7 +18,7 @@ import 'comparison.dart';
 import 'dates.dart' show forwardCalendar;
 import 'extract.dart' show extractDayNPredictionsFromDaily;
 import 'rounding.dart';
-import 'models.dart' show formatIndexAndBand;
+import 'models.dart' show fahrenheitFigure, formatIndexAndBand, knotsFigure;
 import 'scales.dart';
 import 'scoring.dart' show mean;
 import 'wind.dart';
@@ -299,6 +299,18 @@ List<Map<String, Object>> windAnchors(
 /// Kilometres per hour in one knot.
 const double kmhPerKnot = 1.852;
 
+/// Which units a tile shows.
+///
+/// BOTH IS THE PAGE'S AND THE EMAIL'S, upstream item 199: their prose reads
+/// "30°C (86°F)". This app keeps its metric/imperial toggle, the operator's
+/// call of 2026-11-02, so it passes [metric] or [imperial].
+enum TileUnits { metric, imperial, both }
+
+// A DOT, NOT "°C (°F)": every web renderer prints a header as "label (unit)",
+// so the bracketed form nested. The operator's call, 2026-11-03.
+const _tempUnit = {TileUnits.metric: '°C', TileUnits.imperial: '°F', TileUnits.both: '°C · °F'};
+const _windUnit = {TileUnits.metric: 'km/h', TileUnits.imperial: 'kt', TileUnits.both: 'km/h · kt'};
+
 /// Two lines of wind and two of cloud, not three. The composers sample three
 /// hours; a tile shows the TURN, which is the pair the shift clause names.
 const int windTileAnchors = 2;
@@ -331,18 +343,62 @@ List<Map<String, Object?>> _anchorList(Map<String, Object?> p, String key) {
 Map<String, Object?> _line(String text, {bool primary = false}) =>
     {'text': text, 'primary': primary};
 
-String _windLine(Map<String, Object?> anchor, {required bool metric}) {
-  String shown(double kmh) => (metric ? kmh : kmh / kmhPerKnot).round().toString();
+/// Half to even, as Python's `round` does. `.round()` rounds ties away from
+/// zero, and on a 28.5 °C day it showed 29° here while the page showed 28°.
+int _whole(double v) => roundLikePython(v, 0).toInt();
 
-  final sustained = anchor['sustained_kmh'];
-  final gust = anchor['gust_kmh'];
-  String speed = '';
-  if (sustained is num && gust is num) {
-    speed = '${shown(sustained.toDouble())}G${shown(gust.toDouble())}';
-  } else if (gust is num) {
-    speed = 'G${shown(gust.toDouble())}';
-  } else if (sustained is num) {
-    speed = shown(sustained.toDouble());
+/// "30°", "86°" or "30° (86°)", each figure rounded from the raw value.
+String _degrees(double celsius, TileUnits units) {
+  if (units == TileUnits.imperial) {
+    return '${fahrenheitFigure(celsius)}°';
+  }
+
+  final shown = '${_whole(celsius)}°';
+  if (units == TileUnits.both) {
+    return '$shown (${fahrenheitFigure(celsius)}°)';
+  }
+  return shown;
+}
+
+/// One speed with no unit, which lives in the header: "20", "11" or "20 (11)".
+String _speed(double kmh, TileUnits units) {
+  if (units == TileUnits.imperial) {
+    return knotsFigure(kmh);
+  }
+
+  final shown = '${_whole(kmh)}';
+  if (units == TileUnits.both) {
+    return '$shown (${knotsFigure(kmh)})';
+  }
+  return shown;
+}
+
+String _windLine(Map<String, Object?> anchor, {required TileUnits units}) {
+  String inOne(String Function(double) convert) {
+    final sustained = anchor['sustained_kmh'];
+    final gust = anchor['gust_kmh'];
+    if (sustained is num && gust is num) {
+      return '${convert(sustained.toDouble())}G${convert(gust.toDouble())}';
+    }
+    if (gust is num) {
+      return 'G${convert(gust.toDouble())}';
+    }
+    if (sustained is num) {
+      return convert(sustained.toDouble());
+    }
+    return '';
+  }
+
+  // BOTH PARENTHESISES THE WHOLE PAIR, "9G20 (5G11)", not each figure.
+  final metric = inOne((kmh) => _speed(kmh, TileUnits.metric));
+  final knots = inOne((kmh) => _speed(kmh, TileUnits.imperial));
+  final String speed;
+  if (units == TileUnits.metric || metric.isEmpty) {
+    speed = metric;
+  } else if (units == TileUnits.imperial) {
+    speed = knots;
+  } else {
+    speed = '$metric ($knots)';
   }
 
   // ONE SPACE, NOT TWO. A double space reads as a column separator in a
@@ -372,7 +428,7 @@ String _windLine(Map<String, Object?> anchor, {required bool metric}) {
 /// same size, and the day-over-day modifier is the one supporting line.
 List<Map<String, Object?>> composeTiles(
   Map<String, Object?> properties, {
-  bool metric = true,
+  TileUnits units = TileUnits.metric,
 }) {
   final rawComparison = properties['comparison'];
   final comparison =
@@ -382,8 +438,9 @@ List<Map<String, Object?>> composeTiles(
     // THE STORED VALUE IS METRIC. "windier" and "much cloudier" carry no
     // unit; "3° cooler" is Celsius degrees, so an imperial reader would see a
     // magnitude wrong by a factor of 1.8. Dropped rather than converted,
-    // because only the word is stored — upstream item 165.
-    if (dimension == 'temp' && !metric) return null;
+    // because only the word is stored — upstream item 165. Both keeps it: the
+    // header and every figure lead with °C.
+    if (dimension == 'temp' && units == TileUnits.imperial) return null;
     final v = comparison[dimension];
     if (v == null) return null;
     final s = v.toString().trim();
@@ -397,9 +454,8 @@ List<Map<String, Object?>> composeTiles(
 
   final high = _num(properties, 'temp_high_c'), low = _num(properties, 'temp_low_c');
   if (high != null && low != null) {
-    int degrees(double c) => (metric ? c : c * 9 / 5 + 32).round();
-    tiles.add(tile('High / Low', metric ? '°C' : '°F', [
-      _line('${degrees(high)}° / ${degrees(low)}°', primary: true),
+    tiles.add(tile('High / Low', _tempUnit[units], [
+      _line('${_degrees(high, units)} / ${_degrees(low, units)}', primary: true),
       if (modifier('temp') != null) _line(modifier('temp')!),
     ]));
   }
@@ -415,17 +471,16 @@ List<Map<String, Object?>> composeTiles(
 
   final wind = _anchorList(properties, 'wind_anchors');
   if (wind.isNotEmpty) {
-    tiles.add(tile('Wind', metric ? 'km/h' : 'kt', [
+    tiles.add(tile('Wind', _windUnit[units], [
       for (final a in wind.take(windTileAnchors))
-        _line(_windLine(a, metric: metric), primary: true),
+        _line(_windLine(a, units: units), primary: true),
       if (modifier('wind') != null) _line(modifier('wind')!),
     ]));
   } else {
     final gust = _num(properties, 'peak_wind_primary_kmh');
     if (gust != null) {
-      final shown = (metric ? gust : gust / kmhPerKnot).round();
-      tiles.add(tile('Wind gust', metric ? 'km/h' : 'kt', [
-        _line('$shown', primary: true),
+      tiles.add(tile('Wind gust', _windUnit[units], [
+        _line(_speed(gust, units), primary: true),
         if (modifier('wind') != null) _line(modifier('wind')!),
       ]));
     }

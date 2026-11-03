@@ -17,6 +17,7 @@ joining to do and can simply be absent.
 from __future__ import annotations
 
 from datetime import date
+from enum import StrEnum
 
 from openlocalweather.comparison import _band_label
 from openlocalweather.defaults import (
@@ -24,6 +25,7 @@ from openlocalweather.defaults import (
     TEMP_CHANGE_BANDS_C,
     WIND_CHANGE_BANDS_KMH,
 )
+from openlocalweather.models import fahrenheit_figure, knots_figure
 
 # The dimensions a tile can carry a comparison for, and the words for each
 # direction. Rain is deliberately absent — see `comparison_modifiers`.
@@ -358,6 +360,31 @@ def wind_anchors(
 # value string at all.
 KMH_PER_KNOT = 1.852
 
+
+class TileUnits(StrEnum):
+    """Which units a tile shows.
+
+    BOTH IS THE PAGE'S AND THE EMAIL'S, ROADMAP item 199: their prose reads
+    "30°C (86°F)", and tiles left in one unit beside it were the gap the
+    operator reported on 2026-11-03. The app keeps a metric/imperial toggle, which is the operator's
+    call of 2026-11-02, so it passes METRIC or IMPERIAL.
+
+    An enum rather than the `metric: bool` it replaced, because a boolean
+    cannot hold the third state.
+    """
+
+    METRIC = "metric"
+    IMPERIAL = "imperial"
+    BOTH = "both"
+
+
+# A DOT, NOT "°C (°F)", in the header. All three renderers — the page, the
+# email and the Apps Script mailer — print a header as "label (unit)", so the
+# bracketed form nested as "High / Low (°C (°F))". The operator's call,
+# 2026-11-03. The values keep the brackets, since nothing wraps those.
+_TEMP_UNIT = {TileUnits.METRIC: "°C", TileUnits.IMPERIAL: "°F", TileUnits.BOTH: "°C · °F"}
+_WIND_UNIT = {TileUnits.METRIC: "km/h", TileUnits.IMPERIAL: "kt", TileUnits.BOTH: "km/h · kt"}
+
 # Two lines of wind, not three. `wind_anchors` samples three hours; a tile
 # shows the TURN, which is the pair the shift clause itself names.
 WIND_TILE_ANCHORS = 2
@@ -395,7 +422,32 @@ def _line(text: str, *, primary: bool = False) -> dict:
     return {"text": text, "primary": primary}
 
 
-def _wind_line(anchor: dict, *, metric: bool) -> str:
+def _degrees(celsius: float, units: TileUnits) -> str:
+    """"30°", "86°" or "30° (86°)". Each figure is rounded from the raw value,
+    through the same helpers as the prose, so a tile and a sentence cannot
+    show one day's high as two numbers."""
+    if units is TileUnits.IMPERIAL:
+        return f"{fahrenheit_figure(celsius)}°"
+
+    shown = f"{round(celsius)}°"
+    if units is TileUnits.BOTH:
+        return f"{shown} ({fahrenheit_figure(celsius)}°)"
+    return shown
+
+
+def _speed(kmh: float, units: TileUnits) -> str:
+    """One speed with no unit, which lives in the header: "20", "11" or
+    "20 (11)"."""
+    if units is TileUnits.IMPERIAL:
+        return knots_figure(kmh)
+
+    shown = str(round(kmh))
+    if units is TileUnits.BOTH:
+        return f"{shown} ({knots_figure(kmh)})"
+    return shown
+
+
+def _wind_line(anchor: dict, *, units: TileUnits) -> str:
     """"early  NNE  9G15" — one anchor, in the reader's unit.
 
     THE DIRECTION IS DROPPED when the models share no bearing, and the speeds
@@ -403,19 +455,27 @@ def _wind_line(anchor: dict, *, metric: bool) -> str:
     Measured over the prompt archive, a single agreed bearing existed on 3 of
     18 runs, so the short form is the normal one.
     """
-    def shown(kmh: float) -> str:
-        return str(round(kmh if metric else kmh / KMH_PER_KNOT))
+    def in_one(convert) -> str:
+        sustained = anchor.get("sustained_kmh")
+        gust = anchor.get("gust_kmh")
+        if sustained is not None and gust is not None:
+            return f"{convert(sustained)}G{convert(gust)}"
+        if gust is not None:
+            return f"G{convert(gust)}"
+        if sustained is not None:
+            return convert(sustained)
+        return ""
 
-    sustained = anchor.get("sustained_kmh")
-    gust = anchor.get("gust_kmh")
-    if sustained is not None and gust is not None:
-        speed = f"{shown(sustained)}G{shown(gust)}"
-    elif gust is not None:
-        speed = f"G{shown(gust)}"
-    elif sustained is not None:
-        speed = shown(sustained)
+    # BOTH PARENTHESISES THE WHOLE PAIR, "9G20 (5G11)", rather than each
+    # figure, "9 (5)G20 (11)", which no reader could parse.
+    metric = in_one(lambda kmh: _speed(kmh, TileUnits.METRIC))
+    knots = in_one(lambda kmh: _speed(kmh, TileUnits.IMPERIAL))
+    if units is TileUnits.METRIC or not metric:
+        speed = metric
+    elif units is TileUnits.IMPERIAL:
+        speed = knots
     else:
-        speed = ""
+        speed = f"{metric} ({knots})"
 
     parts = [str(anchor.get(key, "")).strip() for key in ("when", "direction")]
 
@@ -429,7 +489,7 @@ def _wind_line(anchor: dict, *, metric: bool) -> str:
     return " ".join([p for p in parts if p] + ([speed] if speed else []))
 
 
-def compose_tiles(properties: dict, *, metric: bool = True) -> list[dict]:
+def compose_tiles(properties: dict, *, units: TileUnits = TileUnits.METRIC) -> list[dict]:
     """The at-a-glance tiles this record can fill, in reading order.
 
     ONE COMPOSER FOR THREE SURFACES — ROADMAP item 159 step 6. The app, the
@@ -473,8 +533,11 @@ def compose_tiles(properties: dict, *, metric: bool = True) -> list[dict]:
         the one the rest of this composer gives; showing it would be a
         measured claim that is false. Storing the delta beside the word, so
         an imperial reader gets "5° cooler", is item 165.
+
+        BOTH KEEPS IT: the header leads with °C and so does every figure in
+        the tile, so "3° cooler" beneath them reads as Celsius.
         """
-        if dimension == "temp" and not metric:
+        if dimension == "temp" and units is TileUnits.IMPERIAL:
             return None
 
         text = comparison.get(dimension)
@@ -484,13 +547,10 @@ def compose_tiles(properties: dict, *, metric: bool = True) -> list[dict]:
 
     high, low = _num(properties, "temp_high_c"), _num(properties, "temp_low_c")
     if high is not None and low is not None:
-        def degrees(celsius: float) -> int:
-            return round(celsius if metric else celsius * 9 / 5 + 32)
-
         tiles.append({
             "label": "High / Low",
-            "unit": "°C" if metric else "°F",
-            "lines": [_line(f"{degrees(high)}° / {degrees(low)}°", primary=True)]
+            "unit": _TEMP_UNIT[units],
+            "lines": [_line(f"{_degrees(high, units)} / {_degrees(low, units)}", primary=True)]
             + ([_line(modifier("temp"))] if modifier("temp") else []),
         })
 
@@ -508,9 +568,9 @@ def compose_tiles(properties: dict, *, metric: bool = True) -> list[dict]:
     if wind:
         tiles.append({
             "label": "Wind",
-            "unit": "km/h" if metric else "kt",
+            "unit": _WIND_UNIT[units],
             "lines": [
-                _line(_wind_line(a, metric=metric), primary=True)
+                _line(_wind_line(a, units=units), primary=True)
                 for a in wind[:WIND_TILE_ANCHORS]
             ] + ([_line(modifier("wind"))] if modifier("wind") else []),
         })
@@ -520,11 +580,10 @@ def compose_tiles(properties: dict, *, metric: bool = True) -> list[dict]:
         # every surface reads whatever was last published.
         gust = _num(properties, "peak_wind_primary_kmh")
         if gust is not None:
-            shown = round(gust if metric else gust / KMH_PER_KNOT)
             tiles.append({
                 "label": "Wind gust",
-                "unit": "km/h" if metric else "kt",
-                "lines": [_line(str(shown), primary=True)]
+                "unit": _WIND_UNIT[units],
+                "lines": [_line(_speed(gust, units), primary=True)]
                 + ([_line(modifier("wind"))] if modifier("wind") else []),
             })
 

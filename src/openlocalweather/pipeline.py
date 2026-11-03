@@ -93,6 +93,7 @@ from openlocalweather.comparison import (
 from openlocalweather.scales import aqi_band, uv_band
 from openlocalweather.uv import day_uv_index
 from openlocalweather.tiles import (
+    TileUnits,
     cloud_anchors,
     comparison_modifiers,
     compose_tiles,
@@ -2688,7 +2689,7 @@ def _with_tiles(entry: DailyLogEntry) -> DailyLogEntry:
     not carried over from the morning.
     """
     return entry.model_copy(
-        update={"tiles": compose_tiles(entry.model_dump(mode="json"), metric=True)}
+        update={"tiles": compose_tiles(entry.model_dump(mode="json"), units=TileUnits.BOTH)}
     )
 
 

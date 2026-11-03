@@ -1884,7 +1884,7 @@ class DailyLogEntry(BaseModel):
     # THE COMPOSED TILES, for a consumer that cannot run the composer.
     #
     # `[{"label", "unit", "lines": [{"text", "primary"}]}]` exactly as
-    # `tiles.compose_tiles` returns it, metric.
+    # `tiles.compose_tiles` returns it, in both units.
     #
     # STORED DERIVED DATA, deliberately, and the same argument as
     # `temp_high_low_display`: the Apps Script mailer in `mailer/` fetches
