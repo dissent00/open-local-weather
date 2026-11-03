@@ -2,32 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-10-27T03:02:10.626551+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_200",
-      "elapsed_s": 45.275,
-      "audit": "refused: today (1805 words, cap 155); unanswered: extended, severe, secondary, synoptic, confidence"
-    },
-    {
-      "at": "2026-10-27T03:02:55.914928+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.8-flash",
-      "purpose": "write-up",
-      "outcome": "http_503",
-      "elapsed_s": 3.763
-    },
-    {
-      "at": "2026-10-27T03:02:59.683693+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "openai/gpt-oss-120b",
-      "purpose": "write-up",
-      "outcome": "http_200",
-      "elapsed_s": 2.348,
-      "audit": "passed: extended, severe, secondary, synoptic, confidence; refused: today (phrase not verbatim: As of 06:01, reports through 05:00: no r)"
-    },
-    {
       "at": "2026-10-28T03:01:43.285678+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -260,6 +234,40 @@
       "purpose": "forecast",
       "outcome": "http_200",
       "elapsed_s": 14.379
+    },
+    {
+      "at": "2026-11-03T03:02:16.430707+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 26.345
+    },
+    {
+      "at": "2026-11-03T03:05:42.777938+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 28.302,
+      "audit": "refused: today (269 words, cap 125); unanswered: extended, severe, secondary, synoptic, confidence"
+    },
+    {
+      "at": "2026-11-03T03:06:11.088611+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 1.652
+    },
+    {
+      "at": "2026-11-03T03:06:12.743761+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "openai/gpt-oss-120b",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 2.886,
+      "audit": "passed: today, extended, severe, secondary, synoptic, confidence"
     }
   ]
 }
