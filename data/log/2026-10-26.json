@@ -1133,7 +1133,7 @@
       "note_sign_corrected_on": null
     },
     "day7": {
-      "verified": false,
+      "verified": true,
       "note": null,
       "note_sign_corrected_on": null
     }
@@ -1591,6 +1591,7 @@
       }
     ]
   },
+  "forward_cape_by_model": null,
   "basin_pressure": {
     "points": 5,
     "today_min_hpa": 1013.5,
