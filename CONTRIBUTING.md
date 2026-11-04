@@ -15,6 +15,8 @@ is unusual enough to state plainly rather than bury.
 - **Bug reports with evidence.** A forecast that was wrong, with the date, is
   worth more than a general impression. Everything is committed to
   `data/log/`, so a specific day can always be examined after the fact.
+- **Vulnerabilities go privately**, never as an issue: see
+  [SECURITY.md](SECURITY.md).
 - **A `BulletinFetcher` for your country's met service.** The shipped example
   (`fetch/bulletin/kenya_kmd.py`) only works for Kenya. Each one is genuinely
   location-specific work that nobody else can do for you.
