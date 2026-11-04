@@ -259,6 +259,47 @@
       "outcome": "http_200",
       "elapsed_s": 114.235,
       "served_model": "dots-studio/dots-3-note-preview:free"
+    },
+    {
+      "at": "2026-11-04T03:05:24.530538+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 1.893
+    },
+    {
+      "at": "2026-11-04T03:08:26.425790+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 11.731
+    },
+    {
+      "at": "2026-11-04T03:15:38.158757+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 3.8
+    },
+    {
+      "at": "2026-11-04T03:15:41.962126+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 2.31
+    },
+    {
+      "at": "2026-11-04T03:15:44.275174+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "openai/gpt-oss-120b",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 2.817,
+      "audit": "passed: today, severe, secondary, synoptic, confidence; refused: extended (phrase not verbatim: temperatures and winds much the same thr)"
     }
   ]
 }
