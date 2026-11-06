@@ -1,0 +1,17 @@
+{
+ "station": "HKKI",
+ "columns": [
+  "valid",
+  "metar",
+  "tmpf",
+  "sknt"
+ ],
+ "rows": [
+  [
+   "2026-11-06 00:00",
+   "HKKI 060000Z 07003KT CAVOK 21/18 Q1015",
+   "69.80",
+   "3.00"
+  ]
+ ]
+}
