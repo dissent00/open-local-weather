@@ -366,6 +366,15 @@
       "purpose": "forecast",
       "outcome": "http_200",
       "elapsed_s": 11.268
+    },
+    {
+      "at": "2026-11-08T03:01:47.761196+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 21.23,
+      "audit": "passed: today, extended, severe, secondary, synoptic, confidence"
     }
   ]
 }
