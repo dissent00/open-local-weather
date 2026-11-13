@@ -2,15 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-11-06T03:02:00.433214+00:00",
-      "provider": "OpenAICompatProvider",
-      "model": "nex-agi/nex-n2.5-pro:free",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 177.872,
-      "served_model": "dots-studio/dots-3-note-preview:free"
-    },
-    {
       "at": "2026-11-06T03:05:00.784369+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -260,6 +251,15 @@
       "purpose": "forecast",
       "outcome": "http_200",
       "elapsed_s": 16.542
+    },
+    {
+      "at": "2026-11-13T03:02:03.628323+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 20.538,
+      "audit": "passed: today; unanswered: extended, severe, secondary, synoptic, confidence"
     }
   ]
 }
