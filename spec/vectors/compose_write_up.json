@@ -91,6 +91,46 @@
       }
     },
     {
+      "name": "two links, each credited with its own sections",
+      "input": {
+        "answers": {
+          "today": "Gemini's today.",
+          "extended": "Groq's week.",
+          "synoptic": "Groq's pattern."
+        },
+        "verdicts": {
+          "today": [],
+          "extended": [],
+          "synoptic": []
+        },
+        "code_sections": {
+          "secondary": "Code's gulf."
+        },
+        "enabled": [
+          "today",
+          "extended",
+          "secondary",
+          "synoptic"
+        ],
+        "secondary_name": "Winam Gulf",
+        "model_name": "Gemini 3.6 Flash",
+        "sign_off_line": "Written by code; a discussion follows when a model answers.",
+        "section_models": {
+          "extended": "gpt-oss-120b",
+          "synoptic": "gpt-oss-120b"
+        }
+      },
+      "expected": {
+        "markdown": "## Today's Forecast\n\nGemini's today.\n\n## Extended Outlook\n\nGroq's week.\n\n## Winam Gulf \u2014 Conditions for Boaters\n\nCode's gulf.\n\n## Detailed Discussion\n\n### Synoptic Overview\n\nGroq's pattern.\n\nToday's Forecast by Gemini 3.6 Flash; Extended Outlook and Synoptic Overview by gpt-oss-120b; the rest written by code.\n",
+        "sources": {
+          "today": "llm",
+          "extended": "llm",
+          "secondary": "code",
+          "synoptic": "llm"
+        }
+      }
+    },
+    {
       "name": "every section the model's",
       "input": {
         "answers": {

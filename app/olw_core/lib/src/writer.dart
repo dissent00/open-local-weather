@@ -393,6 +393,7 @@ bool _usesPartOf(String text, String phrase, {int window = 4}) {
   required String? modelName,
   required String signOffLine,
   String? observedLine,
+  Map<String, String>? sectionModels,
 }) {
   final parts = <String>[];
   final sources = <String, String>{};
@@ -422,12 +423,18 @@ bool _usesPartOf(String text, String phrase, {int window = 4}) {
     sources[section] = source;
   }
 
-  final written = [
-    for (final e in sources.entries)
-      if (e.value == 'llm') sectionHeading(e.key, secondaryName: secondaryName).replaceFirst(RegExp(r'^[# ]+'), ''),
-  ];
-  final credit = written.isNotEmpty && modelName != null
-      ? '${_join(written)} by $modelName; the rest written by code.'
+  // `sectionModels` names a section's model where it is not [modelName]: a
+  // chain can take some sections from one link and the rest from the next.
+  final byModel = <String, List<String>>{};
+  for (final e in sources.entries) {
+    final model = sectionModels?[e.key] ?? modelName;
+    if (e.value == 'llm' && model != null) {
+      byModel.putIfAbsent(model, () => []).add(
+          sectionHeading(e.key, secondaryName: secondaryName).replaceFirst(RegExp(r'^[# ]+'), ''));
+    }
+  }
+  final credit = byModel.isNotEmpty
+      ? '${[for (final e in byModel.entries) '${_join(e.value)} by ${e.key}'].join('; ')}; the rest written by code.'
       : signOffLine;
   parts.add(credit);
   return ('${parts.join('\n\n')}\n', sources);

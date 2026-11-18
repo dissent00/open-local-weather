@@ -218,6 +218,73 @@ def test_a_thin_first_link_falls_through_to_the_next(tmp_path, wired, monkeypatc
     assert audits[1][0] == "gemini-3.8-flash" and audits[1][1].startswith("passed: today; unanswered:")
 
 
+class PartialWriter(FakeWriter):
+    """Answers the sections it is given and leaves the rest unanswered, as
+    Gemini did on five days from 2026-10-11 to 11-13: Today only."""
+
+    def __init__(self, model: str, **answers):
+        super().__init__()
+        self.model = model
+        self.answers = answers
+
+    def generate(self, system_prompt, user_prompt, response_schema):
+        if self.before_attempt is not None:
+            self.before_attempt()
+        self.calls.append((system_prompt, user_prompt, response_schema.__name__))
+        return WriteUpResponse(**self.answers)
+
+
+SYNOPTIC = "Lower pressure lies to the north, and little changes overhead."
+
+
+def test_a_partial_answer_asks_the_next_link_for_the_rest(tmp_path, monkeypatch):
+    """2026-11-18: on five days of 34 Gemini answered Today and nothing
+    else, the chain took that as served, and code wrote five sections that
+    Groq, next in line, was never asked for. A link that leaves sections
+    unwritten now hands the ask on; each section keeps the first passing
+    answer, and the sign-off credits each model with its own."""
+    from openlocalweather.llm.fallback import FallbackProvider
+    from openlocalweather.spend import read_ledger
+
+    first = PartialWriter("gemini-3.6-flash", today=TODAY)
+    second = PartialWriter("openai/gpt-oss-120b", today="Dry all day.", synoptic=SYNOPTIC)
+    monkeypatch.setattr(cli, "_build_llm_provider", lambda **k: FallbackProvider([first, second]))
+    monkeypatch.setattr(cli, "_build_pages_publisher", lambda *a, **k: None)
+    monkeypatch.setattr(cli.time, "sleep", lambda s: None)
+    day = _store(tmp_path, missing=True)
+
+    assert _run(tmp_path) == 0
+
+    entry = log_store.read_log_entry(tmp_path, day)
+    assert (len(first.calls), len(second.calls)) == (1, 1)
+    assert f"## Today's Forecast\n\n{TODAY}" in entry.narrative_markdown, "the first link's Today is kept"
+    assert SYNOPTIC in entry.narrative_markdown
+    assert entry.write_up_sources["today"] == entry.write_up_sources["synoptic"] == "llm"
+    assert entry.narrative_markdown.rstrip().endswith(
+        "Today's Forecast by Gemini 3.6 Flash; Synoptic Overview by gpt-oss-120b; the rest written by code."
+    )
+    assert entry.meta.narrative_llm_model == "gemini-3.6-flash"
+    audits = [(r.model, r.audit) for r in read_ledger(tmp_path) if r.purpose == "write-up"]
+    assert [m for m, _ in audits] == ["gemini-3.6-flash", "openai/gpt-oss-120b"]
+
+
+def test_a_partial_answer_from_the_last_link_is_still_kept(tmp_path, monkeypatch):
+    """With no link left to ask, what passed is published, as before."""
+    from openlocalweather.llm.fallback import FallbackProvider
+
+    only = PartialWriter("gemini-3.6-flash", today=TODAY)
+    monkeypatch.setattr(cli, "_build_llm_provider", lambda **k: FallbackProvider([only]))
+    monkeypatch.setattr(cli, "_build_pages_publisher", lambda *a, **k: None)
+    monkeypatch.setattr(cli.time, "sleep", lambda s: None)
+    day = _store(tmp_path, missing=True)
+
+    assert _run(tmp_path) == 0
+
+    entry = log_store.read_log_entry(tmp_path, day)
+    assert f"## Today's Forecast\n\n{TODAY}" in entry.narrative_markdown
+    assert not [d for d in entry.meta.degradations or [] if d.code == DEGRADATION_NARRATIVE]
+
+
 def test_scored_call_keeps_the_write_up_on_the_first_link(tmp_path, wired, monkeypatch):
     """Item 180's rule, kept for a deployment whose gateway cannot write."""
     from openlocalweather.llm.provider import FallbackCalls

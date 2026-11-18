@@ -1797,6 +1797,7 @@ void main() {
           modelName: i['model_name'] as String?,
           signOffLine: i['sign_off_line'] as String,
           observedLine: i['observed_line'] as String?,
+          sectionModels: (i['section_models'] as Map?)?.cast<String, String>(),
         );
         expect({'markdown': markdown, 'sources': sources}, c['expected'], reason: c['name'] as String);
       }

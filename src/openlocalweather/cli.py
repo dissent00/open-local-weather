@@ -1926,7 +1926,7 @@ def _run_write_up(args) -> int:
     from openlocalweather.config import deviation_bands
     from openlocalweather.floor import FloorInputs, floor_section_texts, sign_off
     from openlocalweather.llm.errors import LLMAnswerRefused, LLMResponseError
-    from openlocalweather.llm.provider import FallbackCalls, provider_identity, served_identity
+    from openlocalweather.llm.provider import FallbackCalls, provider_identity, resolve_active, served_identity
     from openlocalweather.spend import SpendCapExceeded, record_audit
     from openlocalweather.write_up import apply_write_up_sections, needs_write_up
     from openlocalweather.writer import (
@@ -1980,15 +1980,22 @@ def _run_write_up(args) -> int:
         provider, data_dir, max_calls=location.max_llm_calls_per_24h, purpose="write-up"
     )
 
-    verdicts: dict[str, list[str]] = {}
+    # Each section's first passing answer, and the model that wrote it.
+    kept: dict[str, tuple[str, str]] = {}
 
     # THE GATE, PER SECTION. Each field is audited alone and the verdict goes
     # on the answering link's ledger row; an answer with no section passing
     # is refused like a 503 and the next link gets the same ask.
+    #
+    # SO IS AN ANSWER THAT LEAVES SECTIONS UNWRITTEN, while a link is left to
+    # ask — 2026-11-18. On five days of 34 to 11-13 Gemini answered Today
+    # alone, the chain took that as served, and code wrote five sections the
+    # next link was never asked for. What passed is kept, the next link gets
+    # the whole ask again, and a section keeps the first answer that passed:
+    # the earlier link is the one the config prefers.
     def accept(answer) -> None:
-        verdicts.clear()
         answered = [s for s in sections if (getattr(answer, s) or "").strip()]
-        verdicts.update({s: audit_section(s, getattr(answer, s), brief, inputs) for s in answered})
+        verdicts = {s: audit_section(s, getattr(answer, s), brief, inputs) for s in answered}
         passed = [s for s in answered if not verdicts[s]]
         refused = [f"{s} ({verdicts[s][0]})" for s in answered if verdicts[s]]
         unanswered = [s for s in sections if s not in answered]
@@ -2007,11 +2014,23 @@ def _run_write_up(args) -> int:
                 "no section passed the audit: " + ("; ".join(refused) if refused else "nothing answered")
             )
 
+        # The model as `served_identity` reads it: a gateway reports the one
+        # it used (item 184).
+        live = resolve_active(provider)
+        written_by = getattr(live, "response_model", None) or getattr(live, "model", "unknown")
+        for s in passed:
+            kept.setdefault(s, (getattr(answer, s), written_by))
+        missing = [s for s in sections if s not in kept]
+        if missing:
+            raise LLMAnswerRefused("sections still unwritten: " + ", ".join(missing))
+
     try:
-        answer = ask_writer(provider, system_prompt, brief, accept)
+        ask_writer(provider, system_prompt, brief, accept)
     except (LLMResponseError, SpendCapExceeded) as e:
-        print(f"The write-up was refused ({e}); the day keeps code's write-up.", file=sys.stderr)
-        return 0
+        if not kept:
+            print(f"The write-up was refused ({e}); the day keeps code's write-up.", file=sys.stderr)
+            return 0
+        print(f"The write-up is partial ({e}); code writes the rest.", file=sys.stderr)
     verify_spend()
 
     floor_inputs = FloorInputs.from_entry(
@@ -2020,11 +2039,13 @@ def _run_write_up(args) -> int:
         met_service_name=location.local_bulletin_source_name or None,
         met_service_model_id=location.local_bulletin_model_id or None,
     )
-    served_model = served_identity(provider)[1]
+    # The first link that passed anything is the write-up's model of record.
+    served_model = next(iter(kept.values()))[1] if kept else served_identity(provider)[1]
     markdown, sources = compose_write_up(
-        {s: getattr(answer, s) for s in sections}, verdicts, floor_section_texts(floor_inputs), sections,
+        {s: text for s, (text, _) in kept.items()}, {}, floor_section_texts(floor_inputs), sections,
         secondary_name=secondary_name, model_name=model_display_name(served_model), sign_off_line=sign_off(floor_inputs),
         observed_line=inputs.observed_so_far,
+        section_models={s: model_display_name(m) for s, (_, m) in kept.items()},
     )
     apply_write_up_sections(entry, markdown, sources, served_model)
     write_log_entry(data_dir, entry)

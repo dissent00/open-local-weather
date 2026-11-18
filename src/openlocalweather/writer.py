@@ -504,11 +504,16 @@ def compose_write_up(
     model_name: str | None,
     sign_off_line: str,
     observed_line: str | None = None,
+    section_models: dict[str, str] | None = None,
 ) -> tuple[str, dict[str, str]]:
     """The page's Markdown and who wrote each section: the model's text where
     it answered and the audit passed, code's otherwise, a section with
     neither absent. The model's Today ends with `observed_line`, written by
-    code. The sign-off names the sections the model wrote."""
+    code. The sign-off names the sections the model wrote.
+
+    `section_models` names a section's model where it is not `model_name`:
+    a chain can take some sections from one link and the rest from the
+    next, and each is credited with its own."""
     parts: list[str] = []
     sources: dict[str, str] = {}
     discussion_open = False
@@ -532,9 +537,14 @@ def compose_write_up(
         parts.append(f"{section_heading(section, secondary_name=secondary_name)}\n\n{text}")
         sources[section] = source
 
-    written = [section_heading(s, secondary_name=secondary_name).lstrip("# ") for s, src in sources.items() if src == "llm"]
-    if written and model_name:
-        credit = f"{_join(written)} by {model_name}; the rest written by code."
+    by_model: dict[str, list[str]] = {}
+    for section, source in sources.items():
+        model = (section_models or {}).get(section, model_name)
+        if source == "llm" and model:
+            by_model.setdefault(model, []).append(section_heading(section, secondary_name=secondary_name).lstrip("# "))
+    if by_model:
+        credit = "; ".join(f"{_join(headings)} by {model}" for model, headings in by_model.items())
+        credit += "; the rest written by code."
     else:
         credit = sign_off_line
     parts.append(credit)

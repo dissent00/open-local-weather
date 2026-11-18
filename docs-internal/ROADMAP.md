@@ -27504,6 +27504,17 @@ Related: items 17a, 132, 180, 182, 191, 192; options document section 4 C.
 
 ## 192. Writer routes: a chain per job, attempts per link, the floor last · **Planned — after item 191; raised 2026-10-01; revised 2026-10-01**
 
+> **2026-11-18: a partial answer hands the ask on.** From 10-11 to 11-13,
+> on five days of 34, Gemini answered Today and left the other five
+> sections unwritten. The chain took that as served, so code wrote five
+> sections that Groq, next in line, was never asked for. Now a link that
+> leaves sections unwritten passes the whole ask to the next link while one
+> is left. Each section keeps the first answer that passed, and the
+> sign-off credits each model with its own sections. The ledger row per
+> link is unchanged. One more call on a partial day, which Groq's
+> per-run ceiling of one already allows. Not yet seen on a live partial
+> day.
+
 Item 81's chain exists: `FallbackProvider` with `env_prefix`, per-link
 ceilings (170), a credential family map, and the workflow's allowlist that
 forwards any `*_API_KEY`. What it lacks is written here.
