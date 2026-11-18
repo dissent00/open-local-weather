@@ -27350,6 +27350,38 @@ Related: items 182, 191, 192; Ensemble item 107.
 
 ## 195. The interpreter: synoptic claims the record scores · **Planned — after item 103 point 5 and item 71's reference; raised 2026-10-01**
 
+> **2026-11-18: what readers lost, read sentence by sentence.** The
+> operator: the project was meant to replace the US Area Forecast
+> Discussion, and the page now gives the what without the why. Compared:
+> 09-05 and 09-13 (the model wrote the whole narrative) against 11-12 and
+> 11-18 (the model writes code's sections from the brief). The "why"
+> sentences in the September pair fall into five kinds:
+>
+> 1. **Mechanism.** Lake and land breezes meeting evening instability over
+>    the Gulf; instability over a dry lower layer giving lightning without
+>    rain; downdraft squalls the global models do not resolve. Needs no
+>    new data: local knowledge, plus code's CAPE and timing. One of these,
+>    the lake breeze, was inferred from pressure that cannot show it.
+> 2. **What follows.** "Days four to seven turn cooler and much wetter."
+>    The data is in the brief now. Code's outlook lists the days one by one
+>    instead ("4 of 4 models wet" seven times on 11-18).
+> 3. **A lean.** "GFS's higher high is discounted for the consensus." The
+>    bias record is in the brief. Today it is stated as facts with no
+>    lean.
+> 4. **Yesterday's lesson.** "Yesterday's unforecast evening shower:
+>    high-CAPE nights here bring showers even when models show 0.0 mm."
+>    Actuals against the call exist. Not in the brief.
+> 5. **The pattern's evolution.** "Lower pressure to the northeast fills
+>    over three days." Needs the data this item and item 103 describe; the
+>    page now says the ring "locates a direction, not a centre or a
+>    front".
+>
+> Four of the five need no new source: they need code to state them as
+> drivers, and a rule that lets a writer interpret them. The September
+> text also carried what the rules later removed for good reason: false
+> precision (29.2°C / 84.6°F), lists of five CAPE values, AQI station
+> dumps, and the unsupported lake-breeze claim.
+
 The operator's intent, 2026-09-30: the arithmetic sees wind and rain at
 Day+5; the LLM should see the system behind them, and that insight should
 feed the learning. The Area Forecast Discussion's job: rules write the
