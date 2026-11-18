@@ -11370,6 +11370,19 @@ redefine), item 77 (the harness any provider swap should be measured with).
 
 ## 81. "Bring your own model" is a promise this project cannot keep · **Partly shipped — the fallback chain and OpenRouter's model order built 2026-09-21; the supported matrix still needs a live run**
 
+> **2026-11-18: secrets are named one by one again.** From 11-14 GitHub
+> held every forecast and health-check run as "may be malicious" and
+> started no job, with neither workflow changed since 10-02; five days of
+> forecasts and emails were lost. The likely reason is the provider step
+> reading every secret at once, the shape credential-stealing workflows
+> take, whatever the allowlist then kept. The step now names
+> `GEMINI_API_KEY`, `GROQ_API_KEY` and `LLM_API_KEY`; variables still pass
+> whole through the allowlist. The cost is the convenience this item
+> bought: a new prefix's secret needs a workflow line. What the item
+> guarded against stays guarded: `tests/test_workflows.py` fails when a
+> link in `location.yaml` has no named key, rather than the link dropping
+> out in silence. Unconfirmed until a run starts unheld.
+
 Raised by the operator 2026-09-07, from item 80's finding: *"this means we'll
 need to define supported models/providers and keep up with this, rather than
 just say 'bring your own model'."*

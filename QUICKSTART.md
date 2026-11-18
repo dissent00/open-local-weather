@@ -328,11 +328,23 @@ variables → Actions*, one secret and two variables per prefixed entry:
 | Secret | `CLAUDE_API_KEY` | an Anthropic key, for a `kind: anthropic` link |
 | Variable | `CLAUDE_MODEL` | e.g. `claude-sonnet-5` — no base URL needed |
 
-You do **not** have to edit the workflow to add a link. It passes every
-variable and secret whose name ends in `_API_KEY`, `_BASE_URL`, `_MODEL`,
-`_FALLBACK_MODELS`, `_JSON_MODE` or `_MAX_TOKENS`, whatever the prefix, so a
-fourth gateway needs a config entry and its two variables and nothing else.
-Names outside that shape — `WAQI_TOKEN`, `LLM_PROVIDER`, the repository's own
+**A new prefix's secret needs one line in the workflow.** Variables pass
+without edits: every one whose name ends in `_API_KEY`, `_BASE_URL`,
+`_MODEL`, `_FALLBACK_MODELS`, `_JSON_MODE` or `_MAX_TOKENS`, whatever the
+prefix. Secrets are named one by one in the *Provider credentials* step of
+`.github/workflows/forecast.yml` and `health_check.yml` (and the two probe
+workflows), because GitHub holds a workflow that reads every secret at once
+as possibly malicious and runs nothing. For the chain above that means
+adding:
+
+```yaml
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          CLAUDE_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+```
+
+`tests/test_workflows.py` fails when a link in your `location.yaml` has no
+such line, so a missing one shows up before a run drops the link. Names
+outside that shape — `WAQI_TOKEN`, `LLM_PROVIDER`, the repository's own
 `github_token` — are deliberately not passed.
 
 **Each link can carry its own call ceiling**, and usually should, because a

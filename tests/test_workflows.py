@@ -211,7 +211,6 @@ def test_every_provider_prefix_reaches_the_run(name):
         "named by hand in its env block can reach the run"
     )
     assert "toJSON(vars)" in yaml.dump(step)
-    assert "toJSON(secrets)" in yaml.dump(step)
     assert CREDENTIAL_PATTERN in step["run"], (
         "the allowlist in the workflow has drifted from the one this file "
         "pins; the test below is what says which names it admits"
@@ -220,19 +219,73 @@ def test_every_provider_prefix_reaches_the_run(name):
 
 @pytest.mark.parametrize("name", PIPELINE_WORKFLOWS)
 def test_keys_are_not_also_named_by_hand(name):
-    """A hand-named key would mask the generic pass-through.
+    """A hand-named key outside the credentials step would mask it.
 
     A step-level `env:` entry wins over `$GITHUB_ENV`, so re-adding
-    `LLM_API_KEY: ${{ secrets.LLM_API_KEY }}` would set it to the empty
-    string on a deployment that has moved to a prefixed name — which
-    `_env` reads as absent, dropping the link.
+    `LLM_API_KEY: ${{ secrets.LLM_API_KEY }}` to the run's step would set it
+    to the empty string on a deployment that has moved to a prefixed name —
+    which `_env` reads as absent, dropping the link. The credentials step
+    itself names them, and writes only the non-empty ones onward.
     """
     path = REPO_ROOT / ".github" / "workflows" / name
-    text = path.read_text()
+    doc = yaml.safe_load(path.read_text())
+    steps = [
+        step for job in (doc.get("jobs") or {}).values()
+        for step in job.get("steps") or []
+        if step.get("name") != "Provider credentials"
+    ]
+    text = yaml.dump(steps)
     for named in ("LLM_API_KEY:", "GEMINI_API_KEY:", "LLM_BASE_URL:", "LLM_MODEL:"):
         assert named not in text, (
             f"{name} names {named} by hand; the 'Provider credentials' step "
             "already passes it, and the hand-written one takes precedence"
+        )
+
+
+#: Every workflow that hands provider credentials to a run.
+CREDENTIAL_WORKFLOWS = PIPELINE_WORKFLOWS + ["model_probe.yml", "writer_probe.yml"]
+
+
+def _configured_key_names() -> set[str]:
+    """`<PREFIX>_API_KEY` for every link in the shipped chain."""
+    from openlocalweather.llm.provider import DEFAULT_ENV_PREFIXES
+
+    config = yaml.safe_load((REPO_ROOT / "config" / "location.yaml").read_text())
+    names = set()
+    for link in config["location"]["llm_providers"]:
+        if isinstance(link, str):
+            link = {"kind": link}
+        prefix = link.get("env_prefix") or DEFAULT_ENV_PREFIXES[link["kind"]]
+        names.add(f"{prefix}_API_KEY")
+    return names
+
+
+@pytest.mark.parametrize("name", CREDENTIAL_WORKFLOWS)
+def test_no_workflow_reads_every_secret(name):
+    """The likely reason no forecast ran from 2026-11-14.
+
+    GitHub held each forecast and health-check run with "GitHub detected
+    that this workflow file may be malicious", and no job started; neither
+    file had changed since 10-02. Both read every secret at once, which is
+    what credential-stealing workflows do. The sandbox, which does not,
+    ran every day. Whatever the allowlist did afterwards, GitHub sees the
+    expression.
+    """
+    text = (REPO_ROOT / ".github" / "workflows" / name).read_text()
+    assert "toJSON(secrets)" not in text
+
+
+@pytest.mark.parametrize("name", CREDENTIAL_WORKFLOWS)
+def test_every_configured_link_has_its_key_named(name):
+    """Naming secrets one by one brings back item 81's defect unless
+    something checks the names: a link configured in `location.yaml` whose
+    key the workflow does not pass is built with nothing and DROPPED FROM
+    THE CHAIN IN SILENCE. This is that check."""
+    step = _step_named(REPO_ROOT / ".github" / "workflows" / name, "Provider credentials")
+    assert step is not None
+    for key in sorted(_configured_key_names()):
+        assert step["env"].get(key) == f"${{{{ secrets.{key} }}}}", (
+            f"{name} does not pass {key}, so the link reading it drops out"
         )
 
 

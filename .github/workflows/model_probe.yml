@@ -34,12 +34,14 @@ jobs:
       - name: Install package
         run: pip install -e .
 
-      # The same allowlist the forecast uses — see forecast.yml for why it is
-      # an allowlist rather than a dump of the repository's secrets.
+      # The same step the forecast uses — see forecast.yml for why each
+      # secret is named rather than the whole `secrets` context read.
       - name: Provider credentials
         env:
           ALL_VARS: ${{ toJSON(vars) }}
-          ALL_SECRETS: ${{ toJSON(secrets) }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
         run: |
           set -o pipefail
           emit() {
@@ -49,7 +51,8 @@ jobs:
               | select(.value != null and .value != "")
               | "\(.key)<<__OLW_ENV__\n\(.value)\n__OLW_ENV__"' <<<"$1"
           }
-          { emit "$ALL_VARS"; emit "$ALL_SECRETS"; } >> "$GITHUB_ENV"
+          # `env` holds the secrets named above; the allowlist keeps only those.
+          { emit "$ALL_VARS"; emit "$(jq -n env)"; } >> "$GITHUB_ENV"
 
       - name: Probe
         run: |

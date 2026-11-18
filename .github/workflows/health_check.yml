@@ -53,29 +53,36 @@ jobs:
       - name: Install package
         run: pip install -e .
 
-      # EVERY PROVIDER'S CREDENTIALS, WITHOUT NAMING THEM ONE BY ONE.
+      # PROVIDER CREDENTIALS, EACH SECRET NAMED — 2026-11-18.
       #
-      # ROADMAP item 81, 2026-09-22. A chain entry can carry its own
-      # `env_prefix`, so `llm_providers` may name OpenRouter and Groq and a
-      # fourth gateway, each reading OPENROUTER_*, GROQ_*, ... The env block
-      # below used to list LLM_* and GEMINI_* by hand, which meant a third
-      # provider was configured in `location.yaml`, built with nothing, and
-      # DROPPED FROM THE CHAIN IN SILENCE — the config said three links and
-      # the run held two. Adding a provider now needs a config line and its
-      # secrets, and no change to this file.
+      # Item 81 read the whole `secrets` context as JSON and kept the
+      # provider-shaped names, so a link added in `location.yaml` needed no
+      # change here. From 2026-11-14 GitHub held every forecast and health
+      # check run as "may be malicious" and started no job, with neither
+      # file changed since 10-02. The likely reason: loading every secret at
+      # once is what credential-stealing workflows do, and GitHub judges the
+      # expression rather than what the step does with it afterwards.
       #
-      # THE PATTERN IS AN ALLOWLIST, not a dump of the repository's secrets.
-      # It passes only provider-shaped names — anything ending in _API_KEY,
-      # _BASE_URL, _MODEL, _FALLBACK_MODELS, _JSON_MODE or _MAX_TOKENS — so
-      # `github_token`, WAQI_TOKEN and PUBLIC_WEBPAGE_URL are all excluded.
-      # Verified against a fixture of both before this shipped.
+      # So a new provider's key needs a line below as well as a config line
+      # and a secret. `tests/test_workflows.py` fails when a link configured
+      # in `location.yaml` has no line here; that is what stops item 81's
+      # defect returning, a link built with nothing and DROPPED FROM THE
+      # CHAIN IN SILENCE.
+      #
+      # Variables are not secret and still pass whole, through the same
+      # allowlist: names ending in _API_KEY, _BASE_URL, _MODEL,
+      # _FALLBACK_MODELS, _JSON_MODE or _MAX_TOKENS. Only non-empty values
+      # are written onward, so a secret that does not exist stays absent
+      # rather than arriving as an empty string.
       #
       # The heredoc form is used rather than KEY=VALUE because a value
       # containing a newline would otherwise inject arbitrary variables.
       - name: Provider credentials
         env:
           ALL_VARS: ${{ toJSON(vars) }}
-          ALL_SECRETS: ${{ toJSON(secrets) }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
         run: |
           # The guard in tests/test_workflows.py sees jq's own `|` operator
           # and cannot tell it from a shell pipe. Setting pipefail anyway is
@@ -89,7 +96,8 @@ jobs:
               | select(.value != null and .value != "")
               | "\(.key)<<__OLW_ENV__\n\(.value)\n__OLW_ENV__"' <<<"$1"
           }
-          { emit "$ALL_VARS"; emit "$ALL_SECRETS"; } >> "$GITHUB_ENV"
+          # `env` holds the secrets named above; the allowlist keeps only those.
+          { emit "$ALL_VARS"; emit "$(jq -n env)"; } >> "$GITHUB_ENV"
 
       - name: Run health checks
         env:
