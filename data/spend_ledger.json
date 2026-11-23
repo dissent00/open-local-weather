@@ -176,6 +176,32 @@
       "purpose": "forecast",
       "outcome": "http_200",
       "elapsed_s": 17.745
+    },
+    {
+      "at": "2026-11-23T03:02:25.363730+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 28.115,
+      "audit": "passed: today; unanswered: extended, severe, secondary, synoptic, confidence"
+    },
+    {
+      "at": "2026-11-23T03:02:53.509962+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "write-up",
+      "outcome": "http_503",
+      "elapsed_s": 28.184
+    },
+    {
+      "at": "2026-11-23T03:03:21.696417+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "openai/gpt-oss-120b",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 2.956,
+      "audit": "passed: today, extended, severe, secondary, synoptic, confidence"
     }
   ]
 }
