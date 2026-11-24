@@ -849,6 +849,14 @@ RUN_KIND_SKIPPED = "run-kind: skipped"
 # one that costs no LLM call.
 RUN_KIND_OBSERVED = "run-kind: observed"
 
+# A REQUIRED WEATHER FETCH FAILED, and nothing else did — 2026-11-24. Open-
+# Meteo timed out three times at 03:01Z and the day had no forecast until it
+# was dispatched by hand. The workflow tries once more after a wait when it
+# sees this code. Safe to retry because every Open-Meteo fetch in
+# `_issue_forecast` comes before the model call, so the failed attempt spent
+# nothing; every other failure keeps exit 1 and is not retried.
+EXIT_FETCH_FAILED = 3
+
 
 def _print_first_issuance(result, dry_run: bool) -> None:
     entry = result.log_entry
@@ -1139,7 +1147,7 @@ def _run_forecast(args: argparse.Namespace) -> int:
         result = run_forecast(deps, dry_run=args.dry_run, force=args.force)
     except OpenMeteoFetchError as e:
         print(f"Critical Error: forecast aborted, a required weather fetch failed: {e}", file=sys.stderr)
-        return 1
+        return EXIT_FETCH_FAILED
     except LLMResponseError as e:
         print(f"Critical Error: forecast aborted, the LLM call failed: {e}", file=sys.stderr)
         return 1

@@ -231,8 +231,23 @@ jobs:
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
             FLAGS="$FLAGS --force"
           fi
-          olw forecast --public-url "${{ steps.pages_url.outputs.url }}" $FLAGS \
-            | tee "$RUNNER_TEMP/forecast.log"
+          # ONE MORE TRY AFTER A FETCH FAILURE, 2026-11-24: Open-Meteo timed
+          # out three times at 03:01Z and the morning had no forecast. Exit 3
+          # is `cli.EXIT_FETCH_FAILED`, raised only before any model call;
+          # every other failure is final, since it may have spent one.
+          forecast() {
+            olw forecast --public-url "${{ steps.pages_url.outputs.url }}" $FLAGS \
+              | tee -a "$RUNNER_TEMP/forecast.log"
+          }
+          status=0
+          forecast || status=$?
+          if [ "$status" -eq 3 ]; then
+            echo "A required weather fetch failed; trying once more in 15 minutes."
+            sleep 900
+            status=0
+            forecast || status=$?
+          fi
+          exit "$status"
 
       - name: Commit and push data/docs changes
         if: ${{ github.event.inputs.dry_run != 'true' }}

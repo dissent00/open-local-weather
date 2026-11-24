@@ -234,6 +234,24 @@ def test_forecast_verb_passes_force_through(monkeypatch):
     assert seen == {"dry_run": True, "force": True}
 
 
+def test_forecast_verb_exits_with_its_own_code_when_a_fetch_fails(monkeypatch):
+    """2026-11-24: Open-Meteo timed out three times at 03:01Z and the day had
+    no forecast until it was dispatched by hand. The workflow retries a fetch
+    failure once, later, and needs to tell it from every other failure:
+    one that spent a model call must not be run again."""
+    from openlocalweather import cli
+    from openlocalweather.fetch.open_meteo import OpenMeteoFetchError
+
+    def fail(deps, dry_run, force):
+        raise OpenMeteoFetchError("Read timed out")
+
+    monkeypatch.setattr(cli, "_build_pipeline_deps", lambda *a, **k: object())
+    monkeypatch.setattr(cli, "run_forecast", fail)
+
+    assert cli.main(_forecast_argv()) == cli.EXIT_FETCH_FAILED
+    assert cli.EXIT_FETCH_FAILED not in (0, 1)
+
+
 # ---------------------------------------------------------------------------
 # check-health: the aligned-window check's exit code. The point of running
 # this comparison weekly is that a drifted table turns the job red, where

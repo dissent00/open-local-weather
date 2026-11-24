@@ -313,3 +313,71 @@ def test_the_allowlist_admits_providers_and_nothing_else():
         "LLM_PROVIDER", "GEMINI_THINKING_LEVEL", "TRIGGER_SOURCE",
     ):
         assert not admits.match(key), f"a non-provider name was admitted: {key}"
+
+
+# ---------------------------------------------------------------------------
+# A fetch failure is tried once more — 2026-11-24
+# ---------------------------------------------------------------------------
+
+
+def _forecast_step_script(tmp_path, exits: list[int]) -> tuple[Path, Path]:
+    """The Forecast step's script, its expressions filled, beside a fake
+    `olw` that exits with each of `exits` in turn and a `sleep` that only
+    records how long it was asked to wait."""
+    step = _step_named(REPO_ROOT / ".github" / "workflows" / "forecast.yml", "Forecast")
+    script = (
+        step["run"]
+        .replace("${{ github.event.inputs.dry_run }}", "false")
+        .replace("${{ github.event.inputs.force }}", "false")
+        .replace("${{ steps.pages_url.outputs.url }}", "https://example.test/")
+    )
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (tmp_path / "exits").write_text("\n".join(str(e) for e in exits) + "\n")
+    (bin_dir / "olw").write_text(
+        "#!/bin/bash\n"
+        f"code=$(head -n1 {tmp_path}/exits); sed -i.bak 1d {tmp_path}/exits\n"
+        f"echo olw >> {tmp_path}/calls; exit $code\n"
+    )
+    (bin_dir / "sleep").write_text(f"#!/bin/bash\necho $1 >> {tmp_path}/slept\n")
+    for f in ("olw", "sleep"):
+        (bin_dir / f).chmod(0o755)
+    path = tmp_path / "step.sh"
+    path.write_text(script)
+    return path, bin_dir
+
+
+def _run_step(tmp_path, exits):
+    import os
+    import subprocess
+
+    script, bin_dir = _forecast_step_script(tmp_path, exits)
+    env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "RUNNER_TEMP": str(tmp_path)}
+    done = subprocess.run(["bash", "-e", str(script)], env=env, capture_output=True, text=True)
+    calls = (tmp_path / "calls").read_text().count("olw") if (tmp_path / "calls").exists() else 0
+    slept = (tmp_path / "slept").read_text().split() if (tmp_path / "slept").exists() else []
+    return done.returncode, calls, slept
+
+
+def test_a_fetch_failure_is_tried_once_more_after_a_wait(tmp_path):
+    from openlocalweather.cli import EXIT_FETCH_FAILED
+
+    code, calls, slept = _run_step(tmp_path, [EXIT_FETCH_FAILED, 0])
+
+    assert (code, calls) == (0, 2)
+    assert slept and int(slept[0]) >= 600, "a blip needs minutes, not seconds"
+
+
+def test_a_second_fetch_failure_fails_the_run(tmp_path):
+    from openlocalweather.cli import EXIT_FETCH_FAILED
+
+    code, calls, _ = _run_step(tmp_path, [EXIT_FETCH_FAILED, EXIT_FETCH_FAILED])
+
+    assert (code, calls) == (EXIT_FETCH_FAILED, 2)
+
+
+def test_any_other_failure_is_not_retried(tmp_path):
+    """A failed model call has spent from the day's allowance."""
+    code, calls, slept = _run_step(tmp_path, [1, 0])
+
+    assert (code, calls, slept) == (1, 1, [])
