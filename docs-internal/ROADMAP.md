@@ -15,6 +15,16 @@ follows `spec/README.md`.
 
 ---
 
+## Working order, as of 2026-11-24
+
+**Item 200, the Discussion, is the work now**, from step 1, the drivers
+brief. Done since 11-02: the tiles in both units; a security policy; the
+provider secrets named one by one after GitHub held runs from 11-14 to
+11-18; a partial answer handed to the next link; one retry after a
+required fetch fails (2026-11-24, Open-Meteo timed out at 03:01Z).
+Waiting on the operator: the EUMETSAT keys (item 41), not needed before
+item 200.
+
 ## Working order, as of 2026-11-02
 
 The 10-01 block below is kept for its reasoning; its plan is mostly done.
@@ -27151,6 +27161,83 @@ Not done: item 173 point 1.
 **Point 1 is item 189 (2026-10-01):** the code blend as the served call,
 the required path rather than the fallback, with the LLM's call kept as a
 hidden scored row.
+
+---
+
+## 200. The Discussion: code finds the drivers, any model writes the why · **In progress — designed and approved 2026-11-24**
+
+The operator, 2026-11-18: the project was meant to replace the US Area
+Forecast Discussion — the synthesis of what matters across the models and
+local data, the why, what is driving it and what follows — and the page
+now gives the what without the why. The comparison under item 195 found
+four of the five lost kinds of "why" need no new source. The operator's
+architecture, adopted here: code's forecast at all times; a separate,
+best-effort model job a few times a day for the discussion, giving up at
+its limits. Free and open source throughout, since the readers are where
+forecasting is poor. APP-FIRST: the discussion simply shows up in the
+app, and the page and email carry it as well, working the same way.
+
+**What a reader gets.** Code's tiles and sections always. A Discussion
+of two or three paragraphs when a model has written one, under its own
+issued time: what drives today, what follows over the coming days, how
+sure and why. Not shown before one exists or once it is stale.
+
+**1. The drivers brief, code only.** Python, then vectors, then Dart,
+like every shared rule. Each line a stated fact:
+- today's setup: the forward CAPE window, its timing and the models'
+  spread, the onset, the wind turn;
+- what follows: days 1 to 3 against 4 to 7, wet-model share and highs;
+- the lean: where the call sits between the models, from the bias record;
+- yesterday: the call against what was observed, and a short streak;
+- the met service: agreeing or not;
+- the pattern: today's ring, better once item 103's data exists.
+About 1,500 tokens in full and about 700 in a mini tier for on-device
+models (Apple's 4,096-token budget, item 191).
+
+**2. The writer's rule.** One field, about 180 words, under code's
+heading. Every figure from the brief, as now. No locked phrases, which
+produced most refusals. Interpretation allowed and asked for. No model
+ids; the credit names the model.
+
+**3. Pipeline delivery, item 194's mechanism.** A best-effort job every
+two to three hours from the forecast run to local evening, the chain in
+order under per-link daily allowances, stopping once one discussion
+passes. Stored on the entry as `discussion` (text, issued time, model,
+the drivers' hash). On the page it takes the place of code's Synoptic
+Overview and Confidence Notes while fresh; theirs return when it is not.
+The mailer holds about three hours for it, then sends what exists
+(item 194).
+
+**4. App delivery.** Viewer mode shows the published discussion and
+re-fetches on resume while one is pending. Own-key mode builds the
+drivers brief in Dart, asks the reader's chain once after the forecast
+and retries on resume within a daily allowance. On-device models are a
+later route for the mini tier.
+
+**5. Changes.** The per-section rewrite of code's sections goes off by
+default and stays configurable; its calls go to the discussion. Retiring
+the 56K-token scored call is not decided here.
+
+**6. Measured before shipping.** Drivers for about 30 archived days, the
+discussion prompt run on Groq and Gemini through a probe workflow: the
+pass rate, and five samples beside their drivers for the operator to
+read. Code checks figures, not insight; the operator's read is the gate.
+
+**Order.** 1, the drivers; 2, the prompt, the rule and the backtest, then
+the operator's read; 3, pipeline delivery; 4, the app; later, the mini
+tier, item 103's pattern data, lightning (item 41) as a driver.
+
+**Decided 2026-11-24.** The rewrite off by default; the mailer holds
+about three hours; item 200 absorbs the direction of items 194 and 195,
+whose scored claims stay a later step.
+
+**Not decided: local notes.** Operator-written climatology lines in
+`location.yaml` would bring back mechanism (a lake breeze setting off
+afternoon storms) without the model inventing it. The operator declined
+them for now: a fork's operator may not be able to write them, and
+nothing here should depend on what does not scale. To discuss, including
+what code can derive for any fork, such as an onshore turn computed from
+the bearing between the primary point and a secondary point over water.
 
 ---
 
