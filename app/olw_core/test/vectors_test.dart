@@ -1734,6 +1734,31 @@ void main() {
         expect(got, c['expected'], reason: c['name'] as String);
       }
     });
+
+    // Upstream item 200: the Discussion's drivers and the recent record.
+    test('recent_calls', () {
+      for (final c in casesOf('recent_calls.json')) {
+        final input = c['input'] as Map<String, Object?>;
+        final got = recentCalls(
+          (input['entries'] as Map).cast<String, Object?>(),
+          (input['actuals'] as Map).cast<String, Object?>(),
+          input['today'] as String,
+          days: input['days'] as int,
+        );
+        expect(got, c['expected'], reason: c['name'] as String);
+      }
+    });
+
+    test('drivers', () {
+      for (final c in casesOf('drivers.json')) {
+        final input = c['input'] as Map<String, Object?>;
+        final got = renderDrivers(
+          BriefInputs.fromJson((input['inputs'] as Map).cast<String, Object?>()),
+          [for (final r in input['recent'] as List) (r as Map).cast<String, Object?>()],
+        );
+        expect(got, c['expected'], reason: c['name'] as String);
+      }
+    });
   });
 
   group('the writer', () {
@@ -2550,6 +2575,8 @@ void main() {
       'model_display_name.json',
       'brief_inputs.json',
       'brief.json',
+      'recent_calls.json',
+      'drivers.json',
       'rain_label.json',
       'onset_window_label.json',
       'cams_peak_aqi.json',

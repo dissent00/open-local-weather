@@ -160,6 +160,8 @@ absent values are `null`, never omitted keys.
 | `model_display_name.json` | `model_display_name` | The sign-off's name for a model id. |
 | `brief_inputs.json` | `BriefInputs.from_user_prompt` | The writer's brief parsed from an archived user prompt and the stored day (item 191): each block the brief reads, the review's established findings only, the basin pressure reduced to a range and a three-day change. |
 | `brief.json` | `render_brief` | The brief's text for the enabled sections at a tier (item 191): the blocks those sections read, in the page's order, model ids as the page's names, whole numbers without a point. |
+| `recent_calls.json` | `recent_calls` | Code's call for each recent day beside the scored observation and the station's own rain and thunder reports, newest first (item 200). |
+| `drivers.json` | `render_drivers` | The Discussion's drivers (item 200): today's setup, days 1-2 against 4-5 over the same models, the lean and its highs record, yesterday and the rain call's run, the met service, the pattern. |
 | `sustained_wind_gap.json` | `sustained_wind_gap` | 7 |
 | `cell_key.json` | `cell_key` | 12 |
 | `convective_timing.json` | `convective_timing` | 14 |

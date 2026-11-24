@@ -159,6 +159,8 @@ NOT_PHRASE_VECTORS = frozenset({
     # vectors (extended_trend, wind_describe_shift, wind_timeline, …).
     "brief.json",
     "brief_inputs.json",
+    # The drivers are writer's input too, indented the same way — item 200.
+    "drivers.json",
 })
 
 
@@ -7478,6 +7480,112 @@ def export_brief() -> None:
     )
 
 
+def export_drivers() -> None:
+    """The Discussion's drivers — ROADMAP item 200 step 1. `recent_calls.json`
+    pins the pairing of code's call with the observation; `drivers.json`
+    the drivers over 2026-10-07's inputs, with the day table and the record
+    varied across each threshold."""
+    from openlocalweather.brief import BriefInputs, recent_calls, render_drivers
+
+    fixtures = Path(__file__).resolve().parent.parent / "tests" / "fixtures"
+    prompt = (fixtures / "user_prompt_2026-10-07.txt").read_text()
+    entry = json.loads((fixtures / "brief_entry_2026-10-07.json").read_text())
+    names = dict(secondary_name="Winam Gulf", met_service_name="Kenya Met", met_service_model_id="kenya_met")
+    inputs = BriefInputs.from_user_prompt(prompt, entry, **names)
+
+    def called(rain, high):
+        return {"served_call": {"today_properties": {"rain": rain, "temp_high_c": high}}}
+
+    entries = {
+        "2026-10-06": called(True, 30.5), "2026-10-05": called(False, 31.0), "2026-10-04": called(True, 30.0),
+        "2026-10-03": {}, "2026-10-02": called(False, 29.0), "2026-09-30": called(True, 28.0),
+    }
+    actuals = {
+        "2026-10-06": {"rain": False, "precip_mm": 0.3, "high_c": 31.4, "precipitation": True, "thunder": True},
+        "2026-10-05": {"rain": False, "precip_mm": 0.0, "high_c": 30.0, "precipitation": False, "thunder": False},
+        "2026-10-04": {"rain": True, "precip_mm": 6.2, "high_c": 28.5},
+    }
+
+    def recent_case(name, today, days):
+        return {
+            "name": name,
+            "input": {"entries": entries, "actuals": actuals, "today": today, "days": days},
+            "expected": recent_calls(entries, actuals, today, days=days),
+        }
+
+    write(
+        "recent_calls.json",
+        "recent_calls",
+        "Each of the days before today that has a served call, newest first: code's rain and high "
+        "beside the scored observation and the station's own rain and thunder reports.",
+        [
+            recent_case("a week, one day without a call, one not observed", "2026-10-07", 7),
+            recent_case("three days", "2026-10-07", 3),
+            recent_case("across a month's end", "2026-10-01", 3),
+        ],
+    )
+    recent = recent_calls(entries, actuals, "2026-10-07")
+
+    four = ["gfs_seamless", "ecmwf_ifs025", "icon_seamless", "ukmo_seamless"]
+
+    def days(early_high=30.0, late_high=30.0, early_wet=(3, 3), late_wet=(3, 3), late_models=four):
+        def d(lead, name, high, wet, models=four):
+            return {"lead_time_days": lead, "day_name": name, "models": models, "wet_votes": wet, "high_c": high}
+        return [
+            d(1, "Thursday", early_high, early_wet[0]), d(2, "Friday", early_high + 0.4, early_wet[1]),
+            d(3, "Saturday", 29.0, 4),
+            d(4, "Sunday", late_high, late_wet[0], late_models), d(5, "Monday", late_high - 0.4, late_wet[1]),
+            d(6, "Tuesday", 25.0, 0, four[:3]), d(7, "Wednesday", 24.0, 0, four[:2]),
+        ]
+
+    day0 = [r for r in inputs.predictions if not (r.get("lead") == "day0" and r.get("model") == "kenya_met")]
+    theirs = next(r for r in inputs.predictions if r.get("lead") == "day0" and r.get("model") == "kenya_met")
+    stormy = {**(inputs.instability or {}), "convective": True}
+    storm_finding = {
+        "kind": "convective", "checks": 40,
+        "claim": "At Day+0, gfs_seamless does not see this location's thunderstorms coming.",
+    }
+
+    def case(name, recent_days=recent, **changes):
+        i = BriefInputs.from_json({**inputs.to_json(), **changes})
+        return {
+            "name": name,
+            "input": {"inputs": i.to_json(), "recent": recent_days},
+            "expected": render_drivers(i, recent_days),
+        }
+
+    write(
+        "drivers.json",
+        "render_drivers",
+        "The Discussion's drivers (item 200): today's setup, days 1-2 against 4-5 over the same "
+        "models with a 2-degree and a three-in-eight wet threshold, the lean and its highs record, "
+        "yesterday and the rain call's run, the met service, the pattern; nothing when there is nothing.",
+        [
+            case("2026-10-07 as archived"),
+            case("steady through day 5", extended_days=days()),
+            # Means 30.2 and 28.3 / 28.2: the pairs' offsets make the edge exact.
+            case("highs just under the threshold", extended_days=days(late_high=28.5)),
+            case("highs at the threshold", extended_days=days(late_high=28.4)),
+            case("highs turning cooler", extended_days=days(late_high=28.0)),
+            case("highs turning warmer", extended_days=days(late_high=32.6)),
+            case("three wet model-days in eight, drier", extended_days=days(early_wet=(4, 4), late_wet=(2, 3))),
+            case("two in eight is steady", extended_days=days(early_wet=(4, 4), late_wet=(3, 3))),
+            case("turning wetter", extended_days=days(early_wet=(1, 1), late_wet=(3, 2))),
+            case("a different model set, no comparison", extended_days=days(late_models=four[:3])),
+            case("the met service agrees", predictions=[*day0, {**theirs, "rain": "true"}]),
+            case("the met service disagrees", predictions=[*day0, {**theirs, "rain": "false"}]),
+            case("no met service forecast", predictions=day0),
+            case("no met service", met_service_name=None, met_service_model_id=None),
+            case("thunder record while convective", instability=stormy, review_findings=[storm_finding]),
+            case("no thunder today", instability={**stormy, "convective": False}, review_findings=[storm_finding]),
+            case("yesterday not yet observed", recent_days=recent_calls({"2026-10-06": called(True, 30.5)}, {}, "2026-10-07")),
+            case("no record at all", recent_days=[]),
+            {"name": "nothing to say", "input": {"inputs": BriefInputs().to_json(), "recent": []},
+             "expected": render_drivers(BriefInputs(), [])},
+        ],
+    )
+
+
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     print("Exporting cross-language test vectors:")
@@ -7546,6 +7654,7 @@ def main() -> None:
     export_extended_outlook()
     export_writer()
     export_brief()
+    export_drivers()
     print("\nDone. Commit the result — the vectors are the contract.")
 
 

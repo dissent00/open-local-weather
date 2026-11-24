@@ -601,6 +601,266 @@ def _sufficiency_block(i: BriefInputs, tier: str) -> str | None:
     return f"DATA SUFFICIENCY: {_short_names(i, i.data_sufficiency)}"
 
 
+# --- the drivers: item 200 ---------------------------------------------------
+
+# WHAT FOLLOWS compares days 1-2 with days 4-5, not 1-3 with 4-7. Measured
+# 2026-11-24 over 46 archived days: four models reach day 5, three day 6,
+# two day 7, and "thunder likely" falls from 42-44 of 46 days at short
+# range to 0 at day 7, where two models can only say "possible". Against
+# days 4-7, "thunder likely" fell on most days and the highs leaned cooler
+# (median -0.7 degrees) for no reason but the horizon. Thunder is left out
+# of the comparison for the same reason.
+FOLLOWS_EARLY_LEADS = (1, 2)
+FOLLOWS_LATE_LEADS = (4, 5)
+# Measured on days 1-2 against 4-5 over 40 days with observations: a
+# change of 2 degrees in the models' mean high fired on 11, and on 10 of
+# those the observed highs moved the same way by half a degree or more.
+# At 1.5 it fired on 17 with 14 agreeing. The models exaggerate it
+# (median -0.8 forecast against -0.2 observed), so it is stated as theirs.
+FOLLOWS_HIGH_C = 2.0
+# One model of four changing its mind is noise in a wet season: a quarter
+# share fired on 15 of 46 days. Three wet model-days in eight (0.375)
+# fired on 4, which is the rarity a "turning wetter" line should have.
+FOLLOWS_WET_SHARE = 0.375
+RECENT_DAYS = 7
+# The review's label for the high (review.py's error rows); the lean quotes
+# only the finding on the high of the model the call sits nearest.
+_HIGHS_CLAIM = "daytime highs"
+PATTERN_STATEMENTS = 2
+_DAY0 = "day0"
+_DAY0_CLAIM = "At Day+0, "
+_SKY_WHEN = {"early": "early", "midday": "at midday", "evening": "in the evening"}
+
+
+def recent_calls(entries: dict[str, Any], actuals: dict[str, dict], today: str, *, days: int = RECENT_DAYS) -> list[dict]:
+    """Each of the `days` before `today` that has a served call: what code
+    called and what was observed, newest first. `entries` and `actuals` are
+    keyed by ISO date; a day not yet observed carries None."""
+    from datetime import date, timedelta
+
+    out = []
+    for ago in range(1, days + 1):
+        day = (date.fromisoformat(today) - timedelta(days=ago)).isoformat()
+        call = (_field(entries.get(day), "served_call") or {}).get("today_properties") or {}
+        if not call:
+            continue
+        seen = actuals.get(day) or {}
+        out.append({
+            "date": day,
+            "days_ago": ago,
+            "called_rain": call.get("rain"),
+            "called_high_c": call.get("temp_high_c"),
+            "observed_rain": seen.get("rain"),
+            "observed_precip_mm": seen.get("precip_mm"),
+            "observed_high_c": seen.get("high_c"),
+            # The station's own reports beside the scored reanalysis: on
+            # 2026-11-23 ERA5 scored 0.3 mm, dry, while the station reported
+            # rain and thunder, and a discussion should see both.
+            "station_rain": seen.get("precipitation"),
+            "station_thunder": seen.get("thunder"),
+        })
+    return out
+
+
+def render_drivers(inputs: BriefInputs, recent: list[dict]) -> str:
+    """The Discussion's drivers: code's reading of the guidance, each line
+    a stated fact for the writer to explain. `recent` is `recent_calls`."""
+    lines = [
+        *_setup_lines(inputs),
+        *_follows_lines(inputs),
+        *_lean_lines(inputs),
+        *_yesterday_lines(recent),
+        *_met_service_lines(inputs),
+    ]
+    if inputs.synoptic_statements:
+        lines.append("  pattern: " + " ".join(inputs.synoptic_statements[:PATTERN_STATEMENTS]))
+    if not lines:
+        return ""
+    return "DRIVERS (code's reading of the guidance; explain these, do not list them):\n" + "\n".join(lines) + "\n"
+
+
+def _setup_lines(i: BriefInputs) -> list[str]:
+    lines = []
+    inst = i.instability or {}
+    capes = [v for v in (inst.get("peak_cape_by_model") or {}).values() if v is not None]
+    if capes:
+        above = len(inst.get("models_above_threshold") or [])
+        if not inst.get("convective"):
+            line = "  today, instability: no model above the thunderstorm threshold"
+        else:
+            line = f"  today, instability: {above} of {len(capes)} models above the thunderstorm threshold"
+        line += f", peak CAPE {_num(min(capes), 0)} to {_num(max(capes), 0)} J/kg"
+        if inst.get("peak_model"):
+            line += f" (highest {short_model_name(str(inst['peak_model']))})"
+        if inst.get("convective") and inst.get("peak_hour"):
+            line += f", peaking at {inst['peak_hour']}"
+        lines.append(line)
+
+    rows = _day0_model_rows(i)
+    call = (i.served_call or {}).get("today_properties") or {}
+    if rows or call:
+        bits = []
+        if rows:
+            wet = sum(1 for r in rows if r.get("rain") == "true")
+            bits.append(f"{wet} of {len(rows)} models wet")
+        if call.get("rain"):
+            onset = call.get("onset_window") or call.get("onset_hour")
+            said = "the call: rain" + (f", onset {onset[:1].lower()}{onset[1:]}" if onset else "")
+            if call.get("precip_mm") is not None:
+                said += f", {_num(call['precip_mm'], 1)} mm"
+            bits.append(said)
+        elif call.get("rain") is False:
+            bits.append("the call: dry")
+        lines.append("  today, rain: " + "; ".join(bits))
+
+    if i.wind_shift:
+        lines.append(f"  today, wind: {i.wind_shift}")
+    sky = [(when, str(word).lower()) for when, word in (i.sky_anchors or {}).items() if word]
+    if sky:
+        if len({word for _, word in sky}) == 1:
+            lines.append(f"  today, sky: {sky[0][1]} all day")
+        else:
+            lines.append("  today, sky: " + ", ".join(f"{word} {_SKY_WHEN.get(when, when)}" for when, word in sky))
+    return lines
+
+
+def _follows_lines(i: BriefInputs) -> list[str]:
+    by_lead = {_int(d.get("lead_time_days")): d for d in i.extended_days}
+    early = [by_lead.get(lead) for lead in FOLLOWS_EARLY_LEADS]
+    late = [by_lead.get(lead) for lead in FOLLOWS_LATE_LEADS]
+    if any(d is None for d in early + late):
+        return []
+    models = set(early[0].get("models") or [])
+    if not models or any(set(d.get("models") or []) != models for d in early + late):
+        return []
+    if any(d.get("high_c") is None for d in early + late):
+        return []
+
+    n = len(models)
+    span = lambda ds: f"{ds[0].get('day_name')}–{ds[-1].get('day_name')}"
+    lines = [f"  what follows ({span(early)} against {span(late)}, the same {n} models):"]
+
+    high_a = (_float(early[0]["high_c"]) + _float(early[1]["high_c"])) / 2
+    high_b = (_float(late[0]["high_c"]) + _float(late[1]["high_c"])) / 2
+    change = high_b - high_a
+    if abs(change) >= FOLLOWS_HIGH_C:
+        word = "warmer" if change > 0 else "cooler"
+        lines.append(f"    highs {_num(high_a, 0)} °C, then {_num(high_b, 0)} °C: turning {word}")
+    else:
+        lines.append(f"    highs steady near {_num(high_a, 0)} °C")
+
+    wet_a = sum(_int(d.get("wet_votes")) or 0 for d in early)
+    wet_b = sum(_int(d.get("wet_votes")) or 0 for d in late)
+    per_day = lambda votes: _num(votes / 2)
+    if abs(wet_b - wet_a) / (2 * n) >= FOLLOWS_WET_SHARE:
+        word = "wetter" if wet_b > wet_a else "drier"
+        lines.append(f"    wet models {per_day(wet_a)} of {n} a day, then {per_day(wet_b)} of {n}: turning {word}")
+    else:
+        lines.append(f"    wet models steady near {per_day(wet_a)} of {n} a day")
+
+    beyond = [
+        d for lead, d in sorted((k, v) for k, v in by_lead.items() if k is not None and k > FOLLOWS_LATE_LEADS[-1])
+        if len(d.get("models") or []) < n
+    ]
+    if beyond:
+        reach = " and ".join(f"{d.get('day_name')} ({len(d.get('models') or [])})" for d in beyond)
+        lines.append(f"    beyond {late[-1].get('day_name')}: fewer models reach {reach}")
+    return lines
+
+
+def _lean_lines(i: BriefInputs) -> list[str]:
+    call = (i.served_call or {}).get("today_properties") or {}
+    rows = _day0_model_rows(i)
+    lines = []
+    high_model = None
+    for key, label, unit, more in (("high_c", "high", "°C", "warmer"), ("precip_mm", "rain", "mm", "wetter")):
+        target = _float(call.get("temp_high_c" if key == "high_c" else key))
+        values = [(str(r.get("model")), _float(r.get(key))) for r in rows if _float(r.get(key)) is not None]
+        if target is None or not values:
+            continue
+        nearest, value = min(values, key=lambda mv: abs(mv[1] - target))
+        if key == "high_c":
+            high_model = nearest
+        above = sum(1 for _, v in values if v > target)
+        lines.append(
+            f"  the lean, {label}: the call's {_num(target, 1)} {unit} is nearest {_name(i, nearest)} "
+            f"({_num(value, 1)} {unit}); {above} of {len(values)} models {more}"
+        )
+
+    if high_model:
+        prefix = f"{_DAY0_CLAIM}{high_model} "
+        claim = next((
+            str(f.get("claim")) for f in i.review_findings
+            if str(f.get("claim")).startswith(prefix) and _HIGHS_CLAIM in str(f.get("claim"))
+        ), None)
+        if claim:
+            lines.append("  the lean, record: " + _short_names(i, claim[len(_DAY0_CLAIM):]).rstrip("."))
+    if (i.instability or {}).get("convective"):
+        storms = [
+            _short_names(i, str(f.get("claim"))[len(_DAY0_CLAIM):]).rstrip(".")
+            for f in i.review_findings
+            if f.get("kind") == "convective" and str(f.get("claim")).startswith(_DAY0_CLAIM)
+        ]
+        if storms:
+            lines.append("  the record, thunder: " + "; ".join(storms))
+    return lines
+
+
+def _yesterday_lines(recent: list[dict]) -> list[str]:
+    lines = []
+    yesterday = next((r for r in recent if r.get("days_ago") == 1), None)
+    if yesterday:
+        rain = lambda v: "rain" if v else "dry" if v is False else "unknown"
+        if yesterday.get("observed_rain") is None and yesterday.get("observed_high_c") is None:
+            lines.append(f"  yesterday: called {rain(yesterday.get('called_rain'))}; not yet observed")
+        else:
+            line = f"  yesterday: called {rain(yesterday.get('called_rain'))}, observed {rain(yesterday.get('observed_rain'))}"
+            if yesterday.get("observed_precip_mm") is not None:
+                line += f" ({_num(yesterday['observed_precip_mm'], 1)} mm)"
+            reported = [w for w, k in (("rain", "station_rain"), ("thunder", "station_thunder")) if yesterday.get(k)]
+            if reported:
+                line += f", the station reporting {' and '.join(reported)}"
+            if yesterday.get("called_high_c") is not None and yesterday.get("observed_high_c") is not None:
+                line += (
+                    f"; called a high of {_num(yesterday['called_high_c'], 1)} °C, "
+                    f"observed {_num(yesterday['observed_high_c'], 1)} °C"
+                )
+            lines.append(line)
+    scored = [
+        r for r in recent if isinstance(r.get("called_rain"), bool) and isinstance(r.get("observed_rain"), bool)
+    ]
+    if scored:
+        right = sum(1 for r in scored if r["called_rain"] == r["observed_rain"])
+        lines.append(f"  the rain call: right on {right} of the last {len(scored)} days observed")
+    return lines
+
+
+def _met_service_lines(i: BriefInputs) -> list[str]:
+    if not i.met_service_name:
+        return []
+    row = next(
+        (r for r in i.predictions if r.get("lead") == _DAY0 and r.get("model") == i.met_service_model_id), None,
+    )
+    called = ((i.served_call or {}).get("today_properties") or {}).get("rain")
+    if row is None or row.get("rain") not in ("true", "false"):
+        return [f"  met service: no forecast from {i.met_service_name} this run"]
+    theirs = row["rain"] == "true"
+    word = "rain" if theirs else "dry"
+    if called is None:
+        return [f"  met service: {i.met_service_name} calls {word}"]
+    if theirs == bool(called):
+        return [f"  met service: {i.met_service_name} agrees, {word}"]
+    return [f"  met service: {i.met_service_name} calls {word}, against the call's {'rain' if called else 'dry'}"]
+
+
+def _day0_model_rows(i: BriefInputs) -> list[dict]:
+    """Today's per-model rows, without the met service and the blends."""
+    return [
+        r for r in i.predictions
+        if r.get("lead") == _DAY0 and r.get("model") not in _HIDDEN_MODELS and r.get("model") != i.met_service_model_id
+    ]
+
+
 # --- parsing the archived prompt --------------------------------------------
 
 

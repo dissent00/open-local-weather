@@ -1289,6 +1289,9 @@ def test_every_vector_file_is_exercised():
         # The brief, item 191.
         "brief_inputs.json",
         "brief.json",
+        # The Discussion's drivers, item 200.
+        "recent_calls.json",
+        "drivers.json",
         "rain_label.json",
         "onset_window_label.json",
         "cams_peak_aqi.json",
@@ -1791,6 +1794,25 @@ def test_vectors_sections_to_ask():
     for case in load("sections_to_ask.json")["cases"]:
         i = case["input"]
         assert sections_to_ask(i["enabled"], BriefInputs.from_json(i["inputs"])) == case["expected"], case["name"]
+
+
+def test_vectors_recent_calls():
+    """ROADMAP item 200 — code's call beside what was observed."""
+    from openlocalweather.brief import recent_calls
+
+    for case in load("recent_calls.json")["cases"]:
+        i = case["input"]
+        got = recent_calls(i["entries"], i["actuals"], i["today"], days=i["days"])
+        assert got == case["expected"], case["name"]
+
+
+def test_vectors_drivers():
+    """ROADMAP item 200 — the Discussion's drivers."""
+    from openlocalweather.brief import BriefInputs, render_drivers
+
+    for case in load("drivers.json")["cases"]:
+        i = case["input"]
+        assert render_drivers(BriefInputs.from_json(i["inputs"]), i["recent"]) == case["expected"], case["name"]
 
 
 def test_vectors_audit_section():

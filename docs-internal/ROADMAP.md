@@ -27194,6 +27194,29 @@ like every shared rule. Each line a stated fact:
 About 1,500 tokens in full and about 700 in a mini tier for on-device
 models (Apple's 4,096-token budget, item 191).
 
+**Step 1 built 2026-11-24.** `render_drivers` and `recent_calls` in
+`brief.py`, vectors `drivers.json` and `recent_calls.json`, the Dart port
+in `brief.dart`; 4,000 random inputs swept through both, no mismatch.
+Measured first, and it changed the design:
+- Days 1–3 against 4–7 is a horizon artifact. Four models reach day 5,
+  three day 6, two day 7; "thunder likely" falls from 42–44 of 46 days to
+  0 at day 7. What follows compares days 1–2 with 4–5 over the same
+  models only, leaves thunder out, and names the days fewer models reach.
+- Highs turn at 2 °C: fired on 11 of 40 observed days, 10 of them with the
+  observed highs moving the same way. The models exaggerate the change
+  (median −0.8 against −0.2 observed).
+- The wet share turns at three model-days in eight: fired on 4 of 46. A
+  quarter (one model of four) fired on 15, which is noise in this season.
+- Yesterday shows the scored observation beside the station's own
+  reports: on 11-23 ERA5 scored 0.3 mm, dry, while the station reported
+  rain and thunder.
+- The lean quotes one record finding, the highs one for the model the
+  call sits nearest.
+Over the 77 archived days: no failures, median 1,291 characters (about
+350 tokens), most 1,553. No mini tier yet; it waits for the on-device
+route. Not yet wired to anything: step 3 builds `recent_calls` from the
+log and the actuals cache.
+
 **2. The writer's rule.** One field, about 180 words, under code's
 heading. Every figure from the brief, as now. No locked phrases, which
 produced most refusals. Interpretation allowed and asked for. No model

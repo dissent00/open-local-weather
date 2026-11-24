@@ -1,0 +1,325 @@
+{
+  "vector_format_version": 1,
+  "function": "recent_calls",
+  "description": "Each of the days before today that has a served call, newest first: code's rain and high beside the scored observation and the station's own rain and thunder reports.",
+  "cases": [
+    {
+      "name": "a week, one day without a call, one not observed",
+      "input": {
+        "entries": {
+          "2026-10-06": {
+            "served_call": {
+              "today_properties": {
+                "rain": true,
+                "temp_high_c": 30.5
+              }
+            }
+          },
+          "2026-10-05": {
+            "served_call": {
+              "today_properties": {
+                "rain": false,
+                "temp_high_c": 31.0
+              }
+            }
+          },
+          "2026-10-04": {
+            "served_call": {
+              "today_properties": {
+                "rain": true,
+                "temp_high_c": 30.0
+              }
+            }
+          },
+          "2026-10-03": {},
+          "2026-10-02": {
+            "served_call": {
+              "today_properties": {
+                "rain": false,
+                "temp_high_c": 29.0
+              }
+            }
+          },
+          "2026-09-30": {
+            "served_call": {
+              "today_properties": {
+                "rain": true,
+                "temp_high_c": 28.0
+              }
+            }
+          }
+        },
+        "actuals": {
+          "2026-10-06": {
+            "rain": false,
+            "precip_mm": 0.3,
+            "high_c": 31.4,
+            "precipitation": true,
+            "thunder": true
+          },
+          "2026-10-05": {
+            "rain": false,
+            "precip_mm": 0.0,
+            "high_c": 30.0,
+            "precipitation": false,
+            "thunder": false
+          },
+          "2026-10-04": {
+            "rain": true,
+            "precip_mm": 6.2,
+            "high_c": 28.5
+          }
+        },
+        "today": "2026-10-07",
+        "days": 7
+      },
+      "expected": [
+        {
+          "date": "2026-10-06",
+          "days_ago": 1,
+          "called_rain": true,
+          "called_high_c": 30.5,
+          "observed_rain": false,
+          "observed_precip_mm": 0.3,
+          "observed_high_c": 31.4,
+          "station_rain": true,
+          "station_thunder": true
+        },
+        {
+          "date": "2026-10-05",
+          "days_ago": 2,
+          "called_rain": false,
+          "called_high_c": 31.0,
+          "observed_rain": false,
+          "observed_precip_mm": 0.0,
+          "observed_high_c": 30.0,
+          "station_rain": false,
+          "station_thunder": false
+        },
+        {
+          "date": "2026-10-04",
+          "days_ago": 3,
+          "called_rain": true,
+          "called_high_c": 30.0,
+          "observed_rain": true,
+          "observed_precip_mm": 6.2,
+          "observed_high_c": 28.5,
+          "station_rain": null,
+          "station_thunder": null
+        },
+        {
+          "date": "2026-10-02",
+          "days_ago": 5,
+          "called_rain": false,
+          "called_high_c": 29.0,
+          "observed_rain": null,
+          "observed_precip_mm": null,
+          "observed_high_c": null,
+          "station_rain": null,
+          "station_thunder": null
+        },
+        {
+          "date": "2026-09-30",
+          "days_ago": 7,
+          "called_rain": true,
+          "called_high_c": 28.0,
+          "observed_rain": null,
+          "observed_precip_mm": null,
+          "observed_high_c": null,
+          "station_rain": null,
+          "station_thunder": null
+        }
+      ]
+    },
+    {
+      "name": "three days",
+      "input": {
+        "entries": {
+          "2026-10-06": {
+            "served_call": {
+              "today_properties": {
+                "rain": true,
+                "temp_high_c": 30.5
+              }
+            }
+          },
+          "2026-10-05": {
+            "served_call": {
+              "today_properties": {
+                "rain": false,
+                "temp_high_c": 31.0
+              }
+            }
+          },
+          "2026-10-04": {
+            "served_call": {
+              "today_properties": {
+                "rain": true,
+                "temp_high_c": 30.0
+              }
+            }
+          },
+          "2026-10-03": {},
+          "2026-10-02": {
+            "served_call": {
+              "today_properties": {
+                "rain": false,
+                "temp_high_c": 29.0
+              }
+            }
+          },
+          "2026-09-30": {
+            "served_call": {
+              "today_properties": {
+                "rain": true,
+                "temp_high_c": 28.0
+              }
+            }
+          }
+        },
+        "actuals": {
+          "2026-10-06": {
+            "rain": false,
+            "precip_mm": 0.3,
+            "high_c": 31.4,
+            "precipitation": true,
+            "thunder": true
+          },
+          "2026-10-05": {
+            "rain": false,
+            "precip_mm": 0.0,
+            "high_c": 30.0,
+            "precipitation": false,
+            "thunder": false
+          },
+          "2026-10-04": {
+            "rain": true,
+            "precip_mm": 6.2,
+            "high_c": 28.5
+          }
+        },
+        "today": "2026-10-07",
+        "days": 3
+      },
+      "expected": [
+        {
+          "date": "2026-10-06",
+          "days_ago": 1,
+          "called_rain": true,
+          "called_high_c": 30.5,
+          "observed_rain": false,
+          "observed_precip_mm": 0.3,
+          "observed_high_c": 31.4,
+          "station_rain": true,
+          "station_thunder": true
+        },
+        {
+          "date": "2026-10-05",
+          "days_ago": 2,
+          "called_rain": false,
+          "called_high_c": 31.0,
+          "observed_rain": false,
+          "observed_precip_mm": 0.0,
+          "observed_high_c": 30.0,
+          "station_rain": false,
+          "station_thunder": false
+        },
+        {
+          "date": "2026-10-04",
+          "days_ago": 3,
+          "called_rain": true,
+          "called_high_c": 30.0,
+          "observed_rain": true,
+          "observed_precip_mm": 6.2,
+          "observed_high_c": 28.5,
+          "station_rain": null,
+          "station_thunder": null
+        }
+      ]
+    },
+    {
+      "name": "across a month's end",
+      "input": {
+        "entries": {
+          "2026-10-06": {
+            "served_call": {
+              "today_properties": {
+                "rain": true,
+                "temp_high_c": 30.5
+              }
+            }
+          },
+          "2026-10-05": {
+            "served_call": {
+              "today_properties": {
+                "rain": false,
+                "temp_high_c": 31.0
+              }
+            }
+          },
+          "2026-10-04": {
+            "served_call": {
+              "today_properties": {
+                "rain": true,
+                "temp_high_c": 30.0
+              }
+            }
+          },
+          "2026-10-03": {},
+          "2026-10-02": {
+            "served_call": {
+              "today_properties": {
+                "rain": false,
+                "temp_high_c": 29.0
+              }
+            }
+          },
+          "2026-09-30": {
+            "served_call": {
+              "today_properties": {
+                "rain": true,
+                "temp_high_c": 28.0
+              }
+            }
+          }
+        },
+        "actuals": {
+          "2026-10-06": {
+            "rain": false,
+            "precip_mm": 0.3,
+            "high_c": 31.4,
+            "precipitation": true,
+            "thunder": true
+          },
+          "2026-10-05": {
+            "rain": false,
+            "precip_mm": 0.0,
+            "high_c": 30.0,
+            "precipitation": false,
+            "thunder": false
+          },
+          "2026-10-04": {
+            "rain": true,
+            "precip_mm": 6.2,
+            "high_c": 28.5
+          }
+        },
+        "today": "2026-10-01",
+        "days": 3
+      },
+      "expected": [
+        {
+          "date": "2026-09-30",
+          "days_ago": 1,
+          "called_rain": true,
+          "called_high_c": 28.0,
+          "observed_rain": null,
+          "observed_precip_mm": null,
+          "observed_high_c": null,
+          "station_rain": null,
+          "station_thunder": null
+        }
+      ]
+    }
+  ]
+}

@@ -12,6 +12,7 @@ import 'outlook.dart' show modelShortNames, shortModelName;
 import 'py_text.dart';
 import 'rounding.dart';
 import 'models.dart' show formatKmh;
+import 'dates.dart' show addDays, formatDate, parseDate;
 
 const sectionToday = 'today';
 const sectionExtended = 'extended';
@@ -670,6 +671,298 @@ String? _sufficiencyBlock(BriefInputs i, String tier) {
 }
 
 // --- parsing the prompt -------------------------------------------------
+
+// --- the drivers: item 200 ---------------------------------------------------
+//
+// Mirrors `brief.render_drivers` and `brief.recent_calls`; the measured
+// thresholds and why days 1-2 meet 4-5 are recorded there.
+
+const List<int> _followsEarlyLeads = [1, 2];
+const List<int> _followsLateLeads = [4, 5];
+const _followsHighC = 2.0;
+const _followsWetShare = 0.375;
+const recentDays = 7;
+const _highsClaim = 'daytime highs';
+const _patternStatements = 2;
+const _day0 = 'day0';
+const _day0Claim = 'At Day+0, ';
+const Map<String, String> _skyWhen = {'early': 'early', 'midday': 'at midday', 'evening': 'in the evening'};
+
+/// Each of the [days] before [today] that has a served call: what code
+/// called and what was observed, newest first.
+List<Map<String, Object?>> recentCalls(
+  Map<String, Object?> entries,
+  Map<String, Object?> actuals,
+  String today, {
+  int days = recentDays,
+}) {
+  final out = <Map<String, Object?>>[];
+  for (var ago = 1; ago <= days; ago++) {
+    final day = formatDate(addDays(parseDate(today), -ago));
+    final served = _map(_map(entries[day])?['served_call']);
+    final call = _map(served?['today_properties']) ?? const {};
+    if (call.isEmpty) continue;
+
+    final seen = _map(actuals[day]) ?? const {};
+    out.add({
+      'date': day,
+      'days_ago': ago,
+      'called_rain': call['rain'],
+      'called_high_c': call['temp_high_c'],
+      'observed_rain': seen['rain'],
+      'observed_precip_mm': seen['precip_mm'],
+      'observed_high_c': seen['high_c'],
+      'station_rain': seen['precipitation'],
+      'station_thunder': seen['thunder'],
+    });
+  }
+  return out;
+}
+
+/// The Discussion's drivers: code's reading of the guidance, each line a
+/// stated fact for the writer to explain. [recent] is [recentCalls].
+String renderDrivers(BriefInputs inputs, List<Map<String, Object?>> recent) {
+  final lines = [
+    ..._setupLines(inputs),
+    ..._followsLines(inputs),
+    ..._leanLines(inputs),
+    ..._yesterdayLines(recent),
+    ..._metServiceLines(inputs),
+  ];
+  if (inputs.synopticStatements.isNotEmpty) {
+    lines.add('  pattern: ${inputs.synopticStatements.take(_patternStatements).join(' ')}');
+  }
+  if (lines.isEmpty) return '';
+  return "DRIVERS (code's reading of the guidance; explain these, do not list them):\n${lines.join('\n')}\n";
+}
+
+_Row _todayCall(BriefInputs i) => _map(i.servedCall?['today_properties']) ?? const {};
+
+List<String> _setupLines(BriefInputs i) {
+  final lines = <String>[];
+  final inst = i.instability ?? const {};
+  final capes = [
+    for (final v in (_map(inst['peak_cape_by_model']) ?? const {}).values)
+      if (v != null) _double(v)!,
+  ];
+  if (capes.isNotEmpty) {
+    final above = (inst['models_above_threshold'] as List? ?? const []).length;
+    final convective = _truthy(inst['convective']);
+    var line = convective
+        ? '  today, instability: $above of ${capes.length} models above the thunderstorm threshold'
+        : '  today, instability: no model above the thunderstorm threshold';
+    final lo = capes.reduce((a, b) => a < b ? a : b);
+    final hi = capes.reduce((a, b) => a > b ? a : b);
+    line += ', peak CAPE ${_num(lo, 0)} to ${_num(hi, 0)} J/kg';
+    if (_truthy(inst['peak_model'])) line += ' (highest ${shortModelName('${inst['peak_model']}')})';
+    if (convective && _truthy(inst['peak_hour'])) line += ', peaking at ${inst['peak_hour']}';
+    lines.add(line);
+  }
+
+  final rows = _day0ModelRows(i);
+  final call = _todayCall(i);
+  if (rows.isNotEmpty || call.isNotEmpty) {
+    final bits = <String>[];
+    if (rows.isNotEmpty) {
+      final wet = rows.where((r) => r['rain'] == 'true').length;
+      bits.add('$wet of ${rows.length} models wet');
+    }
+    if (_truthy(call['rain'])) {
+      final onset = _truthy(call['onset_window']) ? call['onset_window'] : call['onset_hour'];
+      var said = 'the call: rain';
+      if (_truthy(onset)) {
+        final text = '$onset';
+        said += ', onset ${text.substring(0, 1).toLowerCase()}${text.substring(1)}';
+      }
+      if (call['precip_mm'] != null) said += ', ${_num(call['precip_mm'], 1)} mm';
+      bits.add(said);
+    } else if (call['rain'] == false) {
+      bits.add('the call: dry');
+    }
+    lines.add('  today, rain: ${bits.join('; ')}');
+  }
+
+  if (i.windShift != null && i.windShift!.isNotEmpty) lines.add('  today, wind: ${i.windShift}');
+  final sky = [
+    for (final e in (i.skyAnchors ?? const {}).entries)
+      if (_truthy(e.value)) (e.key, '${e.value}'.toLowerCase()),
+  ];
+  if (sky.isNotEmpty) {
+    if ({for (final s in sky) s.$2}.length == 1) {
+      lines.add('  today, sky: ${sky.first.$2} all day');
+    } else {
+      lines.add('  today, sky: ${sky.map((s) => '${s.$2} ${_skyWhen[s.$1] ?? s.$1}').join(', ')}');
+    }
+  }
+  return lines;
+}
+
+List<String> _followsLines(BriefInputs i) {
+  final byLead = <int?, _Row>{for (final d in i.extendedDays) _int(d['lead_time_days']): d};
+  final early = [for (final lead in _followsEarlyLeads) byLead[lead]];
+  final late = [for (final lead in _followsLateLeads) byLead[lead]];
+  final all = [...early, ...late];
+  if (all.any((d) => d == null)) return const [];
+
+  Set<String> modelsOf(_Row? d) => {for (final m in d!['models'] as List? ?? const []) '$m'};
+  final models = modelsOf(early.first);
+  if (models.isEmpty || all.any((d) => !_sameSet(modelsOf(d), models))) return const [];
+  if (all.any((d) => d!['high_c'] == null)) return const [];
+
+  final n = models.length;
+  String span(List<_Row?> ds) => '${ds.first!['day_name']}–${ds.last!['day_name']}';
+  final lines = ['  what follows (${span(early)} against ${span(late)}, the same $n models):'];
+
+  final highA = (_double(early[0]!['high_c'])! + _double(early[1]!['high_c'])!) / 2;
+  final highB = (_double(late[0]!['high_c'])! + _double(late[1]!['high_c'])!) / 2;
+  final change = highB - highA;
+  if (change.abs() >= _followsHighC) {
+    final word = change > 0 ? 'warmer' : 'cooler';
+    lines.add('    highs ${_num(highA, 0)} °C, then ${_num(highB, 0)} °C: turning $word');
+  } else {
+    lines.add('    highs steady near ${_num(highA, 0)} °C');
+  }
+
+  final wetA = early.fold<int>(0, (sum, d) => sum + (_int(d!['wet_votes']) ?? 0));
+  final wetB = late.fold<int>(0, (sum, d) => sum + (_int(d!['wet_votes']) ?? 0));
+  String perDay(int votes) => _num(votes / 2);
+  if ((wetB - wetA).abs() / (2 * n) >= _followsWetShare) {
+    final word = wetB > wetA ? 'wetter' : 'drier';
+    lines.add('    wet models ${perDay(wetA)} of $n a day, then ${perDay(wetB)} of $n: turning $word');
+  } else {
+    lines.add('    wet models steady near ${perDay(wetA)} of $n a day');
+  }
+
+  final leads = [for (final k in byLead.keys) if (k != null && k > _followsLateLeads.last) k]..sort();
+  final beyond = [
+    for (final k in leads)
+      if ((byLead[k]!['models'] as List? ?? const []).length < n) byLead[k]!,
+  ];
+  if (beyond.isNotEmpty) {
+    final reach = beyond.map((d) => "${d['day_name']} (${(d['models'] as List? ?? const []).length})").join(' and ');
+    lines.add('    beyond ${late.last!['day_name']}: fewer models reach $reach');
+  }
+  return lines;
+}
+
+bool _sameSet(Set<String> a, Set<String> b) => a.length == b.length && a.containsAll(b);
+
+List<String> _leanLines(BriefInputs i) {
+  final call = _todayCall(i);
+  final rows = _day0ModelRows(i);
+  final lines = <String>[];
+  String? highModel;
+  for (final (key, label, unit, more) in const [
+    ('high_c', 'high', '°C', 'warmer'),
+    ('precip_mm', 'rain', 'mm', 'wetter'),
+  ]) {
+    final target = _double(call[key == 'high_c' ? 'temp_high_c' : key]);
+    final values = [
+      for (final r in rows)
+        if (_double(r[key]) != null) ('${r['model']}', _double(r[key])!),
+    ];
+    if (target == null || values.isEmpty) continue;
+
+    var nearest = values.first;
+    for (final v in values) {
+      if ((v.$2 - target).abs() < (nearest.$2 - target).abs()) nearest = v;
+    }
+    if (key == 'high_c') highModel = nearest.$1;
+    final above = values.where((v) => v.$2 > target).length;
+    lines.add(
+      "  the lean, $label: the call's ${_num(target, 1)} $unit is nearest ${_name(i, nearest.$1)} "
+      '(${_num(nearest.$2, 1)} $unit); $above of ${values.length} models $more',
+    );
+  }
+
+  if (highModel != null) {
+    final prefix = '$_day0Claim$highModel ';
+    for (final f in i.reviewFindings) {
+      final claim = '${f['claim']}';
+      if (!claim.startsWith(prefix) || !claim.contains(_highsClaim)) continue;
+      lines.add('  the lean, record: ${_stripDots(_shortNames(i, claim.substring(_day0Claim.length)))}');
+      break;
+    }
+  }
+  if (_truthy((i.instability ?? const {})['convective'])) {
+    final storms = [
+      for (final f in i.reviewFindings)
+        if (f['kind'] == 'convective' && '${f['claim']}'.startsWith(_day0Claim))
+          _stripDots(_shortNames(i, '${f['claim']}'.substring(_day0Claim.length))),
+    ];
+    if (storms.isNotEmpty) lines.add('  the record, thunder: ${storms.join('; ')}');
+  }
+  return lines;
+}
+
+/// Python's `rstrip(".")`.
+String _stripDots(String text) => text.replaceFirst(RegExp(r'\.+$'), '');
+
+List<String> _yesterdayLines(List<Map<String, Object?>> recent) {
+  final lines = <String>[];
+  Map<String, Object?>? yesterday;
+  for (final r in recent) {
+    if (r['days_ago'] == 1) {
+      yesterday = r;
+      break;
+    }
+  }
+  if (yesterday != null) {
+    String rain(Object? v) => _truthy(v) ? 'rain' : v == false ? 'dry' : 'unknown';
+    if (yesterday['observed_rain'] == null && yesterday['observed_high_c'] == null) {
+      lines.add('  yesterday: called ${rain(yesterday['called_rain'])}; not yet observed');
+    } else {
+      var line = '  yesterday: called ${rain(yesterday['called_rain'])}, observed ${rain(yesterday['observed_rain'])}';
+      if (yesterday['observed_precip_mm'] != null) line += ' (${_num(yesterday['observed_precip_mm'], 1)} mm)';
+      final reported = [
+        for (final (word, key) in const [('rain', 'station_rain'), ('thunder', 'station_thunder')])
+          if (_truthy(yesterday[key])) word,
+      ];
+      if (reported.isNotEmpty) line += ', the station reporting ${reported.join(' and ')}';
+      if (yesterday['called_high_c'] != null && yesterday['observed_high_c'] != null) {
+        line += '; called a high of ${_num(yesterday['called_high_c'], 1)} °C, '
+            'observed ${_num(yesterday['observed_high_c'], 1)} °C';
+      }
+      lines.add(line);
+    }
+  }
+  final scored = [
+    for (final r in recent)
+      if (r['called_rain'] is bool && r['observed_rain'] is bool) r,
+  ];
+  if (scored.isNotEmpty) {
+    final right = scored.where((r) => r['called_rain'] == r['observed_rain']).length;
+    lines.add('  the rain call: right on $right of the last ${scored.length} days observed');
+  }
+  return lines;
+}
+
+List<String> _metServiceLines(BriefInputs i) {
+  final name = i.metServiceName;
+  if (name == null || name.isEmpty) return const [];
+  _Row? row;
+  for (final r in i.predictions) {
+    if (r['lead'] == _day0 && r['model'] == i.metServiceModelId) {
+      row = r;
+      break;
+    }
+  }
+  final called = _todayCall(i)['rain'];
+  if (row == null || (row['rain'] != 'true' && row['rain'] != 'false')) {
+    return ['  met service: no forecast from $name this run'];
+  }
+  final theirs = row['rain'] == 'true';
+  final word = theirs ? 'rain' : 'dry';
+  if (called == null) return ['  met service: $name calls $word'];
+  if (theirs == _truthy(called)) return ['  met service: $name agrees, $word'];
+  return ["  met service: $name calls $word, against the call's ${_truthy(called) ? 'rain' : 'dry'}"];
+}
+
+/// Today's per-model rows, without the met service and the blends.
+List<_Row> _day0ModelRows(BriefInputs i) => [
+      for (final r in i.predictions)
+        if (r['lead'] == _day0 && !_hiddenModels.contains(r['model']) && r['model'] != i.metServiceModelId) r,
+    ];
 
 final RegExp _header = RegExp(r"^([A-Z][A-Z0-9' /+-]*[A-Z0-9])( \([^\n]*\))?:[ \t]*$");
 
