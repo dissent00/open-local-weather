@@ -219,6 +219,14 @@
       "outcome": "http_200",
       "elapsed_s": 51.206,
       "audit": "passed: today, extended, severe, secondary, synoptic, confidence"
+    },
+    {
+      "at": "2026-11-25T04:05:12.217650+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_200",
+      "elapsed_s": 26.626
     }
   ]
 }
