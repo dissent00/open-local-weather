@@ -316,7 +316,7 @@ def test_the_allowlist_admits_providers_and_nothing_else():
 
 
 # ---------------------------------------------------------------------------
-# A fetch failure is tried once more — 2026-11-24
+# A fetch failure is tried again over 90 minutes — 2026-11-24, -25
 # ---------------------------------------------------------------------------
 
 
@@ -359,21 +359,30 @@ def _run_step(tmp_path, exits):
     return done.returncode, calls, slept
 
 
-def test_a_fetch_failure_is_tried_once_more_after_a_wait(tmp_path):
+def test_a_fetch_failure_is_tried_again_after_a_wait(tmp_path):
     from openlocalweather.cli import EXIT_FETCH_FAILED
 
     code, calls, slept = _run_step(tmp_path, [EXIT_FETCH_FAILED, 0])
 
-    assert (code, calls) == (0, 2)
-    assert slept and int(slept[0]) >= 600, "a blip needs minutes, not seconds"
+    assert (code, calls, slept) == (0, 2, ["900"])
 
 
-def test_a_second_fetch_failure_fails_the_run(tmp_path):
+def test_retries_fall_15_30_and_90_minutes_after_the_first_failure(tmp_path):
+    """The operator's schedule, 2026-11-25: Open-Meteo was still timing out
+    at 03:19Z on 11-25, and answered by 04:04Z both mornings."""
     from openlocalweather.cli import EXIT_FETCH_FAILED
 
-    code, calls, _ = _run_step(tmp_path, [EXIT_FETCH_FAILED, EXIT_FETCH_FAILED])
+    code, calls, slept = _run_step(tmp_path, [EXIT_FETCH_FAILED] * 3 + [0])
 
-    assert (code, calls) == (EXIT_FETCH_FAILED, 2)
+    assert (code, calls, slept) == (0, 4, ["900", "900", "3600"])
+
+
+def test_four_fetch_failures_fail_the_run(tmp_path):
+    from openlocalweather.cli import EXIT_FETCH_FAILED
+
+    code, calls, _ = _run_step(tmp_path, [EXIT_FETCH_FAILED] * 4)
+
+    assert (code, calls) == (EXIT_FETCH_FAILED, 4)
 
 
 def test_any_other_failure_is_not_retried(tmp_path):

@@ -231,22 +231,31 @@ jobs:
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
             FLAGS="$FLAGS --force"
           fi
-          # ONE MORE TRY AFTER A FETCH FAILURE, 2026-11-24: Open-Meteo timed
+          # TRIED AGAIN AFTER A FETCH FAILURE. 2026-11-24: Open-Meteo timed
           # out three times at 03:01Z and the morning had no forecast. Exit 3
           # is `cli.EXIT_FETCH_FAILED`, raised only before any model call;
           # every other failure is final, since it may have spent one.
+          # 2026-11-25: still timing out at 03:19Z, so one retry 15 minutes
+          # on was not enough; hand re-runs at 04:37Z and 04:04Z worked.
+          # Open-Meteo has open reports of two US servers hanging or
+          # resetting connections (their issues 2329 and 2349). The
+          # operator's schedule: retries 15, 30 and 90 minutes after the
+          # first failure, so the waits are 15, 15 and 60 minutes.
           forecast() {
             olw forecast --public-url "${{ steps.pages_url.outputs.url }}" $FLAGS \
               | tee -a "$RUNNER_TEMP/forecast.log"
           }
           status=0
           forecast || status=$?
-          if [ "$status" -eq 3 ]; then
-            echo "A required weather fetch failed; trying once more in 15 minutes."
-            sleep 900
+          for wait_min in 15 15 60; do
+            if [ "$status" -ne 3 ]; then
+              break
+            fi
+            echo "A required weather fetch failed; trying again in $wait_min minutes."
+            sleep $((wait_min * 60))
             status=0
             forecast || status=$?
-          fi
+          done
           exit "$status"
 
       - name: Commit and push data/docs changes
