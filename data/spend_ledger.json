@@ -2,15 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-11-20T03:01:57.883315+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_200",
-      "elapsed_s": 22.009,
-      "audit": "passed: today, extended, severe, secondary, synoptic, confidence"
-    },
-    {
       "at": "2026-11-21T03:01:43.685146+00:00",
       "provider": "GeminiProvider",
       "model": "gemini-3.6-flash",
@@ -219,6 +210,40 @@
       "purpose": "forecast",
       "outcome": "http_200",
       "elapsed_s": 23.539
+    },
+    {
+      "at": "2026-11-27T03:02:09.766044+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "timeout",
+      "elapsed_s": 90.122
+    },
+    {
+      "at": "2026-11-27T03:06:39.890077+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 30.543,
+      "audit": "passed: today, severe, secondary, synoptic, confidence; refused: extended (173 words, cap 140)"
+    },
+    {
+      "at": "2026-11-27T03:07:10.444702+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "write-up",
+      "outcome": "timeout",
+      "elapsed_s": 90.125
+    },
+    {
+      "at": "2026-11-27T03:08:40.571404+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "openai/gpt-oss-120b",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 2.758,
+      "audit": "passed: today, extended, severe, secondary, synoptic, confidence"
     }
   ]
 }
