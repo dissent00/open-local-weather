@@ -244,6 +244,30 @@
       "outcome": "http_200",
       "elapsed_s": 2.758,
       "audit": "passed: today, extended, severe, secondary, synoptic, confidence"
+    },
+    {
+      "at": "2026-11-28T03:01:42.247294+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 0.565
+    },
+    {
+      "at": "2026-11-28T03:01:42.815815+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "forecast",
+      "outcome": "http_503",
+      "elapsed_s": 0.396
+    },
+    {
+      "at": "2026-11-28T03:01:43.217078+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "nex-agi/nex-n2.5-pro:free",
+      "purpose": "forecast",
+      "outcome": "http_404",
+      "elapsed_s": 0.114
     }
   ]
 }
