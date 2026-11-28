@@ -2,31 +2,6 @@
   "note": "Append-only record of LLM call attempts. Written BEFORE each call so a crash cannot lose the count. The 24-hour total is recomputed from these entries, never stored. outcome/elapsed_s are filled in when the call returns; a row without them is one that never came back.",
   "calls": [
     {
-      "at": "2026-11-21T03:01:43.685146+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "forecast",
-      "outcome": "http_200",
-      "elapsed_s": 14.505
-    },
-    {
-      "at": "2026-11-21T03:02:00.362677+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.6-flash",
-      "purpose": "write-up",
-      "outcome": "http_200",
-      "elapsed_s": 66.806,
-      "audit": "refused: today (373 words, cap 125); unanswered: extended, severe, secondary, synoptic, confidence"
-    },
-    {
-      "at": "2026-11-21T03:03:07.174401+00:00",
-      "provider": "GeminiProvider",
-      "model": "gemini-3.8-flash",
-      "purpose": "write-up",
-      "outcome": "timeout",
-      "elapsed_s": 90.034
-    },
-    {
       "at": "2026-11-21T03:04:37.210535+00:00",
       "provider": "OpenAICompatProvider",
       "model": "openai/gpt-oss-120b",
@@ -268,6 +243,32 @@
       "purpose": "forecast",
       "outcome": "http_404",
       "elapsed_s": 0.114
+    },
+    {
+      "at": "2026-11-28T03:01:46.056524+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.6-flash",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 48.208,
+      "audit": "passed: today, severe, secondary, synoptic, confidence; refused: extended (145 words, cap 140)"
+    },
+    {
+      "at": "2026-11-28T03:02:34.279432+00:00",
+      "provider": "GeminiProvider",
+      "model": "gemini-3.8-flash",
+      "purpose": "write-up",
+      "outcome": "timeout",
+      "elapsed_s": 90.105
+    },
+    {
+      "at": "2026-11-28T03:04:04.387479+00:00",
+      "provider": "OpenAICompatProvider",
+      "model": "openai/gpt-oss-120b",
+      "purpose": "write-up",
+      "outcome": "http_200",
+      "elapsed_s": 2.872,
+      "audit": "passed: today, extended, severe, secondary, synoptic, confidence"
     }
   ]
 }
